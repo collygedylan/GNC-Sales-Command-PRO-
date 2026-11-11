@@ -21,7 +21,8 @@ function inventoryLookup(overrides) {
 }
 
 function withVerifiedSource(supabase, overrides = {}, access = { edit_any_row:'Y' }) {
-  return { ...supabase, from: table => {
+  return { ...supabase, rpc: async (name, args) => name === 'authorize_reclass_command_v3076'
+    ? { data:access.edit_any_row === 'Y',error:null } : supabase.rpc(name,args), from: table => {
     if (table === 'user_access') return accessLookup(access);
     assert.equal(table, 'ph_master_inventory');
     return inventoryLookup(overrides);
@@ -121,6 +122,6 @@ test('Reclass source stock cannot exceed the current verified open stock', async
 test('Reclass rejects a source without edit permission before dispatch', async () => {
   let sent = false;
   const supabase = withVerifiedSource({ rpc:async () => { sent = true; return { data:null, error:null }; } }, {}, { edit_any_row:'N', edit_assigned_rows_only:'N' });
-  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile:actor, payload:command }), /LIVE_CHANGE_FORBIDDEN/);
+  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile:actor, payload:command }), /RECLASS_PERMISSION_REQUIRED/);
   assert.equal(sent, false);
 });

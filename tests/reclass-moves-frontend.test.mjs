@@ -1,3 +1,4 @@
+import { extractReclassAppFunction } from './helpers/reclass-worksheet-source.mjs';
 import { createReclassPreviewFixture } from '../src/core/reclass-preview-fixture.mjs';
 import { registerReclassOptimisticContracts } from '../src/core/reclass-optimistic-contract.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
@@ -11,19 +12,7 @@ import { JSDOM } from 'jsdom';
 
 const html = readComposedAppSource();
 
-function extractAppFunction(name) {
-  const marker = `function ${name}(`;
-  let start = html.indexOf(marker);
-  if (start > 0 && html.slice(start - 6, start) === 'async ') start -= 6;
-  assert.ok(start >= 0, `${name} exists`);
-  const open = html.indexOf(') {', start) + 2;
-  let depth = 0;
-  for (let i = open; i < html.length; i++) {
-    if (html[i] === '{') depth++;
-    else if (html[i] === '}' && --depth === 0) return html.slice(start, i + 1);
-  }
-  throw new Error(`Unclosed function ${name}`);
-}
+const extractAppFunction = name => extractReclassAppFunction(html, name);
 
 function extractApplyReclassMoveFunction() {
   // These tests isolate the command/status state machine. Publication of the
@@ -353,6 +342,11 @@ test('optimistic inquiry rerender patches keyed cards in place and preserves dra
 
 test('editing actions before the 610-unit preview retains the pending body with a current proposal signature', () => {
   const { dom, model, state, ctx } = createReclassPreviewFixture(extractAppFunction);
+  for (const name of ['reclass-access-policy', 'reclass-modal-open', 'reclass-submission']) {
+    vm.runInContext(fs.readFileSync(new URL('../assets/' + name + '.js', import.meta.url), 'utf8'), ctx);
+  }
+  Object.assign(ctx, { getCanonicalAccessSessionIdentity: () => null, normalizeEvidenceActor: String,
+    resolveUserAccessMatrix: () => null, isEvalReclassRowAssigned: () => true });
   try {
     ctx.renderArgosInventoryTransactionInquiryModel(state);
     const host = ctx.document.getElementById('argos-reclass-item-inquiry');

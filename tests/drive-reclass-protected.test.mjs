@@ -10,7 +10,8 @@ const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const migration = read('supabase/archive_migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql');
 const v4Migration = read('supabase/migrations/20261006145333_reclass_split_move_inquiries_v4.sql');
 const auditBaseline = read('supabase/archive_migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql');
-const api = read('supabase/functions/app-api/index.ts');
+const api = ['index.ts', 'reclass-inquiry-handler.ts', 'reclass-inquiry-transport.ts']
+  .map(file => read('supabase/functions/app-api/' + file)).join('\n');
 const app = readComposedAppSource();
 const worker = read('Code.gs');
 const deliveryWorker = read('supabase/functions/request-delivery-worker/index.ts');
@@ -79,7 +80,7 @@ test('app API discards browser actor and recipients and returns only allowlisted
   }
   assert.match(api, /actorUsername/);
   assert.match(api, /enqueue_drive_reclass_inquiry_v1/);
-  assert.match(api, /workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"[\s\S]*enqueue_drive_reclass_inquiry_v4/);
+  assert.match(api, /"reclass-action-workflow-v4-split-moves-20261006": "enqueue_drive_reclass_inquiry_v4"/);
   assert.match(api, /get_drive_reclass_inquiry_status_v1/);
   assert.match(api, /retry_drive_reclass_inquiry_v1/);
   assert.match(api, /action === "drive_reclass_inquiry"/);

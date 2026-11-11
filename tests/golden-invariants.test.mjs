@@ -1,3 +1,4 @@
+import {withGoldenReclassAuthority,assertGoldenEvalReclassBoundaries,assertGoldenReclassExplanations} from './helpers/golden-reclass-authority.mjs';
 import { buildColdHydrationJoinFixture } from '../src/core/golden-cold-hydration-fixture.mjs';
 import {assertAuthenticatedTransientGateway} from '../src/core/golden-fail-open-contract.mjs';
 import {assertEvidenceLifecycle} from '../src/core/golden-evidence-lifecycle.mjs';
@@ -1361,11 +1362,10 @@ test('Invariant 69 (Season Winner AV Notes and Shared Card Evidence Stay Exact)'
 });
 
 test('Invariant 70 (Reclass New Seasons Persist Zero-Baseline Stock and Durable Evidence)', () => {
-  const runtime = read('assets/app-runtime.js');
   const edge = read('supabase/functions/_shared/production-workflow.ts');
   const migration = read('supabase/migrations/20261027163924_agdata_v2387_reclass_persistence_and_evidence.sql');
   const batchMigration = read('supabase/migrations/20261027171000_agdata_v2387_batch_reclass_evidence.sql');
-  const preview = runtime.slice(runtime.indexOf('function buildOptimisticInventoryReclassMoveModel('), runtime.indexOf('function reconcileArgosReclassCardDraftState('));
+  const preview = read('assets/reclass-move-worksheet.js');
   assert.match(preview, /physicalSeasonKeys = new Set\(rows\.map\(stockKey\)\)/);
   assert.match(preview, /if \(!current && !physicalSeasonKeys\.has\(destinationSeasonKey\)\) seasonOpenStocks\.set\(destinationSeasonKey, 0\)/);
   assert.match(edge, /receipt\.ok !== true[^]*receipt\.status[^]*'applied'[^]*Array\.isArray\(receipt\.rows\)[^]*INVENTORY_RECLASS_COMMIT_UNCONFIRMED/);
@@ -1852,7 +1852,7 @@ test('Invariant 98 (Universal Request Directory and Complete Tag Preserve Physic
 test('Invariant 99 (Reclass Is Optimistic Without Premature Validation and Inventory Back Unwinds Locally)', () => {
   const runtime = read('assets/app-runtime.js');
   const migration = read('supabase/migrations/20261028172852_agdata_v2395_instant_reclass_and_navigation.sql');
-  const toggle = runtime.slice(runtime.indexOf('function toggleArgosReclassV3Action('), runtime.indexOf('function handleArgosReclassV3ProposalInput('));
+  const toggle = functionSource('assets/app-runtime.js', 'createArgosReclassActionProposal') + functionSource('assets/app-runtime.js', 'toggleArgosReclassV3Action');
   const collect = runtime.slice(runtime.indexOf('function collectArgosReclassMoveProposal('), runtime.indexOf('function getArgosReclassV3ScopeActionsForEntry('));
   const publish = runtime.slice(runtime.indexOf('function publishArgosInventoryTransactionReturnedRows('), runtime.indexOf('const confirmedArgosReclassLiveEditRevisions'));
   const back = runtime.slice(runtime.indexOf('function goBackUniversal('), runtime.indexOf("if (currentView === 'crop-roll')"));
@@ -1950,7 +1950,7 @@ test('Invariant 105 (Both Reclass Send Paths Close Before a Delayed Database Rec
     const delayed = new Promise(resolve => { settle = resolve; });
     const events = [];
     const state = { sourceView: 'drive', snapshot: { uniqueId: 'row' }, idempotencyToken: 'instant-test' };
-    const payload = { rowOverlays: [{ proposals: [{ action: 'move_down', splits: [{ quantity: 20, destinationSeason: 'X' }] }] }] };
+    const payload = { rowOverlays: [{ unique_id: 'row', proposals: [{ action: 'move_down', splits: [{ quantity: 20, destinationSeason: 'X' }] }] }] };
     const button = { disabled: false, textContent: '' };
     const context = {
       argosInventoryTransactionState: state, evalWorkSetupState: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan Collyge',
@@ -1975,7 +1975,7 @@ test('Invariant 105 (Both Reclass Send Paths Close Before a Delayed Database Rec
       document: { getElementById: () => button }, window: {},
     };
     const name = review ? 'openEvalWorkSetupFromReclass' : 'submitArgosInventoryTransaction';
-    const sandbox = runFunctions('assets/app-runtime.js', [name], context);
+    const sandbox = runFunctions('assets/app-runtime.js', [name], withGoldenReclassAuthority(context));
     const started = performance.now();
     const task = sandbox[name]();
     await new Promise(resolve => setImmediate(resolve));
@@ -3459,7 +3459,7 @@ test('Invariant 165 (Non-Move Reclass Closes After Durable Idempotent Draft Stag
   const state = { sourceView: 'drive', snapshot: { uniqueId: 'source-165' } };
   let dispatchResolve;
   const delayedDispatch = new Promise(resolve => { dispatchResolve = resolve; });
-  const context = runFunctions('assets/app-runtime.js', ['persistPendingReclassDeliveryDraft', 'getReclassDeliveryJob', 'submitArgosInventoryTransaction'], {
+  const context = runFunctions('assets/app-runtime.js', ['persistPendingReclassDeliveryDraft', 'getReclassDeliveryJob', 'submitArgosInventoryTransaction'], withGoldenReclassAuthority({
     argosInventoryTransactionState: state, currentUser: 'dylan_collyge', Date, JSON, String, Array, Object,
     getArgosReclassLiveEditIdentityKey: () => 'actor-165', getCurrentReclassDeliveryActor: () => 'dylan_collyge',
     isEvalReclassRowAssigned: () => true,
@@ -3480,7 +3480,7 @@ test('Invariant 165 (Non-Move Reclass Closes After Durable Idempotent Draft Stag
     dispatchPendingReclassDeliveryDraft: job => { events.push(`dispatch:${job.token}`); return delayedDispatch; },
     closeArgosInventoryTransactionModal: options => { assert.equal(options.background, true); events.push('close'); context.argosInventoryTransactionState = null; },
     showToast: title => events.push(title), window: { __gncOpsPilot: { captureFailure() {} } }, document: { getElementById: () => button },
-  });
+  }));
   const started = performance.now();
   await context.submitArgosInventoryTransaction();
   const elapsed = performance.now() - started;
@@ -3625,30 +3625,7 @@ test('Invariant 171 (Reclass Modal Starts With Item Identity And Location Cards)
   assert.match(styles, /\.argos-reclass-row-toggle-copy>span:first-child\{font-size:1\.25rem/);
 });
 
-test('Invariant 172 (Eval Reclass Is Assigned Only At Every UI Boundary)', () => {
-  const ctx = runFunctions('assets/app-runtime.js', ['isEvalReclassRowAssigned', 'isWarehouseAssignedDriveCardForCurrentUser',
-    'canCurrentUserUseDriveCardOptions'], {
-    currentRole: 'Evaluator', currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
-    GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']),
-    normalizeLiveChangeUsername: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
-    getRoleAccessState: () => ({ isEval: true, isAdmin: false }),
-    canUserReclassRow: (user,row) => ctx.isRowAssignedToUser(user,row), canUserMakeLiveChangesOnRow: (user,row) => ctx.isRowAssignedToUser(user,row),
-    isAlwaysDriveCardOptionsUser: () => false,
-    isRowAssignedToUser: (user, row) => ['taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
-    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '') ?? '',
-  });
-  assert.equal(ctx.canCurrentUserUseDriveCardOptions({ unique_id: 'assigned' }, 'drive'), true);
-  assert.equal(ctx.canCurrentUserUseDriveCardOptions({ unique_id: 'other' }, 'drive'), false);
-  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'assigned' }), true);
-  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'other' }), false);
-  const runtime = read('assets/app-runtime.js');
-  assert.match(runtime, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
-  assert.match(functionSource('assets/app-runtime.js', 'submitArgosInventoryTransaction'), /!canSubmitArgosReclassForRow\(state\.item\)/);
-  assert.match(functionSource('assets/app-runtime.js', 'canSubmitArgosReclassForRow'), /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
-  const api = read('supabase/functions/app-api/index.ts');
-  assert.match(api, /INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED/);
-  assert.match(api, /ph_inventory_row_assignments[\s\S]*?ph_warehouse_assigned_items/);
-});
+test('Invariant 172 (Eval Reclass Is Assigned Only At Every UI Boundary)', () => assertGoldenEvalReclassBoundaries({runFunctions,functionSource,read}));
 
 test('Invariant 173 (Cloud Order History Owns Imports And Incremental Average Publication)', async () => {
   const { runSocHistorySyncStep } = await import('../supabase/functions/_shared/erp-history-sync.mjs');
@@ -6534,18 +6511,7 @@ test('Invariant 519 (queued ERP status-only updates accept absent progress and f
  assert.equal(result.status.sourceProgress.drive.rowsStaged,1);assert.equal(result.status.error,'');
 });
 
-test('Invariant 520 (Reclass explanations are required per changed row except canonical administrators)',()=>{
- const drafts={a:{reclassExplanation:'  '},b:{reclassExplanation:'  Wrong grade  '}};
- const context={nativeAuthProfile:{role:'Manager',username:'manager'},currentUser:'manager',getCurrentRoleAccessValue:()=>'',getArgosReclassRowProposalMap:uid=>drafts[uid],focusArgosReclassRow:()=>{},document:{querySelectorAll:()=>[]},showToast:()=>{},escapeHtml:value=>String(value).replaceAll('<','&lt;')};
- vm.createContext(context);
- vm.runInContext(['isReclassExplanationExempt','getReclassExplanation','requireReclassExplanation','buildReclassExplanationField','collectReclassExplanations'].map(name=>functionSource('assets/row-workflow-functions.js',name)).join('\n'),context);
- for(const role of ['EVAL','QC','QC Supervisor','Manager','CSR','REP','Foreman','data entry','']){context.nativeAuthProfile.role=role;assert.equal(context.requireReclassExplanation('a'),false);assert.equal(context.requireReclassExplanation('b'),true);}
- assert.match(context.buildReclassExplanationField('a'),/Reclass Explanation \* \(Required\)/);
- assert.throws(()=>context.collectReclassExplanations({rowOverlays:[{unique_id:'a',proposals:[{}]},{unique_id:'b',fieldEdits:[{}]}]}),/Reclass Explanation is required/);
- assert.deepEqual(JSON.parse(JSON.stringify(context.collectReclassExplanations({rowOverlays:[{unique_id:'a',proposals:[]},{unique_id:'b',fieldEdits:[{}]}]}))),{b:'Wrong grade'});
- for(const role of ['admin','SUPER_ADMIN',' super admin ']){context.nativeAuthProfile.role=role;assert.equal(context.requireReclassExplanation('a'),true);assert.match(context.buildReclassExplanationField('a'),/Optional for Admin/);}
- context.nativeAuthProfile={role:'Manager',username:'dylan_collyge'};assert.equal(context.requireReclassExplanation('a'),true);
-});
+test('Invariant 520 (Reclass explanations are required per changed row except canonical administrators)', () => assertGoldenReclassExplanations({functionSource}));
 
 test('Invariant 521 (field audit preset excludes unknown years and follows exact block/location lot identity)',()=>{
  const context={};vm.createContext(context);vm.runInContext(['fieldAuditNumber','fieldAuditYear','fieldAuditNormalizeRow','fieldAuditMatchingRows','fieldAuditMetrics'].map(name=>functionSource('assets/row-workflow-functions.js',name)).join('\n'),context);
@@ -6833,3 +6799,4 @@ test('Invariant 633: a successful operational read from a previous account canno
 test('Invariant 634: exact-row drafts publish before photo completion and survive failed uploads and blank Request refreshes',assertDetailLiveDraftRetention);
 test('Invariant 635: photo, evaluation and completion entrypoints require verified table grants and exact ownership without named-user exceptions',assertTableDrivenRowAuthorization);
 test('Invariant 636: a populated Que dropdown passes Watchdog and review reads preserve open incidents under the same native session',reviewedQueueWatchdogContract);
+test('Invariant 637: Season Y moves bind preview and receipt to the physical source sales year', async () => (await import('./helpers/reclass-season-y-receipt.mjs')).reclassSeasonYReceiptContract());

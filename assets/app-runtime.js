@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.75';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.76';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24698,7 +24698,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.75';
+        const APP_VERSION = '3.0.76';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -38693,7 +38693,9 @@ let avTopControlsRenderToken = 0;
             const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
             if (!['drive', 'suspend-tag'].includes(safeSourceView)) return '';
             if (safeSourceView === 'suspend-tag' && !canCurrentUserViewDockSuspendDcRequests(item)) return '';
-            if (!canCurrentUserUseDriveCardOptions(item, 'drive') && !canCurrentUserSubmitRepInventoryOperations()) return '';
+            const adminAccess = getSeasonYReclassAdministratorAccess(item, safeSourceView);
+            if (adminAccess === false) return '';
+            if (adminAccess !== true && !canCurrentUserUseDriveCardOptions(item, 'drive') && !canCurrentUserSubmitRepInventoryOperations()) return '';
             if (!isArgosInventoryTransactionEligible(item)) return '';
             const safeUid = escJsAttrValue(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, ''));
             const safeSource = escJsAttrValue(sourceView || activeDetailSourceView || lastView || '');
@@ -39730,102 +39732,6 @@ let avTopControlsRenderToken = 0;
             select.dispatchEvent(new Event('change', { bubbles: true }));
             return false;
         }
-        function toggleArgosReclassV3Action(button = null, action = '', sourceUid = '') {
-            const normalized = String(action || '').trim().toLowerCase();
-            if (canCurrentUserSubmitRepInventoryOperations() && !['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(normalized)) return false;
-            const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
-            const uid = String(card && card.getAttribute('data-reclass-row-card') || sourceUid || '').trim();
-            const entry = getArgosReclassRowEditorEntry(uid);
-            const rule = getReclassActionWorkflowV5Config(normalized);
-            if (!entry || !rule) return false;
-            const isHoldAction = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized);
-            const globalHoldProposal = getArgosReclassV3HoldProposal();
-            const existing = isHoldAction && globalHoldProposal && globalHoldProposal.action === normalized
-                ? globalHoldProposal : getArgosReclassV3Proposal(uid, normalized);
-            if (!existing && !requireReclassExplanation(uid)) return false;
-            card?.querySelectorAll('[data-reclass-v3-proposal-field]').forEach(input => handleArgosReclassV3ProposalInput(input));
-            const previousAction = argosInventoryTransactionState?.activeReclassAction?.[uid];
-            if (argosInventoryTransactionState) {
-                argosInventoryTransactionState.activeReclassAction ||= {};
-                argosInventoryTransactionState.activeReclassAction[uid] = normalized;
-            }
-            if (existing && previousAction !== normalized) { refreshArgosReclassMultiActionUi(); return false; }
-            if (existing) {
-                if (isHoldAction) argosReclassMultiActionState.holdStopProposals = {};
-                else {
-                    const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
-                    delete rowMap[normalized];
-                    if (!Object.keys(rowMap).length) argosReclassMultiActionState.rowProposals.delete(uid);
-                }
-            } else {
-                if (argosReclassMultiActionState.rowResolutions instanceof Map) argosReclassMultiActionState.rowResolutions.delete(uid);
-                const values = entry.values && typeof entry.values === 'object' ? entry.values : {};
-                const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
-                if (rule.kind === 'sheared' && (!Number.isFinite(originalOh) || originalOh < 1)) {
-                    showToast('Action Unavailable', `${rule.label} requires a positive original OH.`, true);
-                    return false;
-                }
-                if (isHoldAction) {
-                    if (globalHoldProposal && globalHoldProposal.action !== normalized) {
-                        const conflictingRule = getReclassActionWorkflowV2Config(globalHoldProposal.action);
-                        const hasEnteredData = !!String(globalHoldProposal.reason || '').trim();
-                        if (!window.confirm(`Replace ${conflictingRule.label} with ${rule.label} for this selected row and any server-authorized matching rows${hasEnteredData ? ' and discard its entered reason' : ''}?`)) return false;
-                    }
-                    argosReclassMultiActionState.holdStopProposals = {
-                        [normalized]: { action: normalized, reason: '', sourceUid: uid, holdstopbegindate: new Date().toLocaleDateString('en-CA') }
-                    };
-                } else {
-                    const rowMap = getArgosReclassRowProposalMap(uid, true);
-                    if (rule.kind === 'priority') rowMap[normalized] = { action: normalized, priority: String(values.priority == null ? '' : values.priority) };
-                    else if (rule.kind === 'move') rowMap[normalized] = { action: normalized, splits: [{ quantity: '', destinationSeason: '' }], applyHold: false, holdReason: '' };
-                    else if (rule.kind === 'sheared') rowMap[normalized] = { action: normalized, quantity: '' };
-                    else rowMap[normalized] = { action: normalized };
-                }
-            }
-            if (argosInventoryTransactionState) argosInventoryTransactionState.reclassDraftsByRowUid = argosReclassMultiActionState.rowProposals;
-            if (argosInventoryTransactionState) argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
-            refreshArgosReclassMultiActionUi();
-            captureEvalWorkLocalDraftSoon(0);
-            return false;
-        }
-
-        function handleArgosReclassV3ProposalInput(input = null) {
-            const card = input && input.closest ? input.closest('[data-reclass-row-card]') : null;
-            const uid = String(card && card.getAttribute('data-reclass-row-card') || '').trim();
-            const action = String(input && input.getAttribute('data-reclass-v3-proposal-action') || '').trim().toLowerCase();
-            const field = String(input && input.getAttribute('data-reclass-v3-proposal-field') || '').trim();
-            const proposal = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassV3HoldProposal() : getArgosReclassV3Proposal(uid, action);
-            if (!proposal || !field) return false;
-            if (['move_up', 'move_down'].includes(action)) {
-                const splitIndex = Number(input.getAttribute('data-reclass-split-index'));
-                if (['quantity', 'destinationSeason'].includes(field) && Number.isInteger(splitIndex) && proposal.splits && proposal.splits[splitIndex]) proposal.splits[splitIndex][field] = String(input.value ?? '');
-                else return false;
-                const entry = getArgosReclassRowEditorEntry(uid);
-                card.querySelectorAll('[data-reclass-move-balance]').forEach((node) => {
-                    node.textContent = getArgosReclassMoveBalanceText(entry);
-                    node.setAttribute('data-over-limit', String(getArgosReclassMoveBalance(entry).remaining < 0));
-                });
-                markArgosReclassProposalEdited(uid);
-                return true;
-            }
-            const value = field === 'holdstopreason' || field === 'reason'
-                ? String(input.value == null ? '' : input.value).toLowerCase()
-                : String(input.value == null ? '' : input.value);
-            if ((field === 'holdstopreason' || field === 'reason') && input.value !== value) input.value = value;
-            proposal[field] = value;
-            if (action === 'sheared' && field === 'quantity') {
-                const preview = card && card.querySelector('[data-sheared-request-preview="true"]');
-                if (preview) preview.textContent = value.trim() ? `${value.trim()}-->#` : '—';
-            }
-            if (field === 'reason' && RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)) {
-                document.querySelectorAll('[data-reclass-v3-proposal-field="reason"]').forEach((other) => {
-                    if (other !== input && other.getAttribute('data-reclass-v3-proposal-action') === action) other.value = value;
-                });
-            }
-            markArgosReclassProposalEdited(uid);
-            return true;
-        }
-
         function buildArgosReclassV3ProposalHtml(entry = null, action = '') {
             const uid = String(entry && entry.unique_id || '').trim();
             const values = entry && entry.values && typeof entry.values === 'object' ? entry.values : {};
@@ -39871,6 +39777,8 @@ let avTopControlsRenderToken = 0;
             return `<div class="argos-reclass-action-proposal"><span>Re-Count Request</span><strong>Read-only Item Inquiry</strong><small>No proposed value boxes are added.</small></div>`;
         }
 
+        globalThis.buildArgosReclassV3ProposalHtml = buildArgosReclassV3ProposalHtml;
+
         function isArgosReclassLocationDetailsOpen(entry = null) {
             if (!isArgosReclassMobileEditorViewport()) return false;
             const uid = String(entry && entry.unique_id || '').trim();
@@ -39884,55 +39792,6 @@ let avTopControlsRenderToken = 0;
                 }
             }
             return false;
-        }
-
-        function buildArgosReclassActionFieldsHtml(entry = null) {
-            const safeEntry = entry && typeof entry === 'object' ? entry : { unique_id: '', values: {} };
-            const uid = String(safeEntry.unique_id || '').trim();
-            const values = safeEntry.values && typeof safeEntry.values === 'object' ? safeEntry.values : {};
-            if (!RECLASS_ACTION_WORKFLOW_V3_ENABLED) return '';
-            const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
-            const globalHoldProposal = getArgosReclassV3HoldProposal();
-            const repOperations = canCurrentUserSubmitRepInventoryOperations();
-            const buttons = ['move_up', 'move_down', 'recount', 'hold', 'take_off_hold', 'priority_change', 'stop_ship', 'off_stop_ship', 'sheared'].filter(action => RECLASS_ACTION_WORKFLOW_V5_ORDER.includes(action)).filter((action) => !repOperations || ['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(action)).map((action) => {
-                const rule = getReclassActionWorkflowV5Config(action);
-                const scopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldTargetEntries(action, uid) : [];
-                const proposalScopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldProposalTargetEntries(action) : [];
-                const active = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)
-                    ? !!(globalHoldProposal && globalHoldProposal.action === action && (String(globalHoldProposal.sourceUid || '') === uid || proposalScopeEntries.some((candidate) => String(candidate && candidate.unique_id || '') === uid)))
-                    : !!getArgosReclassV3Proposal(uid, action);
-                let eligible = true;
-                let title = '';
-                if (['move', 'sheared'].includes(rule.kind) && (!Number.isFinite(originalOh) || originalOh < 1)) {
-                    eligible = false;
-                    title = 'Requires positive original OH';
-                } else if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) && !scopeEntries.length) {
-                    eligible = false;
-                    title = rule.kind === 'hold_off' ? `No scoped rows are currently coded ${rule.code}` : 'Current season settings or eligible rows are unavailable';
-                } else if (RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)) {
-                    title = `${scopeEntries.length} scoped row${scopeEntries.length === 1 ? '' : 's'} affected`;
-                }
-                const actionLabel = ({ recount: 'Re-Count', sheared: 'Sheared to #' })[action] || ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS[action] || rule.label;
-                return `<button type="button" class="argos-reclass-action-btn" data-reclass-v3-action="${escapeHtml(action)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return toggleArgosReclassV3Action(this, '${escapeHtml(action)}')" ${!(eligible || active) ? 'disabled' : ''} title="${escapeHtml(title)}">${escapeHtml(actionLabel)}</button>`;
-            }).join('');
-            const activeActions = RECLASS_ACTION_WORKFLOW_V5_ORDER.filter((action) => !!getArgosReclassV3Proposal(uid, action));
-            const requestedAction = argosInventoryTransactionState?.activeReclassAction?.[uid];
-            const visibleAction = activeActions.includes(requestedAction) ? requestedAction : activeActions[activeActions.length - 1];
-            const proposalsHtml = visibleAction ? buildArgosReclassV3ProposalHtml(safeEntry, visibleAction) : '';
-            const scopeActions = getArgosReclassV3ScopeActionsForEntry(safeEntry);
-            if (globalHoldProposal && String(globalHoldProposal.sourceUid || '') === uid && !scopeActions.includes(globalHoldProposal.action)) scopeActions.push(globalHoldProposal.action);
-            const scopeHtml = scopeActions.length ? `<div class="argos-reclass-action-scope">${scopeActions.map((action) => escapeHtml(ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS[action] || getReclassActionWorkflowV2Config(action).label)).join(', ')} requested for this row. Eligible manager fanout is determined by the server.</div>` : '';
-            const mobileEditor = isArgosReclassMobileEditorViewport();
-            const settings = mobileEditor ? null : getArgosReclassScopeSettings();
-            const scopeCopy = settings && settings.season && settings.salesYear != null ? `${settings.season} / sales year <= ${String(settings.salesYear).slice(-2)}` : 'settings unavailable';
-            const locationOverlay = getArgosReclassTemporaryOverlay(uid, false);
-            const hasLocationChanges = !!(locationOverlay && locationOverlay.temporaryChangedFields && locationOverlay.temporaryChangedFields.length);
-            const locationDetailsHtml = `<details class="argos-reclass-action-panel argos-reclass-location-panel" data-reclass-location-details ${isArgosReclassLocationDetailsOpen(safeEntry) ? 'open' : ''}><summary class="argos-reclass-action-panel-title"><span>Inventory fields (optional) <span class="argos-reclass-location-changed" data-reclass-location-changed ${hasLocationChanges ? '' : 'hidden'}>· Changes entered</span></span><i class="ph-bold ph-caret-down argos-reclass-location-caret" aria-hidden="true"></i></summary><div class="argos-reclass-location-content"><p>Changed fields update live inventory when you send the inquiry. The same changes are queued for keyers and protected until the legacy import matches.</p><div class="argos-reclass-action-proposal-grid">${renderArgosReclassInventoryFields(safeEntry)}</div><small>Pri By, Eval Date and Pri Update are stamped on submission. Note Date changes only with Loc Note.</small></div></details>`;
-            const resolution = getEvalWorkInquiryRowResolution(uid);
-            const resolutionHtml = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
-                ? `<section class="eval-work-row-resolution"><div><strong>Finish this row</strong><small>Use Mark Done after choosing an action or changing a location detail, or No Action when nothing needs to change. The final row automatically sends the PDF.</small></div><div class="eval-work-row-resolution-actions"><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="done" aria-pressed="${resolution === 'done' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'done')"><i class="ph-bold ph-check-circle"></i> Mark Done</button><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="no_action" aria-pressed="${resolution === 'no_action' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'no_action')"><i class="ph-bold ph-minus-circle"></i> No Action</button></div></section>`
-                : '';
-            return `<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span>${mobileEditor ? '' : `<small>Choose an action to show its request fields. Hold / Stop starts from the selected row; the server determines any authorized matching-row scope (${escapeHtml(scopeCopy)}).</small>`}</div><div class="argos-reclass-action-grid">${buttons}</div>${buildReclassExplanationField(uid)}${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${repOperations ? '' : locationDetailsHtml}${resolutionHtml}`;
         }
 
         function buildArgosReclassRowFieldsHtml(entry = null) {
@@ -40446,156 +40305,7 @@ let avTopControlsRenderToken = 0;
             return getArgosItemInquiryRenderSignature(refreshedModel) !== getArgosItemInquiryRenderSignature(state && state.inquiryModel);
         }
 
-        function openArgosInventoryTransactionModal(uid = '', action = 'reclass', sourceView = '', options = {}) {
-            const safeUid = String(uid || '').trim();
-            const displayedItem = options.inquiryRow || findItemByUniqueId(safeUid);
-            const warmGroup = options.__verifiedInquiryGroup ? null : getVerifiedCachedArgosItemInquiryGroup(displayedItem);
-            const verifiedGroup = options.__verifiedInquiryGroup || warmGroup;
-            const displayGroup = options.__displayInquiryGroup || (!verifiedGroup
-                ? getReadableCachedArgosItemInquiryGroup(displayedItem) : null);
-            const item = displayedItem || verifiedGroup?.row || displayGroup?.row;
-            if (!isArgosInventoryTransactionEligible(item)) {
-                showToast('Unavailable', 'This card is not tied to a live inventory row.', true);
-                return false;
-            }
-            const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
-            if (!isEvalReclassRowAssigned(currentUser || currentUserDisplay, item)) {
-                showToast('Assigned Rows Only', 'Evaluators can open Reclass only for rows assigned to them.', true);
-                return false;
-            }
-            const scopedLiveChangeActor = typeof normalizeLiveChangeUsername === 'function'
-                ? normalizeLiveChangeUsername((typeof currentUser !== 'undefined' ? currentUser : '')
-                    || (typeof currentUserDisplay !== 'undefined' ? currentUserDisplay : '')) : '';
-            if (scopedLiveChangeActor === 'jorge_colunga'
-                && !canUserMakeLiveChangesOnRow(scopedLiveChangeActor, item)) {
-                showToast('Assigned Rows Only', 'Live changes are only enabled for rows assigned to you in the Assigned Items tab.', true);
-                return false;
-            }
-            if (safeSourceView === 'suspend-tag' && !canCurrentUserViewDockSuspendDcRequests(item)) {
-                showToast('Unavailable', 'Suspend Tag actions are not available for this account.', true);
-                return false;
-            }
-            if (['drive', 'suspend-tag'].includes(safeSourceView) && !canCurrentUserUseDriveCardOptions(item, 'drive') && !canCurrentUserSubmitRepInventoryOperations()) {
-                showToast('View Only', 'Drive Mode actions are only available on rows assigned to you.', true);
-                return false;
-            }
-            // The displayed row belongs to this account and is ready to edit now.
-            // Exact-row hydration is advisory and never gates opening the draft.
-            argosInquiryOpenRevision += 1;
-            const modal = ensureArgosInventoryTransactionModal();
-            const snapshot = getArgosInventorySourceSnapshot(item);
-            const inquiryModel = buildItemInquiryViewModel(item, getItemInquiryRows(item, [...((verifiedGroup || displayGroup)?.rows || []), ...(options.inquiryRows || [])]));
-            resetArgosReclassMultiActionState();
-            argosInventoryTransactionState = {
-                uid: snapshot.uniqueId,
-                item,
-                snapshot,
-                inquiryModel,
-                verifiedInquiryGroup: verifiedGroup || null,
-                verificationIdentityKey: getArgosReclassLiveEditIdentityKey(),
-                idempotencyToken: generateArgosInventoryTransactionId('reclass_inquiry'),
-                sourceView: String(sourceView || activeDetailSourceView || lastView || '').trim(),
-                action: 'reclass',
-                submitting: false,
-                driveReturnContext: safeSourceView === 'drive' ? {
-                    searchTerm: getDriveSearchTerm(),
-                    scrollTop: Number(document.getElementById('main-scroll-area') && document.getElementById('main-scroll-area').scrollTop || 0)
-                } : null
-            };
-            const savedMove = readPendingArgosInventoryReclassMove(getArgosReclassLiveEditIdentityKey());
-            if (savedMove && String(savedMove.sourceUid || '') === String(snapshot.uniqueId || '')
-                && savedMove.command.moves.some((move) => move.source.uniqueId === String(snapshot.uniqueId || ''))) {
-                argosInventoryTransactionState.moveCommandId = savedMove.command.commandId;
-                argosInventoryTransactionState.pendingReclassMove = { command: savedMove.command, originalModel: inquiryModel,
-                    inquiryPayload: savedMove.inquiryPayload || null,
-                    movedUids: Array.isArray(savedMove.movedUids) ? savedMove.movedUids : [], uncertain: true, recovered: true };
-            }
-            // The modal reuses its DOM, but each opening owns a new submission.
-            // A pending older request must not leave the new inquiry disabled.
-            const applyButton = document.getElementById('argos-inventory-transaction-apply');
-            if (applyButton) applyButton.disabled = false;
-            const titleEl = document.getElementById('argos-inventory-transaction-title');
-            const subtitleEl = document.getElementById('argos-inventory-transaction-subtitle');
-            const sourceEl = document.getElementById('argos-inventory-transaction-source');
-            if (titleEl) titleEl.textContent = `${snapshot.commonName || ''} ${snapshot.contSize || ''}`.trim();
-            if (subtitleEl) subtitleEl.textContent = '';
-            if (sourceEl) sourceEl.innerHTML = '';
-            const inquiryEl = document.getElementById('argos-reclass-item-inquiry');
-            if (inquiryEl) inquiryEl.innerHTML = renderArgosReclassInquiryEditor(inquiryModel, snapshot.uniqueId);
-            if (argosInventoryTransactionState.pendingReclassMove) {
-                if (applyButton) applyButton.textContent = 'Confirm Pending Move';
-                setArgosReclassMoveInputsLocked(true);
-                showToast('Move Confirmation Pending', 'A prior move for this row needs confirmation. Retry it before starting another move.', true);
-            }
-            refreshArgosInventoryTransactionLotOptions(item);
-            refreshArgosInventoryTransactionPriorityOptions(item);
-            const sourceInput = document.getElementById('argos-inventory-transaction-source-code');
-            const qtyInput = document.getElementById('argos-inventory-transaction-qty');
-            const priorityInput = document.getElementById('argos-inventory-transaction-priority');
-            const newItemInput = document.getElementById('argos-inventory-transaction-new-item');
-            const newLotInput = document.getElementById('argos-inventory-transaction-new-lot');
-            const newLocationInput = document.getElementById('argos-inventory-transaction-new-location');
-            const desigCustInput = document.getElementById('argos-inventory-transaction-desigcust');
-            const desigItemInput = document.getElementById('argos-inventory-transaction-desigitem');
-            const desigLocInput = document.getElementById('argos-inventory-transaction-desigloc');
-            const lastPltgDateInput = document.getElementById('argos-inventory-transaction-last-pltg-date');
-            const reasonInput = document.getElementById('argos-inventory-transaction-reason');
-            if (reasonInput) reasonInput.value = '';
-            if (sourceInput) sourceInput.value = snapshot.source || '';
-            if (qtyInput) qtyInput.value = '0';
-            if (priorityInput) priorityInput.value = normalizeArgosInventoryTransactionPriorityValue(snapshot.priority) || '';
-            if (newItemInput) newItemInput.value = snapshot.itemCode || '';
-            if (newLotInput) {
-                const snapshotLotCode = String(snapshot.lotCode || '').trim().toUpperCase();
-                const hasSnapshotLotOption = Array.from(newLotInput.options || []).some((option) => option.value === snapshotLotCode);
-                newLotInput.value = snapshotLotCode && hasSnapshotLotOption ? snapshotLotCode : '';
-            }
-            if (newLocationInput) newLocationInput.value = snapshot.locationCode || '';
-            if (desigCustInput) desigCustInput.value = snapshot.desigCust || '';
-            if (desigItemInput) desigItemInput.value = snapshot.desigItem || '';
-            if (desigLocInput) desigLocInput.value = snapshot.desigLoc || '';
-            if (lastPltgDateInput) lastPltgDateInput.value = '';
-            setArgosInventoryTransactionAction(action);
-            setArgosInventoryTransactionHoldAction('none');
-            const reviewButton = document.getElementById('argos-inventory-transaction-review');
-            if (reviewButton) reviewButton.classList.toggle('hidden', !isEvalWorkManagerUser());
-            argosInventoryTransactionState.draftBaseline = captureArgosInventoryTransactionDraftBaseline(modal);
-            modal.classList.remove('hidden');
-            if (canUseProductionLiveSync()) {
-                const openedState = argosInventoryTransactionState;
-                const openRevision = argosInquiryOpenRevision;
-                const owner = getSupabaseReadIdentityScope();
-                const view = getCurrentVisibleViewId();
-                argosInquiryReadController?.abort();
-                const controller = new AbortController();
-                argosInquiryReadController = controller;
-                requestAnimationFrame(() => {
-                    if (openedState !== argosInventoryTransactionState || openRevision !== argosInquiryOpenRevision
-                        || owner !== getSupabaseReadIdentityScope() || view !== getCurrentVisibleViewId()) return;
-                    clearSupabaseReadFailuresForVisibleContext({ adapters: [{ sourceKeys: ['ph_master_inventory'] }] });
-                    void loadArgosItemInquiryRows(item, { signal: controller.signal }).then((freshGroup) => {
-                        const currentContext = getProductionLiveSyncContext();
-                        if (openedState !== argosInventoryTransactionState || openRevision !== argosInquiryOpenRevision
-                            || owner !== getSupabaseReadIdentityScope() || view !== getCurrentVisibleViewId()
-                            || controller.signal.aborted
-                            || freshGroup.scope && currentContext.scope !== freshGroup.scope
-                            || freshGroup.permission && currentContext.dataPermissionVersion !== freshGroup.permission) return;
-                        const refreshedItem = freshGroup.row || openedState.item;
-                        const refreshedModel = buildItemInquiryViewModel(refreshedItem, freshGroup.rows);
-                        if (!shouldApplyArgosItemInquiryRefresh(openedState, modal, inquiryEl, refreshedModel)) return;
-                        openedState.item = refreshedItem;
-                        openedState.inquiryModel = refreshedModel;
-                        openedState.verifiedInquiryGroup = freshGroup;
-                        if (inquiryEl && openedState === argosInventoryTransactionState) {
-                            inquiryEl.innerHTML = renderArgosReclassInquiryEditor(refreshedModel, openedState.snapshot.uniqueId);
-                        }
-                    }).catch(() => { /* Keep the displayed row and draft through background read failures. */ }).finally(() => {
-                        if (argosInquiryReadController === controller) argosInquiryReadController = null;
-                    });
-                });
-            }
-            return false;
-        }
+        /* @runtime-fragment assets/reclass-modal-open.js */
 
         function closeArgosInventoryTransactionModal(options = {}) {
             if (argosInventoryTransactionState && argosInventoryTransactionState.pendingReclassMove && options.background !== true) {
@@ -42606,205 +42316,7 @@ let avTopControlsRenderToken = 0;
 
         /* @runtime-fragment assets/reclass-move-outbox.js */
 
-        function buildInventoryReclassMoveCommand(payload = {}, state = null) {
-            const overlays = Array.isArray(payload.rowOverlays) ? payload.rowOverlays : [];
-            const entries = Array.isArray(state && state.inquiryModel && state.inquiryModel.locationRows) ? state.inquiryModel.locationRows : [];
-            const moves = [];
-            overlays.forEach((overlay) => {
-                const proposals = Array.isArray(overlay && overlay.proposals) ? overlay.proposals : [];
-                const moveProposals = proposals.filter((proposal) => proposal && ['move_up', 'move_down'].includes(proposal.action));
-                if (!moveProposals.length) return;
-                const uid = String(overlay.unique_id || '').trim();
-                const entry = entries.find((candidate) => String(candidate && candidate.unique_id || '').trim() === uid);
-                const row = entry && entry.sourceRow && (entry.sourceRow.__reclassIdentityRaw || entry.sourceRow);
-                if (!entry || !row || !uid) throw new Error('A Reclass source row is no longer available. Refresh and review the worksheet.');
-                const identity = {};
-                ['unique_id', 'itemcode', 'contsize', 'locationcode', 'lotcode', 'season', 'ptronhand', 'ptravailable'].forEach((field) => {
-                    const raw = row[field] !== undefined ? row[field] : row[field.toUpperCase()];
-                    identity[field] = raw === undefined || raw === null ? null : String(raw);
-                });
-                identity.unique_id = uid;
-                const lines = [];
-                moveProposals.forEach((proposal) => {
-                    const splits = Array.isArray(proposal.splits) ? proposal.splits : [];
-                    splits.forEach((split) => lines.push({ direction: proposal.action,
-                        destinationSeason: String(split.destinationSeason || '').trim().toUpperCase(), quantity: Number(split.quantity) }));
-                });
-                moves.push({ source: { uniqueId: uid, identity }, lines, sourceRow: entry.sourceRow });
-            });
-            if (!moves.length) return null;
-            const moveUpLots = new Map();
-            moves.forEach((move) => {
-                const row = move.sourceRow || {};
-                const itemcode = String(row.ITEMCODE ?? row.itemcode ?? '').trim().toUpperCase();
-                const lotcode = String(row.LOTCODE ?? row.lotcode ?? '').trim().toUpperCase();
-                const rawOpenStock = row.OPEN_STOCK ?? row.open_stock ?? row.S_LTS ?? row.s_lts ?? 0;
-                const parsedOpenStock = Number(String(rawOpenStock ?? 0).trim().replace(/,/g, ''));
-                const openStock = Number.isFinite(parsedOpenStock) ? Math.max(0, parsedOpenStock) : 0;
-                const moveUp = move.lines.filter((line) => line.direction === 'move_up').reduce((sum, line) => sum + line.quantity, 0);
-                if (!moveUp) return;
-                const key = `${itemcode}|${lotcode}`;
-                const current = moveUpLots.get(key) || { quantity: 0, openStock, lotcode };
-                current.quantity += moveUp;
-                current.openStock = Math.min(current.openStock, openStock);
-                moveUpLots.set(key, current);
-            });
-            for (const lot of moveUpLots.values()) {
-                if (lot.quantity > lot.openStock) throw new Error(`Cannot Move Up more than Open Stock (${lot.openStock}) for lot ${lot.lotcode}.`);
-            }
-            const lineageKey = (row, lotcode = null) => JSON.stringify([
-                String(row.warehouseid ?? row.WAREHOUSEID ?? row.warehousei ?? row.WAREHOUSEI ?? ''),
-                String(row.itemcode ?? row.ITEMCODE ?? ''), String(row.contsize ?? row.CONTSIZE ?? ''),
-                String(row.locationcode ?? row.LOCATIONCODE ?? ''), String(lotcode ?? row.lotcode ?? row.LOTCODE ?? ''),
-                String(row.source ?? row.SOURCE ?? ''), String(row.desigitem ?? row.DESIGITEM ?? ''),
-                String(row.desigcust ?? row.DESIGCUST ?? ''), String(row.desigloc ?? row.DESIGLOC ?? '')
-            ]);
-            const claimedLineages = new Set(moves.map((move) => lineageKey(move.sourceRow)));
-            for (const move of moves) {
-                const row = move.sourceRow;
-                const sourceLot = String(row.lotcode ?? row.LOTCODE ?? '');
-                const sourceStem = sourceLot.replace(/[.][^.]+$/, '');
-                for (const line of move.lines) {
-                    const destinationLineage = lineageKey(row, `${sourceStem}.${line.destinationSeason}`);
-                    if (claimedLineages.has(destinationLineage)) {
-                        throw new Error('Two selected moves resolve to the same inventory row. Submit those sources separately and review the result.');
-                    }
-                    claimedLineages.add(destinationLineage);
-                }
-                delete move.sourceRow;
-            }
-            if (readPendingArgosInventoryReclassMove(getArgosReclassLiveEditIdentityKey())) {
-                throw new Error('Another inventory move is still being confirmed. Reopen its source row and retry the same move first.');
-            }
-            if (!state || !canUseProductionLiveSync()
-                || state.verificationIdentityKey && state.verificationIdentityKey !== getArgosReclassLiveEditIdentityKey()
-                || state.verifiedInquiryGroup && state.verifiedInquiryGroup.identityKey !== getArgosReclassLiveEditIdentityKey()) {
-                throw new Error('Reclass access changed. Sign in to the original account before submitting this draft.');
-            }
-            // A known revision can be a hint; its absence never blocks a loaded
-            // row. SQL locks and compares every submitted source identity.
-            const revisionText = state.verifiedInquiryGroup ? getArgosReclassVerifiedInquiryRevision(state) : '';
-            const revision = Number(revisionText);
-            const expectedRevision = /^[1-9]\d*$/.test(revisionText) && Number.isSafeInteger(revision) ? revision : null;
-            const commandId = String(state.pendingReclassMove && state.pendingReclassMove.command.commandId
-                || state.moveCommandId || generateArgosInventoryTransactionId('inventory_reclass_move')).trim();
-            state.moveCommandId = commandId;
-            return { commandId, expectedRevision, moves, reclassExplanations: payload.reclassExplanations || {} };
-        }
-
-        function reclassStockSeason(row) {
-            const lot = String(row && (row.LOTCODE ?? row.lotcode) || '').trim();
-            return (lot.match(/\.([A-Z][0-9]?)$/i)?.[1] || String(row && (row.SEASON ?? row.season) || '')).trim().toUpperCase();
-        }
-
-        function buildOptimisticInventoryReclassMoveModel(state = null, command = null) {
-            const model = state && state.inquiryModel;
-            if (!model || !Array.isArray(model.rows) || !command) return null;
-            const rows = model.rows.map((row) => ({ ...row }));
-            const movedUids = [];
-            const stockDeltas = new Map();
-            const seasonOpenStocks = new Map();
-            const salesYear = row => normalizeNcrSalesYearValue(String(row.LOTCODE ?? row.lotcode ?? '').split('.')[0]) ?? getNcrExplicitSalesYear(row);
-            const currentYear = normalizeNcrSalesYearValue(getConfiguredCurrentSalesYearCode());
-            const currentSeason = String(getConfiguredCurrentSeasonCode()).toUpperCase();
-            const stockKey = row => String(row.ITEMCODE ?? row.itemcode ?? '') + '|' + reclassStockSeason(row) + '|' + salesYear(row);
-            const currentTargetPools = new Set();
-            const physicalSeasonKeys = new Set(rows.map(stockKey));
-            const cavRows = typeof cavInventory !== 'undefined' ? cavInventory : [];
-            cavRows.forEach(row => { const key = stockKey({ ...row, LOTCODE: `${currentYear}.${reclassStockSeason(row)}` }); const value = parseAppNumber(row.OPEN_STOCK ?? row.open_stock ?? row.PTRAVAILABLE ?? row.ptravailable); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
-            rows.forEach(row => { const key = stockKey(row); const value = parseAppNumber(row.S_LTS ?? row.s_lts); if (!seasonOpenStocks.has(key) && value != null) seasonOpenStocks.set(key, value); });
-            const effective = row => ['H','S'].includes(String(row.HOLDSTOPCODE ?? row.holdstopcode ?? '').toUpperCase()) ? 0 : 1;
-            const physicalValue = (row, field) => row && (row[field] !== undefined ? row[field] : row[field.toUpperCase()]);
-            // Match the RPC's item/location/lot lookup; priority and source aliases cannot create a second destination.
-            const lineageKey = (row, lotcode = null) => JSON.stringify([
-                physicalValue(row, 'itemcode'), physicalValue(row, 'locationcode'), lotcode ?? physicalValue(row, 'lotcode')
-            ].map(value => String(value ?? '').trim().toUpperCase()));
-            command.moves.forEach((move, moveIndex) => {
-                const uid = move.source.uniqueId;
-                const sourceIndex = rows.findIndex((row) => String(row.UNIQUE_ID || row.unique_id || '') === uid);
-                if (sourceIndex < 0) throw new Error('A Reclass source row is no longer in the verified worksheet. Refresh and try again.');
-                const source = rows[sourceIndex];
-                const total = move.lines.reduce((sum, line) => sum + line.quantity, 0);
-                const onHand = parseAppNumber(source.PTRONHAND ?? source.ptronhand);
-                const available = parseAppNumber(source.PTRAVAILABLE ?? source.ptravailable);
-                if (onHand == null || available == null || total > onHand || total > available) {
-                    throw new Error('The source quantity is unknown or insufficient. Refresh the worksheet before moving stock.');
-                }
-                rows[sourceIndex] = { ...source, PTRONHAND: String(onHand - total), ptronhand: String(onHand - total),
-                    PTRAVAILABLE: String(available - total), ptravailable: String(available - total), __optimisticReclassMove: command.commandId };
-                stockDeltas.set(stockKey(source), (stockDeltas.get(stockKey(source)) || 0) - total * effective(source));
-                movedUids.push(uid);
-                const grouped = new Map();
-                move.lines.forEach((line) => grouped.set(line.destinationSeason, (grouped.get(line.destinationSeason) || 0) + line.quantity));
-                grouped.forEach((quantity, season) => {
-                    const lot = String(source.LOTCODE ?? source.lotcode ?? '').trim();
-                    const targetLot = `${lot.replace(/[.][^.]+$/, '')}.${season}`;
-                    const targetKey = lineageKey(source, targetLot);
-                    const targetIndexes = [];
-                    rows.forEach((row, index) => { if (lineageKey(row) === targetKey) targetIndexes.push(index); });
-                    if (targetIndexes.length > 1) throw new Error('The destination inventory row is ambiguous. Refresh the worksheet before moving stock.');
-                    const targetIndex = targetIndexes.length ? targetIndexes[0] : -1;
-                    const current = targetIndex >= 0 ? rows[targetIndex] : null;
-                    const targetOnHand = parseAppNumber(current && (current.PTRONHAND ?? current.ptronhand));
-                    const targetAvailable = parseAppNumber(current && (current.PTRAVAILABLE ?? current.ptravailable));
-                    if (current && (targetOnHand == null || targetAvailable == null)) {
-                        throw new Error('The destination quantity is unknown. Refresh the worksheet before moving stock.');
-                    }
-                    const baseOnHand = targetOnHand == null ? 0 : targetOnHand;
-                    const baseAvailable = targetAvailable == null ? 0 : targetAvailable;
-                    const pendingUid = current ? String(current.UNIQUE_ID || current.unique_id || '') : `pending-reclass-${command.commandId}-${moveIndex}-${season}`;
-                    const destinationSeasonKey = stockKey({ ...source, LOTCODE: targetLot, lotcode: targetLot });
-                    if (!current && !physicalSeasonKeys.has(destinationSeasonKey)) seasonOpenStocks.set(destinationSeasonKey, 0);
-                    const destinationOpenStock = current
-                        ? parseAppNumber(current.S_LTS ?? current.s_lts ?? current.OPEN_STOCK ?? current.open_stock)
-                        : parseAppNumber(seasonOpenStocks.get(destinationSeasonKey)) ?? 0;
-                    const target = { ...source, ...(current || {}), UNIQUE_ID: pendingUid, unique_id: pendingUid, LOTCODE: targetLot, lotcode: targetLot,
-                        HOLDSTOPCODE: current ? (current.HOLDSTOPCODE ?? current.holdstopcode) : '', holdstopcode: current ? (current.holdstopcode ?? current.HOLDSTOPCODE) : '',
-                        HOLDSTOPREASON: current ? (current.HOLDSTOPREASON ?? current.holdstopreason) : '', holdstopreason: current ? (current.holdstopreason ?? current.HOLDSTOPREASON) : '',
-                        HOLDSTOPBEGINDATE: current ? (current.HOLDSTOPBEGINDATE ?? current.holdstopbegindate) : '', holdstopbegindate: current ? (current.holdstopbegindate ?? current.HOLDSTOPBEGINDATE) : '',
-                        HOLDSTOPENDDATE: current ? (current.HOLDSTOPENDDATE ?? current.holdstopenddate) : '', holdstopenddate: current ? (current.holdstopenddate ?? current.HOLDSTOPENDDATE) : '',
-                        PRIORITY: current ? (current.PRIORITY ?? current.priority) : (source.PRIORITY ?? source.priority ?? ''), priority: current ? (current.priority ?? current.PRIORITY) : (source.priority ?? source.PRIORITY ?? ''),
-                        PTRREVIEWED: current ? (current.PTRREVIEWED ?? current.ptrreviewed) : '0', ptrreviewed: current ? (current.ptrreviewed ?? current.PTRREVIEWED) : '0',
-                        SALEYEAR: String(salesYear(source)), saleyear: String(salesYear(source)), SEASON: season, season, PTRONHAND: String(baseOnHand + quantity), ptronhand: String(baseOnHand + quantity),
-                        PTRAVAILABLE: String(baseAvailable + quantity), ptravailable: String(baseAvailable + quantity),
-                        __optimisticReclassMove: command.commandId };
-                    if (targetIndex < 0) {
-                        target.S_LTS = target.s_lts = target.OPEN_STOCK = target.open_stock = String(destinationOpenStock);
-                    }
-                    if (season === currentSeason && salesYear(target) != null && salesYear(target) <= currentYear) currentTargetPools.add(String(target.ITEMCODE ?? target.itemcode ?? ''));
-                    stockDeltas.set(stockKey(target), (stockDeltas.get(stockKey(target)) || 0) + quantity * effective(target));
-                    if (targetIndex >= 0) rows[targetIndex] = target;
-                    else rows.push(target);
-                });
-            });
-            rows.forEach(row => {
-                const key = stockKey(row);
-                const itemcode = String(row.ITEMCODE ?? row.itemcode ?? '');
-                const pooled = currentTargetPools.has(itemcode) && reclassStockSeason(row) === currentSeason && salesYear(row) != null && salesYear(row) <= currentYear;
-                const poolRows = pooled ? rows.filter(r => String(r.ITEMCODE ?? r.itemcode ?? '') === itemcode && reclassStockSeason(r) === currentSeason && salesYear(r) != null && salesYear(r) <= currentYear) : rows.filter(r => stockKey(r) === key);
-                const delta = stockDeltas.get(key) || 0;
-                const rowStock = parseAppNumber(row.S_LTS ?? row.s_lts);
-                if (pooled) row.S_LTS = row.s_lts = row.OPEN_STOCK = row.open_stock = String(poolRows.reduce((sum, r) => sum + (parseAppNumber(r.PTRAVAILABLE ?? r.ptravailable) || 0) * effective(r), 0));
-                else if (stockDeltas.has(key) && rowStock != null) { row.S_LTS = row.s_lts = String(rowStock + delta); row.OPEN_STOCK = row.open_stock = row.S_LTS; }
-                if (pooled) row.__reclassSeasonOpenStock = row.S_LTS;
-                else if (stockDeltas.has(key) && seasonOpenStocks.has(key)) row.__reclassSeasonOpenStock = String(seasonOpenStocks.get(key) + delta);
-                row.SEASON_OH = row.season_oh = String(poolRows.reduce((sum, r) => sum + (parseAppNumber(r.PTRONHAND ?? r.ptronhand) || 0), 0));
-            });
-            const locationRows = new Map();
-            rows.forEach(row => {
-                const key = JSON.stringify([String(row.ITEMCODE ?? row.itemcode ?? '').trim().toUpperCase(),
-                    String(row.LOCATIONCODE ?? row.locationcode ?? '').trim().toUpperCase()]);
-                if (!locationRows.has(key)) locationRows.set(key, []);
-                locationRows.get(key).push(row);
-            });
-            locationRows.forEach(group => {
-                const quantities = group.map(row => parseAppNumber(row.PTRONHAND ?? row.ptronhand));
-                if (quantities.some(value => value == null)) return;
-                const total = String(quantities.reduce((sum, value) => sum + value, 0));
-                group.forEach(row => { row.LOC_ON_HAND = row.loc_on_hand = total; });
-            });
-            return { model: buildItemInquiryViewModel(state.item, rows), movedUids };
-        }
+        /* @runtime-fragment assets/reclass-move-worksheet.js */
 
         function buildArgosInventoryReclassRollbackModel(state = null) {
             return state && state.inquiryModel && Array.isArray(state.inquiryModel.rows)
@@ -43056,6 +42568,8 @@ let avTopControlsRenderToken = 0;
             const saved = state && state.pendingReclassMove && state.pendingReclassMove.inquiryPayload;
             return saved && typeof saved === 'object' ? JSON.parse(JSON.stringify(saved)) : currentPayload;
         }
+
+        /* @runtime-fragment assets/reclass-access-policy.js */
 
         /* @runtime-fragment assets/reclass-submission.js */
 

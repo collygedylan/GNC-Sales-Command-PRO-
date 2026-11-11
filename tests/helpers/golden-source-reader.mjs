@@ -1,3 +1,4 @@
+import { reclassWorksheetSource } from './reclass-worksheet-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -20,6 +21,7 @@ export function createGoldenSourceReader(root) {
     return syntaxTrees.get(file);
   }
   function functionSource(file,name) {
+    if (file === 'assets/app-runtime.js' && name === 'buildOptimisticInventoryReclassMoveModel') return reclassWorksheetSource();
     const tree = syntax(file);
     if (!indexes.has(file)) indexes.set(file,indexFunctions(tree));
     const match = indexes.get(file).get(name);

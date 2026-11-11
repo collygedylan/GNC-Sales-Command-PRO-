@@ -1,3 +1,4 @@
+import { reclassWorksheetSource } from './helpers/reclass-worksheet-source.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -33,6 +34,7 @@ function modalFixture({ permission = '', freshRows = null } = {}) {
     canCurrentUserViewDockSuspendDcRequests: () => true,
     canCurrentUserUseDriveCardOptions: () => true,
     canCurrentUserSubmitRepInventoryOperations: () => false,
+    authorizeArgosReclassRow: () => true,
     canUseProductionLiveSync: () => true,
     needsMasterDetailHydration: () => true,
     getSupabaseReadIdentityScope: () => 'account-a',
@@ -55,7 +57,7 @@ function modalFixture({ permission = '', freshRows = null } = {}) {
     requestAnimationFrame: callback => frames.push(callback), shouldApplyArgosItemInquiryRefresh: () => false,
   };
   vm.createContext(ctx);
-  vm.runInContext(appFunction('openArgosInventoryTransactionModal'), ctx);
+  vm.runInContext(readFileSync(new URL('../assets/reclass-modal-open.js', import.meta.url), 'utf8'), ctx);
   return { ctx, row, modal, inquiry, controls, frames, reads: () => reads };
 }
 
@@ -124,7 +126,7 @@ test('quantity commands carry displayed row identity without requiring a verifie
     generateArgosInventoryTransactionId: () => 'move-from-loaded-row', isConfirmedInventoryReadRevisionCurrent: () => false,
   };
   vm.createContext(ctx);
-  vm.runInContext(appFunction('buildInventoryReclassMoveCommand'), ctx);
+  vm.runInContext(reclassWorksheetSource(), ctx);
   const command = ctx.buildInventoryReclassMoveCommand(payload, state);
   assert.equal(command.expectedRevision, null);
   assert.equal(command.moves[0].source.identity.ptronhand, '234');

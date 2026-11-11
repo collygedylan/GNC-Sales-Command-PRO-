@@ -1,3 +1,4 @@
+import { executeReclassInquiryAction } from "./reclass-inquiry-handler.ts";
 import { startBrowserErpSyncCommand, withErpStageCheckRecording, createErpStageCheckRecorder, deferredErpRetry } from "../_shared/erp-browser-start.ts";
 import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint, mintCloudDriveAccessToken } from "../_shared/erp-scan-recovery.mjs";
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
@@ -6,19 +7,18 @@ import { executeManagerTableManagement } from "../../../src/core/erp-action-disc
 import { handleScopedPhotoUpload } from "../../../src/services/photo-upload-handler.ts";
 import { authorizePhotoUpload, type PhotoAuthorizationDependencies } from "../../../src/services/photo-upload-authorization.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.75";
-const APP_RUNTIME_RELEASE = "AgData v3.0.75";
+const APP_RUNTIME_VERSION = "3.0.76";
+const APP_RUNTIME_RELEASE = "AgData v3.0.76";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
-import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
-import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
-import { RECLASS_EDITABLE_FIELDS_POLICY, validateReclassEditableFieldProposals } from "../../../services/reclassEditableFields.ts";
+import { RECLASS_EDITABLE_FIELDS_POLICY } from "../../../services/reclassEditableFields.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
 import { readAvPage } from "../_shared/av-read.ts";
 import { captureInventoryLocationRevision, enrichInventoryLocationRows } from "../_shared/inventory-location-on-hand.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { resolveCanonicalUserAccess, hasAnyCanonicalUserAccessFlag, requireCanonicalUserAccessFlag, type CanonicalUserAccess, type CanonicalUserAccessFlag } from "../_shared/canonical-user-access.ts";
+import { handleInventoryReclassMove, reclassActionGate, type CanonicalActionGate } from "./reclass-action-access.ts";
 import { accessMatrixAllows, resolveUserAccessMatrix, mergeAccessRosterDirectory } from "../_shared/user-access-matrix.ts";
-import { assertInventoryLiveChangeActorRows, GLOBAL_INVENTORY_LIVE_CHANGE_USERS, handleProductionWorkflow, handleInventoryTransactionHistory, handleInventoryReclassMove, inventoryReclassMoveError, normalizeInventoryLiveChangeUsername, workflowError } from "../_shared/production-workflow.ts";
+import { handleProductionWorkflow, handleInventoryTransactionHistory, inventoryReclassMoveError, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
@@ -2372,175 +2372,11 @@ export async function handleDriveReclassAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
 ) {
-  if (!session) return errorResponse("Authentication required.", 401, { code: "AUTH_REQUIRED" });
-  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
-  const activeProfile = await resolveActiveSessionProfile(session).catch(() => null);
-  if (!activeProfile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "PROFILE_NOT_ACTIVE" });
-  const actorUsername = normalizeUsername(String(activeProfile.username || session.username || session.displayName || ""));
-  if (!actorUsername) return errorResponse("Authenticated user identity is required.", 403, { code: "PROFILE_IDENTITY_REQUIRED" });
-  const operation = String(payload.operation || "create").trim().toLowerCase();
-  try {
-    if (operation === "season_priority_list") {
-      const assignedTo = String(payload.assignedTo || payload.assigned_to || "all").trim().slice(0, 120);
-      const { data, error } = await supabase.rpc("manager_season_priority_list_v1", {
-        p_actor_id: String(activeProfile.id),
-        p_assigned_to: assignedTo,
-      });
-      if (error) return seasonPriorityErrorResponse(error.message || "");
-      return jsonResponse(data && typeof data === "object" ? data : { ok: false, rows: [] });
-    }
-    if (operation === "season_priority_submit") {
-      const expectedPriority = Number(payload.expectedPriority ?? payload.expected_priority);
-      const { data, error } = await supabase.rpc("submit_manager_season_priority_v2", {
-        p_actor_id: String(activeProfile.id),
-        p_source_unique_id: String(payload.sourceUid || payload.source_uid || "").trim(),
-        p_expected_priority: Number.isInteger(expectedPriority) ? expectedPriority : 0,
-        p_scope_fingerprint: String(payload.scopeFingerprint || payload.scope_fingerprint || "").trim().toLowerCase(),
-        p_idempotency_token: String(payload.idempotencyToken || payload.idempotency_token || "").trim(),
-      });
-      if (error) return seasonPriorityErrorResponse(error.message || "");
-      return jsonResponse(data && typeof data === "object" ? data : { ok: false, lifecycleStatus: "delivery_failed" });
-    }
-    if (operation === "season_priority_state") {
-      const itemcodes = Array.isArray(payload.itemcodes)
-        ? payload.itemcodes.slice(0, 101).map((value) => String(value || "").trim()).filter(Boolean)
-        : null;
-      const { data, error } = await supabase.rpc("manager_season_priority_state_v1", {
-        p_actor_id: String(activeProfile.id),
-        ...(itemcodes ? { p_itemcodes: itemcodes } : {}),
-      });
-      if (error) return seasonPriorityErrorResponse(error.message || "");
-      return jsonResponse(data && typeof data === "object" ? data : { ok: false, requests: [] });
-    }
-    if (operation === "create") {
-      if (payload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY && payload.sourceContext != null
-        && (typeof payload.sourceContext !== "object" || Array.isArray(payload.sourceContext))) {
-        return driveReclassErrorResponse("DRIVE_RECLASS_V7_SOURCE_CONTEXT_INVALID");
-      }
-      const manualTransaction = payload.transaction && typeof payload.transaction === "object" && !Array.isArray(payload.transaction)
-        ? payload.transaction as Record<string, unknown>
-        : {};
-      if (Object.prototype.hasOwnProperty.call(manualTransaction, "seasonPriority")) {
-        return errorResponse("Season Priority contracts are generated by the protected Manager action.", 400, {
-          code: "SEASON_PRIORITY_MARKER_RESERVED",
-        });
-      }
-      const protectedPayload = {
-        ...sanitizeDriveReclassPayload(payload),
-        actorUsername,
-      };
-      try {
-        validateReclassShearedProposals(protectedPayload);
-        validateReclassSmartShieldProposals(protectedPayload);
-        validateReclassEditableFieldProposals(protectedPayload);
-      }
-      catch (error) { return driveReclassErrorResponse(error instanceof Error ? error.message : "DRIVE_RECLASS_V5_PAYLOAD_INVALID"); }
-      const liveChangeRows = [protectedPayload.source, ...(protectedPayload.rowOverlays || [])
-        .map((value) => jsonObject(value))
-        .filter((overlay) => (Array.isArray(overlay.fieldEdits) && overlay.fieldEdits.length > 0)
-          || (Array.isArray(overlay.proposals) && overlay.proposals.length > 0))]
-        .map((row: Record<string, unknown>) => ({
-          uniqueId: String(row.unique_id || row.uniqueId || row.source_uid || "").trim(),
-          itemcode: String(row.itemcode || "").trim(),
-          locationcode: String(row.locationcode || "").trim(),
-          lotcode: String(row.lotcode || "").trim(),
-        }));
-      try {
-        const roleKey = normalizeRole(String(activeProfile.role || "")).replace(/[^A-Z]/g, "");
-        const evaluator = roleKey === "EVAL" || roleKey === "EVALUATOR";
-        if (evaluator && !GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actorUsername)) {
-          const identities = liveChangeRows.filter((row) => row.uniqueId || row.itemcode);
-          const actorAliases = new Set([actorUsername, normalizeUsername(String(activeProfile.display_name || ""))].filter(Boolean));
-          const uniqueIds = [...new Set(identities.map((row) => row.uniqueId).filter(Boolean))];
-          const itemcodes = [...new Set(identities.map((row) => row.itemcode.toUpperCase()).filter(Boolean))];
-          const sourceResult = uniqueIds.length ? await supabase.from("ph_master_inventory")
-            .select("unique_id,itemcode,locationcode,lotcode").in("unique_id", uniqueIds) : { data: [], error: null };
-          if (sourceResult.error) throw sourceResult.error;
-          const sourceRows = (sourceResult.data || []) as Array<Record<string, unknown>>;
-          const exactResult = uniqueIds.length ? await supabase.from("ph_inventory_row_assignments")
-            .select("master_unique_id,assignedto,present_in_drive").in("master_unique_id", uniqueIds).eq("present_in_drive", true)
-            : { data: [], error: null };
-          if (exactResult.error) throw exactResult.error;
-          const legacyResult = itemcodes.length ? await supabase.from("ph_warehouse_assigned_items")
-            .select("itemcode,itemcode_normalized,assignedto,present_in_drive").in("itemcode", itemcodes).eq("present_in_drive", true)
-            : { data: [], error: null };
-          if (legacyResult.error) throw legacyResult.error;
-          const exactAssignments = (exactResult.data || []) as Array<Record<string, unknown>>;
-          const legacyAssignments = (legacyResult.data || []) as Array<Record<string, unknown>>;
-          const everyRowAssigned = identities.length === liveChangeRows.length && identities.every((identity) => {
-            const master = sourceRows.find((row) => String(row.unique_id || "") === identity.uniqueId);
-            const itemcode = String(master?.itemcode || identity.itemcode).trim().toUpperCase();
-            return exactAssignments.some((assignment) => String(assignment.master_unique_id || "") === identity.uniqueId
-              && actorAliases.has(normalizeUsername(assignment.assignedto))
-              && assignment.present_in_drive !== false)
-              || legacyAssignments.some((assignment) => actorAliases.has(normalizeUsername(assignment.assignedto))
-                && String(assignment.itemcode_normalized || assignment.itemcode || "").trim().toUpperCase() === itemcode
-                && assignment.present_in_drive !== false);
-          });
-          if (!everyRowAssigned) throw new Error("INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED");
-        }
-        await assertInventoryLiveChangeActorRows(supabase, activeProfile, liveChangeRows);
-      } catch (error) {
-        const code = String(error instanceof Error ? error.message : error || "");
-        if (code === "INVENTORY_LIVE_CHANGE_JORGE_ROW_NOT_ASSIGNED") {
-          return errorResponse("Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items.", 403, { code });
-        }
-        if (code === "INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED") {
-          return errorResponse("Evaluators may submit Reclass changes only for rows assigned to them in Assigned Items.", 403, { code });
-        }
-        return driveReclassErrorResponse(code);
-      }
-      const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY
-        ? "enqueue_drive_reclass_inquiry_v7"
-        : protectedPayload.workflowPolicyVersion === RECLASS_SMART_SHIELD_POLICY
-        ? "enqueue_drive_reclass_inquiry_v6"
-        : protectedPayload.workflowPolicyVersion === RECLASS_SHEARED_POLICY
-          ? "enqueue_drive_reclass_inquiry_v5"
-        : protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
-          ? "enqueue_drive_reclass_inquiry_v4"
-          : "enqueue_drive_reclass_inquiry_v1";
-      const enqueueArgs = { p_payload: jsonValue({ ...protectedPayload, reclassExplanations: payload.reclassExplanations ?? {} }) };
-      let { data, error } = await supabase.rpc(enqueueRpc, enqueueArgs);
-      if (error && /V[567]_.*(?:STALE|SNAPSHOT_CONFLICT|LIVE_EDIT_CONFLICT)|MASTER_SNAPSHOT_NOT_READY|MASTER_IMPORT_FENCE_EXPIRED|Inventory changed while reading/i.test(error.message)) {
-        // Replay the same authorized idempotent command through PostgREST after a transient snapshot race.
-        const retry = await supabase.rpc(enqueueRpc, enqueueArgs);
-        data = retry.data; error = retry.error;
-      }
-      if (error) return driveReclassErrorResponse(error.message || "");
-      const result = jsonObject(data);
-      return jsonResponse(await dispatchReclassDeliveryNow(result, actorUsername, String(protectedPayload.idempotencyToken || "")));
-    }
-    const token = String(payload.idempotencyToken || payload.idempotency_token || "").trim();
-    const rpcName = operation === "status"
-      ? "get_drive_reclass_inquiry_status_v1"
-      : operation === "retry"
-      ? "retry_drive_reclass_inquiry_v1"
-      : "";
-    if (!rpcName) return errorResponse("Unsupported Reclass operation.", 400, { code: "DRIVE_RECLASS_OPERATION_INVALID" });
-    const { data, error } = await supabase.rpc(rpcName, {
-      p_actor_username: actorUsername,
-      p_idempotency_token: token,
-    });
-    if (error) return driveReclassErrorResponse(error.message || "");
-    const savedResult = jsonObject(data);
-    const result = operation === "retry" ? await dispatchReclassDeliveryNow(savedResult, actorUsername, token) : savedResult;
-    // The status RPC already authorizes the actor/token. Recover the committed
-    // inventory receipt independently of its email delivery status.
-    if (result.jobId) {
-      const { data: event } = await supabase.from("ph_request_delivery_outbox")
-        .select("payload").eq("event_id", String(result.jobId)).maybeSingle();
-      const inquiry = jsonObject(jsonObject(event?.payload).reclassPayload);
-      if (normalizeUsername(String(jsonObject(inquiry.actor).username || "")) === actorUsername) {
-        const receipt = jsonObject(inquiry.protectedDelivery);
-        for (const field of ["liveEdits", "inventoryRevision", "liveEditScope", "inventoryFields", "v7Scope"]) {
-          if (receipt[field] !== undefined) result[field] = receipt[field];
-        }
-      }
-    }
-    return jsonResponse(Object.keys(result).length ? result : { ok: false, status: "missing" });
-  } catch (_) {
-    return driveReclassErrorResponse("DRIVE_RECLASS_SERVICE_UNAVAILABLE");
-  }
+  return await executeReclassInquiryAction(session, payload, {
+    db: supabase, resolveActiveSessionProfile, normalizeUsername, sanitizePayload: sanitizeDriveReclassPayload,
+    jsonResponse, errorResponse, inquiryError: driveReclassErrorResponse,
+    seasonPriorityError: seasonPriorityErrorResponse, dispatchDelivery: dispatchReclassDeliveryNow,
+  });
 }
 
 async function requestReclassRecountRest(path: string, init: RequestInit = {}) {
@@ -6841,8 +6677,6 @@ export async function renderBunchNotePreview(options: {
   return { ok: true as const, pdfs: frozen.pdfs };
 }
 
-type CanonicalActionGate = { flag: CanonicalUserAccessFlag } | { any: readonly CanonicalUserAccessFlag[] };
-
 function canonicalActionGate(action: string, payload: Record<string, unknown>): CanonicalActionGate | null {
   if (action === "manager_table_management") return { flag: "can_access_manager_tab" };
   if (action === "assigned_owner_save") return { flag: "can_access_manager_tab" };
@@ -6865,13 +6699,10 @@ function canonicalActionGate(action: string, payload: Record<string, unknown>): 
     if (String(params.dataset || "").trim() === "avOpen") return { flag: "can_access_av" };
     return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab", "can_submit_reclass"] };
   }
-  if (action === "drive_reclass_inquiry") {
-    return String(payload.operation || "create").trim().toLowerCase() === "create"
-      ? { flag: "can_submit_reclass" } : { flag: "can_access_drive_mode" };
-  }
+  const reclassGate = reclassActionGate(action, payload);
+  if (reclassGate) return reclassGate.gate;
   if (action === "reclass_recount") return { flag: "can_access_que" };
   if (action === "dataset_revisions") return { any: ["can_access_drive_mode", "can_access_av", "can_access_que", "can_access_manager_tab"] };
-  if (action === "inventory_reclass_move") return { flag: "can_submit_reclass" };
   if (["request_work", "request_history", "sales_credit", "request_queue_remove", "request_archive", "bunch_note", "bunch_note_workflow"].includes(action)) {
     return { flag: "can_access_que" };
   }

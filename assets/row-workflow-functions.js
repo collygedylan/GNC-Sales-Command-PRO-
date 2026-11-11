@@ -2864,9 +2864,7 @@ function renderProjectSandboxResult(payload){let modal=document.getElementById('
 async function retrySavedInventoryProject(){let payload;try{payload=JSON.parse(localStorage.getItem(inventoryProjectCacheKey()+':draft')||'null');}catch{}if(!payload)return false;const scope=getSupabaseReadIdentityScope();try{const result=await inventoryProjectApi('project_create_from_bloom',payload);if(scope!==getSupabaseReadIdentityScope())return false;if(!result?.project?.id||!Array.isArray(result.rows))throw Error('Project receipt missing.');inventoryProjects=[...inventoryProjects.filter(p=>p.id!==result.project.id),result.project];inventoryProjectRows=[...inventoryProjectRows.filter(r=>r.project_id!==result.project.id),...result.rows];cacheInventoryProjects();localStorage.removeItem(inventoryProjectCacheKey()+':draft');syncRequestTabButtons();renderQueueInventoryProjects(true);showToast('Project saved','The saved draft is now published.');}catch(error){showToast('Project draft',error.message,true);}return false;}
 
 function isReclassExplanationExempt() {
-    const role = String(nativeAuthProfile?.role || getCurrentRoleAccessValue?.() || '').trim().toLowerCase().replace(/[_\s]+/g, '-');
-    const username = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
-    return role === 'super-admin' || role === 'admin' || username === 'dylan_collyge';
+    return typeof getVerifiedReclassAdministrator === 'function' && !!getVerifiedReclassAdministrator();
 }
 function getReclassExplanation(uid) {
     return String(getArgosReclassRowProposalMap(String(uid || ''), false)?.reclassExplanation || '').trim();
@@ -2883,6 +2881,7 @@ function updateReclassExplanation(input) {
     return true;
 }
 function requireReclassExplanation(uid) {
+    if (!canStageArgosReclassRow(uid)) return false;
     if (isReclassExplanationExempt() || getReclassExplanation(uid)) return true;
     focusArgosReclassRow(uid);
     const input = Array.from(document.querySelectorAll('.reclass-explanation-input')).find(node => node.getAttribute('data-reclass-explanation-uid') === String(uid));

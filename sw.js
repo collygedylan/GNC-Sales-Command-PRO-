@@ -1,9 +1,9 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.75';
+const APP_SHELL_BUILD = 'AgData v3.0.76';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.75';
+const APP_ASSET_VERSION = '3.0.76';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
@@ -14,7 +14,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.75';
+const CACHE_VERSION = 'agdata-v3.0.76';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -164,8 +164,8 @@ const STATIC_ASSETS = [
     "./assets/operational-rpc-retry.js", "./assets/rpc-recovery-domain.js", "./assets/canonical-row-unlock.js",
     "./assets/app-api-transport.js",
     "./assets/reclass-move-outbox.js",
-    "./assets/reclass-move-command.js",
-    "./assets/reclass-submission.js",
+    "./assets/reclass-move-worksheet.js", "./assets/reclass-move-command.js",
+    "./assets/reclass-access-policy.js", "./assets/reclass-modal-open.js", "./assets/reclass-submission.js",
     "./assets/erp-manual-continuation.js", "./assets/erp-foreground-recovery.js",
     "./assets/request-live-rows.js",
     "./assets/suspend-planstart-domain.js",

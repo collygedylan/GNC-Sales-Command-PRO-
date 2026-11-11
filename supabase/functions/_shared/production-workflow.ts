@@ -3,6 +3,7 @@ import { resolveUserAccessMatrix, normalizeAccessMatrixUsername } from "./user-a
 import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
 import { normalizeReclassMoveCommand } from "../../../services/reclassMove.ts";
+import { requireReclassCommandAuthority } from "../../../src/services/reclass-command-authority.ts";
 
 /** Protected adapters; actorProfile and moduleAllowed come from the authenticated
  * API context, never from the request JSON. SQL repeats active-profile checks. */
@@ -287,12 +288,8 @@ export async function handleInventoryReclassMove({ supabase, actorProfile, paylo
   const explanations = record(commandPayload.reclassExplanations);
   delete commandPayload.reclassExplanations;
   const command = await resolveCurrentReclassSourceIds(supabase, normalizeReclassMoveCommand(commandPayload));
-  await assertInventoryLiveChangeActorRows(supabase, actorProfile, command.moves.map((move) => ({
-    uniqueId: move.source.uniqueId,
-    itemcode: move.source.identity.itemcode || '',
-    locationcode: move.source.identity.locationcode || '',
-    lotcode: move.source.identity.lotcode || '',
-  })));
+  await requireReclassCommandAuthority(supabase as unknown as Parameters<typeof requireReclassCommandAuthority>[0],
+    String(actorProfile.id), { action: 'inventory_reclass_move', commandId: command.commandId, moves: command.moves });
   await enforceReclassMoveUpOpenStock(supabase, command);
   const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_with_delivery_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,

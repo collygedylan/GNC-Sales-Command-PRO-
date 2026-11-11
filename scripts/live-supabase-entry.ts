@@ -1,8 +1,10 @@
+import { reclassDestinationLot } from '../src/engine/reclass-physical-lot.ts';
 import * as supabaseBrowser from '@supabase/supabase-js';
 import { createLegacyDatabaseBridge, databaseClient } from '../services/liveDatabase';
 
 declare global {
   interface Window {
+    reclassDestinationLot: typeof reclassDestinationLot;
     supabase: Omit<typeof supabaseBrowser, 'createClient'> & { createClient: typeof databaseClient };
     GncDatabase: ReturnType<typeof createLegacyDatabaseBridge>;
     AgDataKernel?: { sync?: { waitForInteractiveOwnerWrites?: (url: string, init: RequestInit) => Promise<void> } };
@@ -12,6 +14,7 @@ declare global {
     };
   }
 }
+window.reclassDestinationLot = reclassDestinationLot;
 window.supabase = { ...supabaseBrowser, createClient: databaseClient };
 window.GncDatabase = createLegacyDatabaseBridge(
   async (url, init, timeout, label) => {

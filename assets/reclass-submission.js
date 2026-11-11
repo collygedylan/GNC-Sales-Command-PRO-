@@ -1,15 +1,5 @@
-function canSubmitArgosReclassForRow(item) {
-    if (!isEvalReclassRowAssigned(currentUser || currentUserDisplay, item)) {
-        showToast('Assigned Rows Only', 'Evaluators can submit Reclass only for rows assigned to them.', true);
-        return false;
-    }
-    const actor = typeof normalizeLiveChangeUsername === 'function'
-        ? normalizeLiveChangeUsername((typeof currentUser !== 'undefined' ? currentUser : '')
-            || (typeof currentUserDisplay !== 'undefined' ? currentUserDisplay : '')) : '';
-    if (actor === 'jorge_colunga' && !canUserMakeLiveChangesOnRow(actor, item)) {
-        showToast('Assigned Rows Only', 'Live changes are only enabled for rows assigned to you in the Assigned Items tab.', true);
-        return false;
-    }
+function canSubmitArgosReclassForRow(state, payload) {
+    authorizeArgosReclassSubmissionRows(payload, state);
     return true;
 }
 
@@ -195,12 +185,13 @@ function resetArgosReclassSubmitButton({ apply, state, isContextCurrent }) {
 async function submitArgosInventoryTransaction(event = null, confirmedPayload = null) {
     event?.preventDefault?.();
     const state = argosInventoryTransactionState;
-    if (!state || state.submitting || !canSubmitArgosReclassForRow(state.item)) return false;
+    if (!state || state.submitting) return false;
     const submission = beginArgosReclassSubmission(state);
     try {
         ensureArgosReclassSubmissionVerification(state);
         if (!submission.isContextCurrent()) return false;
         let payload = buildArgosReclassSubmissionPayload(state, confirmedPayload);
+        if (!canSubmitArgosReclassForRow(state, payload)) return false;
         const hasMoves = isArgosReclassMovePayload(payload);
         if (hasMoves || state.pendingReclassMove) {
             payload = await confirmArgosReclassMoveSubmission(submission, payload);
@@ -221,4 +212,114 @@ async function submitArgosInventoryTransaction(event = null, confirmedPayload = 
         resetArgosReclassSubmitButton(submission);
     }
     return false;
+}
+
+function confirmArgosReclassHoldReplacement(normalized, rule, globalHoldProposal) {
+    if (!globalHoldProposal || globalHoldProposal.action === normalized) return true;
+    const conflictingRule = getReclassActionWorkflowV2Config(globalHoldProposal.action);
+    const hasEnteredData = !!String(globalHoldProposal.reason || '').trim();
+    return window.confirm(`Replace ${conflictingRule.label} with ${rule.label} for this selected row and any server-authorized matching rows${hasEnteredData ? ' and discard its entered reason' : ''}?`);
+}
+
+function createArgosReclassLocalActionProposal(normalized, uid, values, rule) {
+    const rowMap = getArgosReclassRowProposalMap(uid, true);
+    const proposal = { action: normalized };
+    if (rule.kind === 'priority') proposal.priority = String(values.priority == null ? '' : values.priority);
+    if (rule.kind === 'move') Object.assign(proposal, { splits: [{ quantity: '', destinationSeason: '' }], applyHold: false, holdReason: '' });
+    if (rule.kind === 'sheared') proposal.quantity = '';
+    rowMap[normalized] = proposal;
+}
+
+function createArgosReclassActionProposal(normalized, uid, entry, rule, globalHoldProposal, isHoldAction) {
+    if (argosReclassMultiActionState.rowResolutions instanceof Map) argosReclassMultiActionState.rowResolutions.delete(uid);
+    const values = entry.values && typeof entry.values === 'object' ? entry.values : {};
+    const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
+    if (rule.kind === 'sheared' && (!Number.isFinite(originalOh) || originalOh < 1)) {
+        showToast('Action Unavailable', `${rule.label} requires a positive original OH.`, true);
+        return false;
+    }
+    if (!isHoldAction) {
+        createArgosReclassLocalActionProposal(normalized, uid, values, rule);
+        return true;
+    }
+    if (!confirmArgosReclassHoldReplacement(normalized, rule, globalHoldProposal)) return false;
+    argosReclassMultiActionState.holdStopProposals = {
+        [normalized]: { action: normalized, reason: '', sourceUid: uid, holdstopbegindate: new Date().toLocaleDateString('en-CA') }
+    };
+    return true;
+}
+
+function toggleArgosReclassV3Action(button = null, action = '', sourceUid = '') {
+    const normalized = String(action || '').trim().toLowerCase();
+    const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
+    const uid = String(card && card.getAttribute('data-reclass-row-card') || sourceUid || '').trim();
+    const entry = getArgosReclassRowEditorEntry(uid);
+    const rule = getReclassActionWorkflowV5Config(normalized);
+    if (!entry || !rule) return false;
+    if (!canStageArgosReclassAction(entry, normalized)) return false;
+    if (isArgosReclassRepOperations(entry) && !['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(normalized)) return false;
+    const isHoldAction = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized);
+    const globalHoldProposal = getArgosReclassV3HoldProposal();
+    const existing = isHoldAction && globalHoldProposal && globalHoldProposal.action === normalized
+        ? globalHoldProposal : getArgosReclassV3Proposal(uid, normalized);
+    if (!existing && !requireReclassExplanation(uid)) return false;
+    card?.querySelectorAll('[data-reclass-v3-proposal-field]').forEach(input => handleArgosReclassV3ProposalInput(input));
+    const previousAction = argosInventoryTransactionState?.activeReclassAction?.[uid];
+    if (argosInventoryTransactionState) {
+        argosInventoryTransactionState.activeReclassAction ||= {};
+        argosInventoryTransactionState.activeReclassAction[uid] = normalized;
+    }
+    if (existing && previousAction !== normalized) { refreshArgosReclassMultiActionUi(); return false; }
+    if (existing) {
+        if (isHoldAction) argosReclassMultiActionState.holdStopProposals = {};
+        else {
+            const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
+            delete rowMap[normalized];
+            if (!Object.keys(rowMap).length) argosReclassMultiActionState.rowProposals.delete(uid);
+        }
+    } else {
+        if (!createArgosReclassActionProposal(normalized, uid, entry, rule, globalHoldProposal, isHoldAction)) return false;
+    }
+    if (argosInventoryTransactionState) argosInventoryTransactionState.reclassDraftsByRowUid = argosReclassMultiActionState.rowProposals;
+    if (argosInventoryTransactionState) argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
+    refreshArgosReclassMultiActionUi();
+    captureEvalWorkLocalDraftSoon(0);
+    return false;
+}
+
+function handleArgosReclassV3ProposalInput(input = null) {
+    const card = input && input.closest ? input.closest('[data-reclass-row-card]') : null;
+    const uid = String(card && card.getAttribute('data-reclass-row-card') || '').trim();
+    const action = String(input && input.getAttribute('data-reclass-v3-proposal-action') || '').trim().toLowerCase();
+    const field = String(input && input.getAttribute('data-reclass-v3-proposal-field') || '').trim();
+    const proposal = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassV3HoldProposal() : getArgosReclassV3Proposal(uid, action);
+    if (!proposal || !field) return false;
+    if (['move_up', 'move_down'].includes(action)) {
+        const splitIndex = Number(input.getAttribute('data-reclass-split-index'));
+        if (['quantity', 'destinationSeason'].includes(field) && Number.isInteger(splitIndex) && proposal.splits && proposal.splits[splitIndex]) proposal.splits[splitIndex][field] = String(input.value ?? '');
+        else return false;
+        const entry = getArgosReclassRowEditorEntry(uid);
+        card.querySelectorAll('[data-reclass-move-balance]').forEach((node) => {
+            node.textContent = getArgosReclassMoveBalanceText(entry);
+            node.setAttribute('data-over-limit', String(getArgosReclassMoveBalance(entry).remaining < 0));
+        });
+        markArgosReclassProposalEdited(uid);
+        return true;
+    }
+    const value = field === 'holdstopreason' || field === 'reason'
+        ? String(input.value == null ? '' : input.value).toLowerCase()
+        : String(input.value == null ? '' : input.value);
+    if ((field === 'holdstopreason' || field === 'reason') && input.value !== value) input.value = value;
+    proposal[field] = value;
+    if (action === 'sheared' && field === 'quantity') {
+        const preview = card && card.querySelector('[data-sheared-request-preview="true"]');
+        if (preview) preview.textContent = value.trim() ? `${value.trim()}-->#` : '—';
+    }
+    if (field === 'reason' && RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)) {
+        document.querySelectorAll('[data-reclass-v3-proposal-field="reason"]').forEach((other) => {
+            if (other !== input && other.getAttribute('data-reclass-v3-proposal-action') === action) other.value = value;
+        });
+    }
+    markArgosReclassProposalEdited(uid);
+    return true;
 }

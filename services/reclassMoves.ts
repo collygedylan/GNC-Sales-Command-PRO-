@@ -1,3 +1,4 @@
+import { reclassDestinationLot } from '../src/engine/reclass-physical-lot.ts';
 import { normalizeReclassMoveCommand, type ReclassMoveCommand } from './reclassMove.ts';
 import { decodeInventoryReclassReceipt } from './reclassReceipt.ts';
 
@@ -130,24 +131,34 @@ export function confirmedInventoryReclassMoveReceipt(value: unknown): InventoryR
       ? { importStatus: result.importStatus } : {}) };
 }
 
-export function assertInventoryReclassMoveReceiptMatchesCommand(
-  receipt: InventoryReclassMoveReceipt, command: ReclassMoveCommand,
-): InventoryReclassMoveReceipt {
-  if (receipt.commandId !== command.commandId) throw new Error('INVENTORY_RECLASS_RECEIPT_COMMAND_MISMATCH');
-  const rowsById = new Map(receipt.rows.map((entry) => [String(entry.row.unique_id), entry.row]));
-  const normalizedTuple = (row: JsonRecord) => ['itemcode', 'locationcode', 'lotcode']
-    .map((field) => String(rowValue(row, field) ?? '').trim().toUpperCase());
+function receiptIdentityMatches(requested: JsonRecord, row: JsonRecord, field: string) {
+  if (requested[field] === undefined) return true;
+  const raw = rowValue(row, field);
+  const actual = raw == null ? null : String(raw);
+  if (!['itemcode', 'locationcode', 'lotcode'].includes(field)) return actual === requested[field];
+  return String(actual ?? '').trim().toUpperCase() === String(requested[field] ?? '').trim().toUpperCase();
+}
+
+function normalizedReclassTuple(row: JsonRecord) {
+  return ['itemcode', 'locationcode', 'lotcode'].map(field => String(rowValue(row, field) ?? '').trim().toUpperCase());
+}
+
+function matchesReclassTuple(row: JsonRecord, tuple: string[]) {
+  return normalizedReclassTuple(row).every((part, index) => part === tuple[index]);
+}
+
+function resolveReceiptSources(receipt: InventoryReclassMoveReceipt, command: ReclassMoveCommand, rowsById: Map<string, JsonRecord>) {
   const resolvedSources = new Map<string, JsonRecord>();
   const sourceIdByReceiptId = new Map<string, string>();
   for (const move of command.moves) {
-    const requestedTuple = normalizedTuple(move.source.identity);
+    const requestedTuple = normalizedReclassTuple(move.source.identity);
     if (requestedTuple.slice(0, 2).some((part) => !part)) throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
     const exact = rowsById.get(move.source.uniqueId);
     const candidates = exact ? [exact] : receipt.rows.map((entry) => entry.row)
-      .filter((row) => normalizedTuple(row).every((part, index) => part === requestedTuple[index]));
+      .filter((row) => matchesReclassTuple(row, requestedTuple));
     if (candidates.length > 1) throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_AMBIGUOUS');
     const row = candidates[0];
-    if (!row || !normalizedTuple(row).every((part, index) => part === requestedTuple[index])) {
+    if (!row || !matchesReclassTuple(row, requestedTuple)) {
       throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
     }
     const resolvedId = String(row.unique_id);
@@ -155,6 +166,10 @@ export function assertInventoryReclassMoveReceiptMatchesCommand(
     resolvedSources.set(move.source.uniqueId, row);
     sourceIdByReceiptId.set(resolvedId, move.source.uniqueId);
   }
+  return { resolvedSources, sourceIdByReceiptId };
+}
+
+function assertReceiptMovements(receipt: InventoryReclassMoveReceipt, command: ReclassMoveCommand, resolvedSources: Map<string, JsonRecord>) {
   const expected = command.moves.flatMap((move) => move.lines.map((line) => ({ source: String(resolvedSources.get(move.source.uniqueId)?.unique_id || ''),
     direction: line.direction, destinationSeason: line.destinationSeason.toUpperCase(), quantity: line.quantity })));
   if (receipt.movements.length !== expected.length) throw new Error('INVENTORY_RECLASS_RECEIPT_MOVEMENTS_MISMATCH');
@@ -166,49 +181,36 @@ export function assertInventoryReclassMoveReceiptMatchesCommand(
     if (index < 0) throw new Error('INVENTORY_RECLASS_RECEIPT_MOVEMENTS_MISMATCH');
     used.add(index);
   }
+}
+
+function assertReceiptSourceRows(command: ReclassMoveCommand, resolvedSources: Map<string, JsonRecord>) {
   for (const move of command.moves) {
     const row = resolvedSources.get(move.source.uniqueId);
     if (!row) throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
-    for (const field of ['itemcode', 'contsize', 'locationcode', 'lotcode', 'season']) {
-      const requested = move.source.identity[field];
-      const actual = rowValue(row, field) == null ? null : String(rowValue(row, field));
-      const normalized = ['itemcode', 'locationcode', 'lotcode'].includes(field);
-      if (requested !== undefined && (normalized
-        ? String(actual ?? '').trim().toUpperCase() !== String(requested ?? '').trim().toUpperCase()
-        : actual !== requested)) {
-        throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
-      }
+    if (!['itemcode', 'contsize', 'locationcode', 'lotcode', 'season'].every(field => receiptIdentityMatches(move.source.identity, row, field))) {
+      throw new Error('INVENTORY_RECLASS_RECEIPT_SOURCE_MISMATCH');
     }
     for (const field of ['ptronhand', 'ptravailable']) {
       const after = stockQuantity(rowValue(row, field));
-      if (after === null) {
-        throw new Error(`INVENTORY_RECLASS_RECEIPT_SOURCE_${field.toUpperCase()}_MISMATCH`);
-      }
+      if (after === null) throw new Error(`INVENTORY_RECLASS_RECEIPT_SOURCE_${field.toUpperCase()}_MISMATCH`);
     }
   }
+}
+
+function assertReceiptDestinationRows(receipt: InventoryReclassMoveReceipt, command: ReclassMoveCommand, rowsById: Map<string, JsonRecord>, resolvedSources: Map<string, JsonRecord>, sourceIdByReceiptId: Map<string, string>) {
   for (const movement of receipt.movements) {
     const requestedSourceId = sourceIdByReceiptId.get(String(movement.sourceUniqueId));
     const source = command.moves.find((move) => move.source.uniqueId === requestedSourceId);
     const destination = rowsById.get(String(movement.destinationUniqueId));
     if (!source || !destination) throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
     const sourceRow = resolvedSources.get(source.source.uniqueId)!;
-    const sourceLot = String(source.source.identity.lotcode || '').trim().toUpperCase();
-    const targetLot = `${sourceLot.replace(/[.][^.]+$/, '')}.${movement.destinationSeason}`;
-    for (const field of ['itemcode', 'contsize', 'locationcode']) {
-      const requested = source.source.identity[field];
-      const actual = destination[field] == null ? null : String(destination[field]);
-      const normalized = field === 'itemcode' || field === 'locationcode';
-      if (requested !== undefined && (normalized
-        ? String(actual ?? '').trim().toUpperCase() !== String(requested ?? '').trim().toUpperCase()
-        : actual !== requested)) {
-        throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
-      }
+    const targetLot = reclassDestinationLot(sourceRow, String(movement.destinationSeason));
+    if (!['itemcode', 'contsize', 'locationcode'].every(field => receiptIdentityMatches(source.source.identity, destination, field))) {
+      throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
     }
     const physical = (row: JsonRecord, field: string) => rowValue(row, field) ?? null;
-    for (const field of ['source', 'desigitem', 'desigcust', 'desigloc']) {
-      if (String(physical(destination, field) ?? '') !== String(physical(sourceRow, field) ?? '')) {
-        throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
-      }
+    if (['source', 'desigitem', 'desigcust', 'desigloc'].some(field => String(physical(destination, field) ?? '') !== String(physical(sourceRow, field) ?? ''))) {
+      throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
     }
     const destinationWarehouse = physical(destination, 'warehouseid') ?? physical(destination, 'warehousei') ?? '';
     const sourceWarehouse = physical(sourceRow, 'warehouseid') ?? physical(sourceRow, 'warehousei') ?? '';
@@ -218,6 +220,17 @@ export function assertInventoryReclassMoveReceiptMatchesCommand(
     }
     if (String(sourceRow.unique_id) === String(destination.unique_id)) throw new Error('INVENTORY_RECLASS_RECEIPT_DESTINATION_MISMATCH');
   }
+}
+
+export function assertInventoryReclassMoveReceiptMatchesCommand(
+  receipt: InventoryReclassMoveReceipt, command: ReclassMoveCommand,
+): InventoryReclassMoveReceipt {
+  if (receipt.commandId !== command.commandId) throw new Error('INVENTORY_RECLASS_RECEIPT_COMMAND_MISMATCH');
+  const rowsById = new Map(receipt.rows.map((entry) => [String(entry.row.unique_id), entry.row]));
+  const { resolvedSources, sourceIdByReceiptId } = resolveReceiptSources(receipt, command, rowsById);
+  assertReceiptMovements(receipt, command, resolvedSources);
+  assertReceiptSourceRows(command, resolvedSources);
+  assertReceiptDestinationRows(receipt, command, rowsById, resolvedSources, sourceIdByReceiptId);
   return receipt;
 }
 
