@@ -1,3 +1,4 @@
+import {functionSource} from './helpers/completed-row-contract.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -58,7 +59,7 @@ test('Watchdog Monitor is the first Manager module only for the three authorized
   vm.runInNewContext(`${picker}; result = getManagerModuleOptions({}, [], [{ id: 'first-tool', label: 'First tool' }]);`, other);
   assert.equal(other.result[0].id, 'first-tool');
   assert.equal(other.result.some(option => option.id === 'runtime-watchdog'), false);
-  assert.match(runtime, /if \(activeHomeTab === 'dashboard'\) html = renderManagerModulePicker\(access, managerApprovalTabs, managerToolTabs\);/);
+  assert.match(functionSource('buildManagerRenderHtml'), /if \(activeHomeTab === 'dashboard'\) return renderManagerModulePicker\(access, managerApprovalTabs, managerToolTabs\);/);
 });
 
 function parityHarness({ currentView = 'managers', subModule = 'eval-reports-2' } = {}) {
@@ -358,20 +359,19 @@ test('signed watchdog email embeds the same complete fix brief returned to the c
 
 test('Manager Watchdog routing accepts the visible card and bypasses unrelated dataset gates', () => {
   const runtime = readComposedAppSource();
-  const router = runtime.match(/function setHomeTab\([^]*?^        }/m)[0];
-  assert.match(router, /requestedTab === MANAGER_RUNTIME_WATCHDOG_VIEW/);
+  const router = functionSource('setHomeTab');
+  assert.match(router, /resolveAllowedHomeTab\(requestedTab\)/);
+  assert.match(functionSource('resolveAllowedHomeTab'), /requestedTab === MANAGER_RUNTIME_WATCHDOG_VIEW/);
   assert.match(runtime, /data-manager-module=/);
-  const managers = runtime.match(/function renderManagers\([^]*?^        }/m)[0];
+  const managers = functionSource('keepManagerModuleSurface');
   assert.match(managers, /activeHomeTab !== MANAGER_RUNTIME_WATCHDOG_VIEW/);
-  const back = runtime.match(/function goBackUniversal\([^]*?^        }/m)[0];
+  const back = functionSource('goBackUniversal');
   assert.match(back, /openManagersModules/);
 });
 
 
 test('Watchdog card changes the Manager subview synchronously and shared Back restores the picker', () => {
-  const runtime = readComposedAppSource();
-  const fn = name => runtime.match(new RegExp('function '+name+'\\([^]*?^        }','m'))[0];
-  const router = fn('setHomeTab');
+  const router = ['setHomeTab','resolveAllowedHomeTab','leavePreviousHomeTab','enterNextHomeTab','hydrateNextHomeTab'].map(functionSource).join('\n');
   const context = { currentUser:'dylan_collyge', activeHomeTab:'dashboard', managerTableManagementDirectOpen:false, String, window:{},
     getCurrentVisibleViewId:()=> 'managers', getManagersToolAccess:()=>({}), isManagerApprovalTab:()=>false,
     cancelManagerModuleReads(){}, cancelManagerSeasonPriorityRead(){}, stopCodexOpsPoll(){},
@@ -380,7 +380,7 @@ test('Watchdog card changes the Manager subview synchronously and shared Back re
     closeOpenInteractiveSurfaceForBack:()=>false, openManagersModules(){context.activeHomeTab='dashboard';} };
   for (const name of new Set(router.match(/\b[A-Z][A-Z0-9_]{3,}\b/g))) context[name]=name.toLowerCase();
   context.MANAGER_RUNTIME_WATCHDOG_VIEW='runtime-watchdog';
-  vm.runInNewContext(router+'\n'+fn('goBackUniversal')+'\nsetHomeTab("runtime-watchdog");',context);
+  vm.runInNewContext(router+'\n'+functionSource('goBackUniversal')+'\nsetHomeTab("runtime-watchdog");',context);
   assert.equal(context.activeHomeTab,'runtime-watchdog'); assert.equal(context.rendered,'runtime-watchdog');
   vm.runInNewContext('goBackUniversal()',context); assert.equal(context.activeHomeTab,'dashboard');
 });

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 
 export function invariant241({ read, functionSource }) {
-  const context=vm.createContext({console}); vm.runInContext(read('assets/user-access-control.js'),context);
+  const context=vm.createContext({console}); vm.runInContext((read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js')),context);
   const access=context.GncUserAccessControl;
   assert.equal(typeof access.resolveUserAccessMatrix,'function');
   access.setAccessMatrixRows([{username:'nelly_aguilar',role:'Admin',make_request:'Y',can_make_request:'Y',request_all_reps:'Y',edit_any_row:'Y',flyer_folder_access:'Y',sales_rep_access:{abbey_burka:'Y',nate_douglas:'N'}}]);
@@ -15,7 +15,7 @@ export function invariant241({ read, functionSource }) {
 }
 
 export function invariant306({ read }) {
- const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+ const ctx=vm.createContext({});vm.runInContext((read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js')),ctx);const access=ctx.GncUserAccessControl;
  for(const alias of ['Chance Alldredge - South TX','Alldredge, Chance - South TX','Alldredge, Chance','chance_alldredge_south_tx','chance_alldredge']){assert.equal(access.formatSalesRepDisplayName(alias),'Chance Alldredge');assert.equal(access.normalizeSalesRepKey(alias),'chance_alldredge');}
  assert.equal(access.formatSalesRepDisplayName('Abbey Burka - North TX'),'Abbey Burka');assert.equal(access.formatSalesRepDisplayName('Unknown Person - North TX'),'Unknown Person - North TX');
  access.setAccessMatrixRows([{username:'chance_alldredge',role:'REP',make_request:'Y',can_make_request:'Y',sales_rep_access:{chance_alldredge:'Y',chance_alldredge_south_tx:'N'}}]);

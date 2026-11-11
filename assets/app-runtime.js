@@ -2,9 +2,6 @@
         const SUPABASE_URL = "https://kzrnyjsosryejjejliii.supabase.co";
         const SUPABASE_KEY = "sb_publishable_FpB561OcET7JsjWr2--kOA_9R68Kqxa";
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA/exec";
-        const GLOBAL_LIVE_CHANGE_USER_KEYS = Object.freeze(new Set([
-            'dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser', 'nelly_aguilar', 'morgan_anderson', 'melissa_dowty'
-        ]));
         const PUSH_SUBSCRIPTIONS_TABLE = 'ph_push_subscriptions';
         const APP_LIVE_EVENTS_TABLE = 'ph_app_live_events';
         const ACTIVE_REQUEST_TABLE = 'ph_requests_pending';
@@ -106,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.73';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.74';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18428,6 +18425,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         }
 /* @runtime-fragment assets/operational-rpc-retry.js */
 /* @runtime-fragment assets/rpc-recovery-domain.js */
+/* @runtime-fragment assets/watchdog-review-transport.js */
 
         async function readDatasetRevisionRpc(body, requestOptions) {
             if (requestOptions.signal?.aborted) throw Object.assign(new Error('Dataset revision read cancelled.'), { code: 'REQUEST_ABORTED' });
@@ -20938,6 +20936,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/canonical-inventory-evidence.js */
         /* @runtime-fragment assets/av-lot-cards.js */
         /* @runtime-fragment assets/row-workflow-functions.js */
+        /* @runtime-fragment assets/row-access-policy.js */
         /* @runtime-fragment assets/suspend-exact-owner.js */
         /* @runtime-fragment assets/que-header.js */
         /* @runtime-fragment assets/manager-table-workspace.js */
@@ -23012,23 +23011,6 @@ let managerEvalReportAssignedToFilters=new Set(); let managerEvalReport2Assigned
             return DETAIL_INPUT_SAVE_DEBOUNCE_MS;
         }
 
-        function queueLagSensitiveInputSave(prefix = '', inputId = '') {
-            const safePrefix = String(prefix || '');
-            if (!isLagSensitiveDetailPrefix(safePrefix) || !activeItem) return;
-            if (SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix) && getDriveEvidenceConflictState(activeItem)) return;
-            const detailView = document.getElementById('view-detail');
-            if (!detailView || detailView.classList.contains('hidden')) return;
-            if (detailInputSaveTimers[safePrefix]) clearTimeout(detailInputSaveTimers[safePrefix]);
-            const debounceMs = getDetailInputSaveDebounceMs(inputId);
-            const timerId = setTimeout(() => {
-                requestAnimationFrame(() => {
-                    if (detailInputSaveTimers[safePrefix] === timerId) detailInputSaveTimers[safePrefix] = null;
-                    saveData(false, safePrefix, true);
-                });
-            }, debounceMs);
-            detailInputSaveTimers[safePrefix] = timerId;
-        }
-
         function clearQueuedLagSensitiveInputSave(prefix = '') {
             const safePrefix = String(prefix || '');
             if (!safePrefix || !detailInputSaveTimers[safePrefix]) return;
@@ -24716,7 +24698,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.73';
+        const APP_VERSION = '3.0.74';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37101,8 +37083,6 @@ let avTopControlsRenderToken = 0;
         const BLOOM_PICKER_ORDER_META_TOKEN = '||BP_META||';
         const BLOOM_PICKER_ORDER_DRAFT_STORAGE_PREFIX = 'gnc_bloom_picker_order_draft_v1';
         const BLOOM_PICKER_ORDER_DRAFTS_STORAGE_PREFIX = 'gnc_bloom_picker_order_drafts_v1';
-        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'megan', 'megan_kelly', 'morgan', 'morgan_anderson', 'kayla', 'kayla_knepp', 'nelly', 'nelly_aguilar']);
-        const PHOTO_DELETE_OVERRIDE_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'megan', 'megan_kelly']);
         const PROTECTED_EDIT_CONFIG = {
             'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-match', 'ssn-spec', 'ssn-caliper', 'ssn-pick', 'ssn-comments'] },
             'lsn-': { containerId: 'det-location-content', cameraId: 'camera-btn-lsn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['lsn-av-note', 'lsn-match', 'lsn-spec', 'lsn-caliper', 'lsn-pick', 'lsn-comments'] },
@@ -37126,22 +37106,6 @@ let avTopControlsRenderToken = 0;
             const sourceTokens = tokens instanceof Set ? tokens : getProtectedUserTokens();
             for (const token of sourceTokens) {
                 if (isPrivilegedManagerUserKey(token)) return true;
-            }
-            return false;
-        }
-
-        function canUnlockProtectedData() {
-            const tokens = getProtectedUserTokens();
-            for (const token of tokens) {
-                if (PROTECTED_UNLOCK_USERS.has(token)) return true;
-            }
-            return false;
-        }
-
-        function canUsePhotoDeleteOverride() {
-            const tokens = getProtectedUserTokens();
-            for (const token of tokens) {
-                if (PHOTO_DELETE_OVERRIDE_USERS.has(token)) return true;
             }
             return false;
         }
@@ -46154,26 +46118,6 @@ let avTopControlsRenderToken = 0;
 
         function canCurrentUserUpdateDrivePhotoData(itemOverride = null, prefix = '') {
             return canUserUploadRowPhoto(currentUser, getEditableDetailItemForPrefix(prefix, itemOverride));
-        }
-
-        function canEditRowDetails(prefix = '', itemOverride = null) {
-            if (!itemOverride && globalThis.isAvDetailReadOnlyContext()) return false;
-            const normalizedPrefix = String(prefix || '').trim();
-            const access = getRoleAccessState();
-            const matrix = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix() : null;
-            const item = getEditableDetailItemForPrefix(normalizedPrefix, itemOverride);
-            if (canUserEditRow(currentUser, item)) return true;
-            if (matrix?.edit_assigned_rows_only === 'Y' || access?.isEval) return false;
-            if (normalizedPrefix === 'flyer-' && matrix?.flyer_folder_access === 'Y') return true;
-            if (matrix?.verified && matrix.edit_any_row === 'N' && isDriveModePhotoDataEditContext(normalizedPrefix, item)) return false;
-            if (normalizedPrefix === 'req-') return canCurrentUserWorkRequestItem(getEditableDetailItemForPrefix(normalizedPrefix, itemOverride));
-            if (isRepReadOnlyUser() && !canRepEditDetailPrefix(normalizedPrefix)) return false;
-            if (isRestrictedEvalUser(access) && !canRestrictedEvalUserUpdateItem(getEditableDetailItemForPrefix(normalizedPrefix, itemOverride))) return false;
-            if (isDriveModePhotoDataEditContext(normalizedPrefix, itemOverride) && !canCurrentUserUpdateDrivePhotoData(itemOverride, normalizedPrefix)) return false;
-            if (normalizedPrefix === 'hold-release-') return true;
-            if (activeItem && isSalesOfficeLikeItem(activeItem) && canAccessView('sales-office')) return true;
-            if (normalizedPrefix === 'dock-') return canEditDockWorkflow();
-            return true;
         }
 
         function showRowEditRestrictedToast(prefix = '') {
@@ -75420,15 +75364,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
         function configureCanonicalUserAccess(force = false) {
             const access = window.GncUserAccessControl;
-            const profile = nativeAuthProfile;
+            const identity = getCanonicalAccessSessionIdentity();
             refreshNavigationDisplayCache();
-            if (!access || !profile?.id || !nativeAuthSessionActive || profile.id !== nativeAuthSessionUserId) return;
-            const accountKey = profile.id + ':' + String(profile.username || '').toLowerCase();
+            if (!access || !identity) return;
+            const accountKey = identity.id + ':' + identity.username + ':' + identity.sessionKey;
             if (canonicalUserAccessAccount === accountKey && !force) return;
             canonicalUserAccessAccount = accountKey;
             access.configure({
-                getSessionIdentity: () => ({ id: nativeAuthSessionUserId, username: nativeAuthProfile?.username || '', authenticated: nativeAuthSessionActive && nativeAuthSessionUserId === nativeAuthProfile?.id }),
-                matrixLoader: () => supabaseClient.from('user_access').select('*').order('username').limit(1000).then(normalizeNavigationAccessRows),
+                getSessionIdentity: getCanonicalAccessSessionIdentity,
+                matrixLoader: identity.legacy ? null : () => supabaseClient.from('user_access').select('*').order('username').limit(1000).then(normalizeNavigationAccessRows),
                 repRoster: () => getRequestMappedRepDirectory().options,
                 transport: envelope => postAppFunctionJson(APP_API_FUNCTION_URL, envelope, { timeoutMs: 15000, label: 'User and role access', idempotencyKey: envelope.command_id }),
                 lifecycleTransport: async envelope => {
@@ -75446,7 +75390,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 onChange: detail => {
                     refreshNavigationDisplayCache();
                     const self = detail?.self;
-                    if (self?.verified && self.profile?.id === nativeAuthSessionUserId && self.revision !== canonicalUserAccessRevision) {
+                    if (self?.verified && self.profile?.username === identity.username && self.revision !== canonicalUserAccessRevision) {
                         canonicalUserAccessRevision = self.revision;
                         void initializeAppAccessSnapshot({ force: true, reason: 'canonical-access-change' }).catch(() => {});
                     }
@@ -75459,7 +75403,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     if (shouldRedirectForConfirmedViewDenial(getCurrentVisibleViewId())) switchView('home');
                 }
             });
-            void access.preloadAccessMatrix();
+            if (!identity.legacy) void access.preloadAccessMatrix();
             return access.loadSelf({ force }).catch(() => null);
         }
         function renderCanonicalUserAccessEditor() {
@@ -95601,23 +95545,6 @@ function getDocksSuspendSyncAudit() {
             }
         }
 
-        function getPrimaryDetailTabForItemContext(item = activeItem, detailSourceView = '') {
-            const safeSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
-            const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).toLowerCase();
-            if (safeSourceView === 'tasks' && activeTaskTab) return getTaskDetailTabForItem(item, activeTaskTab);
-            if (safeSourceView === 'not-on-inventory') return 'not-on-inventory';
-            if (safeSourceView === 'request') return 'request';
-            if (safeSourceView === 'docks') return 'docks';
-            if (safeSourceView === 'review' || safeSourceView === 'move-up') return 'ncr';
-            if (globalThis.isAvDetailSource(safeSourceView)) return 'overview';
-            if (safeSourceView === 'drive') return 'location';
-            if (safeSourceView === 'low-stock') {
-                if (assignment === 'season' && isCurrentSeasonSalesNotesRow(item)) return 'season';
-                if (assignment === 'season' || assignment === 'location') return 'location';
-            }
-            return 'overview';
-        }
-
         function getDetailTabPrefix(tab = '') {
             const safeTab = String(tab || '').trim().toLowerCase();
             if (safeTab === 'season') return 'ssn-';
@@ -101315,41 +101242,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             ].some((value) => doesCurrentUserMatchRequestCreatorValue(value));
         }
 
-        function getRetainedRequestWorkCapabilities() {
-            const profile = nativeAuthProfile;
-            if (!nativeAuthSessionActive || !profile?.id || profile.id !== nativeAuthSessionUserId
-                || String(profile.username || '').toLowerCase() !== String(currentUser || '').toLowerCase()
-                || profile.disabled_at || profile.active === false
-                || window.GncUserAccessControl?.getSelfState?.().denied === true
-                || (profile.locked_until && Date.parse(profile.locked_until) > Date.now())
-                || canonicalFeaturePermission('can_access_que') !== true) return null;
-            const access = getRoleAccessState();
-            const username = String(currentUser || '').toLowerCase();
-            const fullAdmin = ['dylan_collyge','megan_kelly','jd_jones'].includes(username);
-            const canWork = fullAdmin || username === 'kayla_knepp' || !String(profile.role || '').replace(/[ _]/g,'').toUpperCase().startsWith('QC');
-            return { canTakePhoto: canWork, canEdit: canWork, canComplete: canWork,
-                scope: fullAdmin || access.isAdmin ? 'global' : ['ben_brown','chance_alldredge'].includes(username) ? 'own'
-                    : access.isRep ? 'rep' : String(profile.role || '').toUpperCase().startsWith('EVAL') ? 'eval'
-                    : String(profile.role || '').toUpperCase() === 'CSR' ? 'created' : 'role' };
-        }
-
-        function canCurrentUserWorkRequestItem(item = null, action = 'edit') {
-            if (isDockSuspendDcRequestMirrorRow(item)) return canCurrentUserViewDockSuspendDcRequests(item);
-            if (item && !item.REQUEST_HISTORY && resolveCanonicalRowAccess(currentUser, item).canEdit) return true;
-            const capabilities = getRequestCapabilities() || getRetainedRequestWorkCapabilities();
-            const actionKey = String(action || 'edit').trim().toLowerCase();
-            const actionAllowed = actionKey === 'photo'
-                ? !!(capabilities && capabilities.canTakePhoto)
-                : (actionKey === 'complete' ? !!(capabilities && capabilities.canComplete) : !!(capabilities && capabilities.canEdit));
-            if (!capabilities || !actionAllowed || !item || item.REQUEST_HISTORY) return false;
-            if (capabilities.scope === 'global' || capabilities.scope === 'role') return true;
-            if (capabilities.scope === 'own') return doesCurrentUserOwnOrHaveAssignmentForRequestItem(item);
-            if (capabilities.scope === 'created') return doesCurrentUserOwnCreatedRequestItem(item);
-            if (capabilities.scope === 'rep') return doesCurrentUserMatchRepName(getRequestAssignedRep(item));
-            if (capabilities.scope === 'eval') return canRestrictedEvalUserViewRequestItem(item, currentUser, currentUserDisplay);
-            return false;
-        }
-
         function parseRequestCustomerFolderParts(value = '', item = null) {
             const clean = (entry = '') => String(entry || '').trim();
             const rawValue = clean(value || firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, ''));
@@ -101862,7 +101754,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return applyDockSuspendQuantityAliases(row, source);
         }
 
-        const DOCK_SUSPEND_WRITE_USERS = Object.freeze(['dylan_collyge', 'megan_kelly', 'dan_mccuistion']);
 
         function canUseRequestSuspendTagAssignedToFilter() { return queueAccessScope('suspend-tag').all; }
 
@@ -121383,7 +121274,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
         }
         const runtimeWatchdogPanel = createRuntimeWatchdogPanelOrNoop(window.AgMetricRuntimeWatchdogPanel, {
-            document, lifecycle: window.AgMetricLifecycle, apiUrl: APP_API_FUNCTION_URL, postJson: postAppFunctionJson,
+            document, lifecycle: window.AgMetricLifecycle, apiUrl: SUPABASE_URL + '/rest/v1/rpc/read_reviewed_watchdog_events_v3074', postJson: readReviewedWatchdogEvents,
             version: APP_SHELL_VERSION, getRevisions: () => window.GncRuntimeWatchdog?.getDatasetRevisions?.() || {},
             getBuild: async () => {
                 const response = await fetchWithTimeout('./deployment-fingerprint.json',{cache:'no-store'},3500,'Watchdog build identity');
@@ -146692,58 +146583,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 secureBaseline: SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix) ? buildSecureDriveEvidenceBaseline(item) : null };
         }
 
-        async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
-            if (!specificItem && globalThis.isAvDetailReadOnlyContext()) return false;
-            if (!isComplete) {
-                const field = document.getElementById(String(prefix || '')+'av-note');
-                if (field?.dataset.explicitAvNote === '1' && activeItem) options={...options,explicit_av_note:true,explicitAvNoteValue:String(field.value ?? ''),explicitAvNoteOwner:String(activeItem.UNIQUE_ID || activeItem.unique_id || '')};
-            }
-            if (!isComplete || isSilentAutoSave || options.markDoneConfirmationAccepted) return persistConfirmedRowEvaluation(isComplete,prefix,isSilentAutoSave,specificItem,options);
-            const item = specificItem || activeItem;
-            if (!item) return false;
-            if (!canEditRowDetails(prefix,item) || (prefix === 'req-' && !canCurrentUserWorkRequestItem(item,isDockSuspendDcRequestMirrorRow(item) ? 'edit' : 'complete'))
-                || (prefix !== 'req-' && isProtectedSectionCompleted(prefix,item) && !isProtectedUnlocked(prefix))) {
-                showRowEditRestrictedToast(prefix); return false;
-            }
-            const actionKey = getSupabaseReadIdentityScope() + '|' + getRowSaveCoordinatorKey(prefix,item);
-            const actions = window.__agdataMarkDoneActions ||= new Map();
-            if (actions.has(actionKey)) return false;
-            let finish;
-            const token = { finished:new Promise(resolve => { finish = resolve; }) };
-            actions.set(actionKey,token);
-            let optimistic = null;
-            try {
-                const snapshot = captureConfirmedRowEvaluation(item,prefix);
-                const plan = prepareMarkDoneCompletionPrompt(snapshot.row,prefix);
-                // This call paints the confirmation before any coordinator, upload or RPC await.
-                if (!await openMarkDoneConfirmModal(plan)) return false;
-                if (snapshot.scope !== getSupabaseReadIdentityScope()) return false;
-                const coordinator = getRowSaveCoordinatorState(getRowSaveCoordinatorKey(prefix,item));
-                if (coordinator) coordinator.completionIntentUntil = Date.now() + ROW_SAVE_COMPLETE_INTENT_MS;
-                optimistic = beginConfirmedRowEvaluationUi(snapshot);
-                if (optimistic.prepareBeforePersist && !await optimistic.prepareBeforePersist()) return false;
-                const persistOptions = { ...options, markDoneConfirmationAccepted:true, markDoneSnapshot:snapshot,
-                    optimisticCompletion:optimistic, suspendTagValues:snapshot.values || undefined,
-                    suspendTagScope:snapshot.scope, suspendTagNavigationSignal:null };
-                const pendingSave = persistConfirmedRowEvaluation(true,prefix,false,snapshot.row,persistOptions);
-                // Independent optional inventory edits may run alongside the canonical save.
-                const followups = [pendingSave];
-                if (plan.shouldSaveInventory) followups.push(Promise.resolve().then(() => saveInventoryEditMockInlineForm(plan.inventoryForm,{silent:true})));
-                const results = await Promise.allSettled(followups);
-                if (results[0].status === 'rejected') { optimistic.rollback(); throw results[0].reason; }
-                if (!optimistic.settled) optimistic.rollback();
-                for (const result of results.slice(1)) if (result.status === 'rejected' || result.value?.ok === false) showToast('Inventory Checks','The row save finished, but inventory edits need retry.',true);
-                return optimistic.confirmed;
-            } catch (error) {
-                if (optimistic?.confirmed) { queueVisibleDatasetCatchup(0); globalThis.reportHandledRuntimeIssue?.('saveData','HANDLED_OPERATION_FAILURE'); return true; }
-                optimistic?.rollback(); showToast('Save Stopped',error?.message || 'Your draft is retained. Please retry.',true); return false;
-            }
-            finally {
-                if (actions.get(actionKey) === token) actions.delete(actionKey);
-                finish();
-            }
-        }
-
         async function persistConfirmedRowEvaluation(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
             let rowSaveKey = '';
             try {
@@ -148228,6 +148067,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             }
         }
 
+        globalThis.persistConfirmedRowEvaluation = persistConfirmedRowEvaluation;
+
         function getPendingEditsCache() {
             if (pendingEditsCache && typeof pendingEditsCache === 'object') return pendingEditsCache;
             try {
@@ -149029,15 +148870,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             return drivePhotoAttachments.get(job.id) === job && job.scope === getSupabaseReadIdentityScope();
         }
 
-        function setDrivePhotoAttachmentStatus(job, status) {
-            if (!isCurrentDrivePhotoAttachment(job)) return;
-            job.status = status;
-            getPendingPhotoPreviewEntries(job.item, job.prefix).forEach(entry => {
-                if (entry.id === job.preview.id) Object.assign(entry, { status, uploadId: job.id, scope: job.scope, storageUrl:job.upload?.publicUrl });
-            });
-            refreshPendingPhotoUiForItem(job.item, job.prefix);
-        }
-
         async function persistDrivePhotoAttachment(job) {
             if (!isCurrentDrivePhotoAttachment(job)) throw new Error('Photo session changed.');
             if (job.prefix === 'eval-') return persistEvalPhotoAttachment(job);
@@ -149072,6 +148904,8 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
 
+
+        globalThis.persistDrivePhotoAttachment = persistDrivePhotoAttachment;
 
         function retryFailedSeasonDrivePhotoAttachments(item = null) {
             if (navigator.onLine === false) return false;

@@ -103,7 +103,7 @@ export function navigationVisibilityFixture({ username = 'worker', role = 'stand
     for (const file of ['access-display-cache', 'navigation-visibility', 'navigation-routing']) {
         vm.runInContext(read('src/ui/' + file + '.js').replace(/^export /gm, ''), context);
     }
-    vm.runInContext(read('assets/user-access-control.js'), context);
+    vm.runInContext((read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js')), context);
     context.resolveUserAccessMatrix = (...args) => context.window.GncUserAccessControl.resolveUserAccessMatrix(...args);
     loadRuntimeOwners(context);
     if (legacy) {

@@ -46,9 +46,7 @@ function createAvInventoryCardModel(context) {
 
 function renderAvInventoryCardMarkup(context) {
     let { item, avNoteText, liveEvidenceRow, safeCardSourceViewKey, sourceView, activePriceText, priceLabel, kiosk, holdReleaseOverrideActive, cleanHoldCode, holdReasonValue, hasValidAvPhotos, holdBorderClass, isChecked, heroHtml, photoDateHtml, pickNoteText } = context;
-    const cardActivationAttrs = isAvDetailSource(sourceView)
-        ? buildAvCardPhotoActivationAttrs(hasValidAvPhotos)
-        : buildCardActivationAttrs(item.DOM_ID, item.UNIQUE_ID, sourceView === 'reserves_drill' ? 'av' : sourceView, 'Open Item Detail');
+    const cardActivationAttrs = buildAuthorizedAvCardActivationAttrs(item,sourceView,hasValidAvPhotos);
     const buildAvMediaHtml = (imgHtml, photoDateHtml, photoStatusHtml = '') =>
         `<div class="app-av-catalog-media app-inline-thumb-column">${imgHtml}${photoDateHtml}${photoStatusHtml}</div>`;
     const domIdText = String(firstNonEmptyValue(item.DOM_ID, '') || '').trim();

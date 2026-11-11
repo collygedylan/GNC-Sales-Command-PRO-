@@ -6,7 +6,7 @@ const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'
 const api = read('supabase/functions/app-api/index.ts');
 const authAdmin = read('supabase/functions/auth-admin/index.ts');
 const migration = read('supabase/migrations/20261028222500_agdata_user_lifecycle_v2397.sql');
-const editor = read('assets/user-access-control.js');
+const editor = (read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js'));
 const runtime = read('assets/app-runtime.js');
 
 test('user lifecycle stays on the canonical admin and dual credential boundaries', () => {

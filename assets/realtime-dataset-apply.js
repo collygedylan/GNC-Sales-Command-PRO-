@@ -189,6 +189,7 @@ function applyRealtimeMasterAndRequestRows(tableName, eventType, nextRow, unique
     let changed = false;
     if (tableName === 'ph_master_inventory') return applyRealtimeMasterRow(eventType,nextRow,uniqueId);
     if (tableName === ACTIVE_REQUEST_TABLE) {
+        if (eventType !== 'DELETE') nextRow = mergeRequestLiveCanonicalEvidence(nextRow);
         if (eventType === 'DELETE') {
             clearOptimisticRequestIds([uniqueId]);
             discardPendingLocalEdits([uniqueId], true);

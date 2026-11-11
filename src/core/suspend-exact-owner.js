@@ -34,7 +34,7 @@ export function canCurrentUserViewDockSuspendDcRequests(item = null) {
     }
     if (!item && activeReqTab === 'suspend-tag') return canReadSuspendQueue();
     if (item && resolveCanonicalRowAccess(currentUser, item).canCompleteTag) return true;
-    return DOCK_SUSPEND_WRITE_USERS.includes(normalizePushUsername(currentUser)) || resolveCanonicalRowAccess(currentUser, {}).canCompleteTag;
+    return resolveCanonicalRowAccess(currentUser, {}).canEditAnyRow;
 }
 
 export function resolveSuspendOwner(item) {

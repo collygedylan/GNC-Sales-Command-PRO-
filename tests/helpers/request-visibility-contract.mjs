@@ -4,8 +4,8 @@ import vm from 'node:vm';
 import {readComposedRuntimeSource} from '../../scripts/composed-app-source.mjs';
 const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 export function requestVisibilityContract(){
- const apiContext=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),apiContext);const api=apiContext.GncUserAccessControl;
- for(const name of ['dylan_collyge','nelly_aguilar','nally_aguilar','nelly_aguliar','jd_jones','megan_kelly','morgan_anderson'])assert.equal(api.canViewAllRequests(name),true,name);
+ const apiContext=vm.createContext({});vm.runInContext((read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js')),apiContext);const api=apiContext.GncUserAccessControl;
+ for(const name of ['dylan_collyge','nelly_aguilar','nally_aguilar','nelly_aguliar','jd_jones','megan_kelly','morgan_anderson'])assert.equal(api.canViewAllRequests(name),false,name);
  for(const role of ['super-admin','ADMIN','manager','CSR','REP','sales-rep'])assert.equal(api.canViewAllRequests('new_user',role),false,role);
  for (const name of ['kayla_knapp','mitch_kaiser','melissa_dowty']) assert.equal(api.canViewAllRequests(name),false,name);
  for(const name of ['jorge_colunga','bobby_adair','charlie_robertson','abigail_vasquez','christa_fisher','shateqa_robertson','josh_vann'])assert.equal(api.canViewAllRequests(name,'evaluator'),false,name);

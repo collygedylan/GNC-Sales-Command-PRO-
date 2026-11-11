@@ -1,3 +1,4 @@
+
 function canonicalInventoryValue(row, key) {
     return row?.[key] ?? row?.[key.toLowerCase()] ?? '';
 }
@@ -84,7 +85,7 @@ function projectCanonicalInventoryRow(row) {
     const pct = Number(String(val(result,'LOC_MATCH_PCT') || val(result,'MATCH_PCT') || val(result,'MATCH')).replace(/[% ,]/g,''));
     const quantity = stored !== '' ? stored : photos.size && onHand > 0 && pct > 0 ? Math.round(Math.min(100,pct)*onHand/100) : undefined;
     applyCanonicalInventoryMetricAliases(row, target, result, quantity);
-    return result;
+    return applyActiveDetailEvaluationDraft(result,row);
 }
 
 function canonicalAvLotNumber(row, keys) {
@@ -362,6 +363,7 @@ function reconcileConfirmedDriveEvidence(result, item, prefix = '', options = {}
     const applied = reconcileConfirmedDriveMasterRows(responseRows,item,prefix);
     const master = applied.find(row => String(row.UNIQUE_ID || '') === masterUid);
     if (!master) throw new Error('DRIVE_ROW_IDENTITY_MISMATCH');
+    if (prefix !== 'req-') acknowledgeDetailEvaluationDraft(item,master,scope);
     if (options.photoOnly !== true && item !== master) applyConfirmedDriveLocationEvidence(item,master,prefix);
     const changedKeys = getDatasetKeysForTable('ph_master_inventory');
     try {

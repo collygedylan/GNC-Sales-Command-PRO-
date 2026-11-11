@@ -1,6 +1,6 @@
-(function installRuntimeWatchdog(global) {
-  'use strict';
-  if (global.GncRuntimeWatchdog) return;
+'use strict';
+if (!window.GncRuntimeWatchdog) {
+  const global = window;
   const STALL_MS = 4000;
   const PARITY_STALL_MS = 2000;
   const ROLE_ALIASES = Object.freeze({
@@ -72,41 +72,27 @@
   }
   function inspectIntegrity(root,current) {
     if (!state.username || document.hidden || !global.innerHeight || current === 'login' || current === 'unknown') return;
-    const nav = document.getElementById('bottom-nav');
-    if (!nav) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_MISSING');
-    else {
-      const viewport = global.visualViewport;
-      const bottom = viewport?.height ? viewport.offsetTop + viewport.height : Math.max(global.innerHeight || 0, document.documentElement?.clientHeight || 0);
-      const editing = (['detail-measurement-keyboard-open','keyboard-open','measurement-keyboard-open'].some(key => document.body?.classList?.contains(key))
-        || (document.activeElement?.matches?.('input,textarea,[contenteditable=true]') && viewport && viewport.height < global.innerHeight - 80));
-      const style = global.getComputedStyle?.(nav);
-      const pinned = style?.position === 'fixed' && parseFloat(style.bottom) === 0;
-      if (!editing && !pinned && nav.getBoundingClientRect?.().bottom > bottom + 8) {
-        nav.style.setProperty('position','fixed','important');
-        nav.style.setProperty('bottom','0','important');
-        if (nav.getBoundingClientRect().bottom > Math.max(bottom, global.innerHeight) + 8) reportField('UI_GEOMETRY_ANOMALY','navigation','FOOTER_OFFSCREEN');
-      }
-    }
+    inspectWatchdogFooter(global, document, reportField);
     if (!['request','que'].includes(current)) return;
     const bar = document.getElementById('request-filter-toolbar') || root.querySelector?.('[data-que-tabs]');
-    // Drilldowns intentionally hide the tabs. Only the rendered queue root owns this check.
     if (!state.queueAtRoot || state.queueAtRoot()) {
-      const tabs = [...(bar?.querySelectorAll?.('.request-category-chip, [role="tab"]') || [])].filter(tab => tab.offsetWidth > 0 && isVisibleParityNode(tab));
-      if (!tabs.length) reportField('UI_CONTROL_BAR_EMPTY','queue','EMPTY_TABS');
-      else if (bar.clientWidth > 0 && tabs.some(tab=>tab.offsetWidth >= bar.clientWidth * .90)) reportField('UI_GEOMETRY_ANOMALY','queue','WIDE_TAB');
+      const issue = global.inspectWatchdogQueueControls(bar, isVisibleParityNode);
+      if (issue) reportField(issue === 'EMPTY_TABS' ? 'UI_CONTROL_BAR_EMPTY' : 'UI_GEOMETRY_ANOMALY','queue',issue);
     }
     const audit = state.getQueueAudit?.(root);
-    const badge = document.getElementById('footer-request-badge') || document.querySelector('#nav-que [data-badge]');
-    if (badge && isVisibleParityNode(badge)) {
-      const label = String(badge.textContent || '').trim();
-      if (label === '99+' || (Number.isFinite(audit?.total) && /^\d+$/.test(label) && Number(label) > audit.total)) {
-        state.recountQueue?.();
-        const corrected = String(badge.textContent || '').trim();
-        if (isVisibleParityNode(badge) && corrected === '99+') reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_CAPPED');
-        else if (isVisibleParityNode(badge) && Number(corrected) > audit?.total) reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_EXCESS');
-      }
-    }
+    inspectQueueBadge(audit);
     if (audit?.foreign) reportField('QUEUE_BADGE_MISMATCH','queue','FOREIGN_OWNER');
+  }
+  function inspectQueueBadge(audit) {
+    const badge = document.getElementById('footer-request-badge') || document.querySelector('#nav-que [data-badge]');
+    if (!isVisibleParityNode(badge)) return;
+    const label = String(badge.textContent || '').trim();
+    if (label !== '99+' && !(Number.isFinite(audit?.total) && /^\d+$/.test(label) && Number(label) > audit.total)) return;
+    state.recountQueue?.();
+    if (!isVisibleParityNode(badge)) return;
+    const corrected = String(badge.textContent || '').trim();
+    if (corrected === '99+') reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_CAPPED');
+    else if (Number(corrected) > audit?.total) reportField('QUEUE_BADGE_MISMATCH','queue','BADGE_EXCESS');
   }
   function inspectBanner(node) {
     if (!node || !isVisibleParityNode(node) || node.closest?.('#runtime-watchdog-events, #runtime-watchdog-header-badge')) return;
@@ -114,7 +100,7 @@
     if (['success','input-guidance'].includes(node.dataset?.kind) || !node.matches?.(bannerSelector)) return;
     if (value && (!node.getClientRects || node.getClientRects().length)) observeError('', value, true, 'UI_ERROR_BANNER_SHOWN', node.dataset?.driveCommand);
   }
-  function safeIgnoreProbeError(_scope) { /* Intentional capability/storage probe; no telemetry. */ }
+  function safeIgnoreProbeError() { /* Intentional capability/storage probe; no telemetry. */ }
   function reportHandledRuntimeIssue(scope, errorCode, _meta) {
     try {
       if (_meta && FIELD_TYPES.has(_meta.eventType)) return reportField(_meta.eventType,scope,errorCode);
@@ -133,7 +119,7 @@
       if (handledRing.length > 100) { const old = handledRing.shift(); handledSeen.delete([old.version, old.scope, old.fingerprint].join('|')); }
       capture({ code: safeCode }, safeScope);
       return true;
-    } catch (_) { return false; /* Terminal observer boundary: never recurse. */ }
+    } catch { return false; /* Terminal observer boundary: never recurse. */ }
   }
   global.reportHandledRuntimeIssue = reportHandledRuntimeIssue;
   global.safeIgnoreProbeError = safeIgnoreProbeError;
@@ -142,7 +128,7 @@
   let parityWait = null;
   function normalizedRole(value) { const key = String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); return ROLE_ALIASES[key] || key.replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'unknown'; }
   function view() { return String(document.body?.dataset?.currentView || document.querySelector('[id^="view-"]:not(.hidden)')?.id?.replace(/^view-/, '') || 'unknown').toLowerCase(); }
-  function subModule() { try { return String(typeof state.getSubModule === 'function' ? state.getSubModule() || '' : global.activeHomeTab || ''); } catch (_) { return ''; } }
+  function subModule() { try { return String(typeof state.getSubModule === 'function' ? state.getSubModule() || '' : global.activeHomeTab || ''); } catch { return ''; } }
   function isIgnorableRuntimeNoise(value) { return global.__agdataVersionReloadPending === true || /ResizeObserver loop (?:limit exceeded|completed with undelivered notifications)|NATIVE_PROFILE_RETRY_REQUIRED|REQUEST_ABORTED|DATASET_READ_SCOPE_CHANGED|VALIDATION_REQUIRED/i.test(String(value || '')); }
   function fingerprint(event) { return [event.event_type, event.view_id, event.sub_module, event.error_message].join('|').toLowerCase().slice(0, 400); }
   function reportKey(event) { return `${event.username}:${event.fingerprint}:${event.app_version}`; }
@@ -166,7 +152,7 @@
         const url = new URL(path);
         if (!global.location?.origin || url.origin !== global.location.origin) return '';
         path = url.pathname;
-      } catch (_) { return ''; }
+      } catch { return ''; }
     }
     if (path.includes('..')) return '';
     const source = path.match(/(?:^|\/)(assets\/[a-z0-9_./-]+\.(?:m?js)|index\.html)$/i)?.[1];
@@ -207,7 +193,7 @@
       const durable = state.memoryOnly ? state.reportQueue.filter(event => FIELD_TYPES.has(event.event_type) || isDurableRuntimeEvent(event)) : state.reportQueue;
       if (durable.length) global.localStorage?.setItem(reportStorageKey(state.reportQueueOwner), JSON.stringify(durable.slice(-MAX_QUEUED_REPORTS)));
       else global.localStorage?.removeItem(reportStorageKey(state.reportQueueOwner));
-    } catch (_) { /* Storage failure must never block the app. */ }
+    } catch { /* Storage failure must never block the app. */ }
   }
   function loadReportQueue(username) {
     const owner = String(username || '').trim().toLowerCase();
@@ -226,13 +212,45 @@
           : (!state.memoryOnly || isDurableRuntimeEvent(event)) && (!currentVersion || String(event.app_version) === currentVersion))).slice(-MAX_QUEUED_REPORTS).map(sanitizeQueuedRuntimeEvent);
       state.reportQueue.forEach(event => rememberReportKey(reportKey(event)));
       persistReportQueue();
-    } catch (_) { state.reportQueue = []; }
+    } catch { state.reportQueue = []; }
   }
   function scheduleReportRetry(minDelay = 0) {
     if ((state.memoryOnly && !state.reportQueue.some(event=>FIELD_TYPES.has(event.event_type) || isDurableRuntimeEvent(event))) || document.hidden || state.reportTimer !== null || !state.reportQueue.length) return;
     const delay = Math.max(state.reportRetryMs, minDelay);
     state.reportRetryMs = Math.min(60000, Math.max(1000, state.reportRetryMs * 2));
     state.reportTimer = global.setTimeout(() => { state.reportTimer = null; flushPendingReports(); }, delay);
+  }
+  async function flushOnePendingReport(owner, generation, reporter) {
+    const event = state.reportQueue[0];
+    try {
+      if (state.memoryOnly && !FIELD_TYPES.has(event.event_type) && !isDurableRuntimeEvent(event)) {
+        if (state.remoteReportAttempted) { state.reportQueue.shift(); return true; }
+        state.remoteReportAttempted = true;
+      }
+      if (isDurableRuntimeEvent(event)) {
+        const now = Date.now();
+        state.runtimeReportTimes = state.runtimeReportTimes.filter(time => now - time < 60000);
+        if (state.runtimeReportTimes.length >= MAX_RUNTIME_REPORTS_PER_MINUTE) {
+          scheduleReportRetry(Math.max(1000, state.runtimeReportTimes[0] + 60000 - now));
+          return false;
+        }
+        state.runtimeReportTimes.push(now);
+      }
+      const result = await reporter(event);
+      if (result === false || result?.ok === false) throw new Error('Watchdog report was not accepted.');
+      if (state.reportGeneration !== generation || state.reportQueueOwner !== owner || state.username !== owner || state.reportQueue[0] !== event) return false;
+      state.reportQueue.shift();
+      state.reportRetryMs = 1000;
+      persistReportQueue();
+      if (!state.reportQueue.length && state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; }
+      return true;
+    } catch {
+      if (state.reportGeneration === generation && state.reportQueueOwner === owner && state.username === owner) {
+        persistReportQueue();
+        scheduleReportRetry();
+      }
+      return false;
+    }
   }
   async function flushPendingReports() {
     if (document.hidden || state.reportFlushGeneration === state.reportGeneration || !state.configured || !state.username || typeof state.report !== 'function'
@@ -243,35 +261,7 @@
     const reporter = state.report;
     try {
       while (!document.hidden && state.reportQueue.length && state.reportQueueOwner === owner && state.username === owner) {
-        const event = state.reportQueue[0];
-        try {
-          if (state.memoryOnly && !FIELD_TYPES.has(event.event_type) && !isDurableRuntimeEvent(event)) {
-            if (state.remoteReportAttempted) { state.reportQueue.shift(); continue; }
-            state.remoteReportAttempted = true;
-          }
-          if (isDurableRuntimeEvent(event)) {
-            const now = Date.now();
-            state.runtimeReportTimes = state.runtimeReportTimes.filter(time => now - time < 60000);
-            if (state.runtimeReportTimes.length >= MAX_RUNTIME_REPORTS_PER_MINUTE) {
-              scheduleReportRetry(Math.max(1000, state.runtimeReportTimes[0] + 60000 - now));
-              return false;
-            }
-            state.runtimeReportTimes.push(now);
-          }
-          const result = await reporter(event);
-          if (result === false || result?.ok === false) throw new Error('Watchdog report was not accepted.');
-          if (state.reportGeneration !== generation || state.reportQueueOwner !== owner || state.username !== owner || state.reportQueue[0] !== event) return false;
-          state.reportQueue.shift();
-          state.reportRetryMs = 1000;
-          persistReportQueue();
-          if (!state.reportQueue.length && state.reportTimer !== null) { global.clearTimeout(state.reportTimer); state.reportTimer = null; }
-        } catch (_) {
-          if (state.reportGeneration === generation && state.reportQueueOwner === owner && state.username === owner) {
-            persistReportQueue();
-            scheduleReportRetry();
-          }
-          return false;
-        }
+        if (!await flushOnePendingReport(owner, generation, reporter)) return false;
       }
       return true;
     } finally {
@@ -334,7 +324,7 @@
     // is intentionally terminal, so observing an error cannot recurse into itself.
     if (state.memoryOnly && state.configured) return reportField('RPC_FAILURE', 'rpc', FIELD_CODES.has(code) ? code : 'ERROR');
     try { record('OPERATIONAL_FAILURE', { severity: 'high', error_message: `${owner} failed (${code || 'Error'})`, suspected_functions: [owner] }); }
-    catch (_) { return false; }
+    catch { return false; }
     return true;
   }
   function isVisibleParityNode(node) { return !!node && !node.hidden && !node.closest?.('.hidden, [hidden], [aria-hidden="true"]'); }
@@ -441,7 +431,7 @@
       if (result === false || result?.ok === false) throw new Error('PREBOOT_RECEIPT_PENDING');
       if (state.reportGeneration !== generation || state.username !== username) return;
       bootReadyOwner = username + ':' + generation;
-      try { global.localStorage?.setItem('agdata_preboot_recovery_log','[]'); } catch (_) {}
+      try { global.localStorage?.setItem('agdata_preboot_recovery_log','[]'); } catch {}
     }).catch(() => { if (prebootRetry === null) prebootRetry = global.setTimeout(() => { prebootRetry = null; void flushPrebootRecoveries(); }, 30000); }).finally(() => { prebootFlush = null; });
     return prebootFlush;
   }
@@ -455,6 +445,14 @@
   function excel_style_filters_parity_guard() {
     const audit=state.getExcelFilterAudit?.();
     if(audit?.missing){reportHandledRuntimeIssue('excel_style_filters_parity_guard','FILTER_PARITY');state.recoverExcelFilters?.();}
+  }
+  function scheduleVisibleStallCheck(key,current) {
+    if (state.pending.has(key)) return;
+    state.pending.set(key, setTimeout(() => {
+        state.pending.delete(key);
+        const nextRoot = document.getElementById(`view-${current}`) || document.body;
+        if (view() === current && findVisibleLoadingIndicator(nextRoot)) record('VIEW_LOAD_STALL', { view_id: current, sub_module: subModule(), duration_ms: STALL_MS, error_message: 'Loading indicator persisted beyond 4000ms' });
+      }, STALL_MS));
   }
   function inspect() {
     // Passive telemetry must never allow a stale boot timer to cover an active session.
@@ -473,11 +471,7 @@
     if (key !== state.viewKey) { state.viewKey = key; state.viewVisitId++; state.viewStartedAt = Date.now(); }
     const waiting = findVisibleLoadingIndicator(root);
     if (waiting) {
-      if (!state.pending.has(key)) state.pending.set(key, setTimeout(() => {
-        state.pending.delete(key);
-        const nextRoot = document.getElementById(`view-${current}`) || document.body;
-        if (view() === current && findVisibleLoadingIndicator(nextRoot)) record('VIEW_LOAD_STALL', { view_id: current, sub_module: subModule(), duration_ms: STALL_MS, error_message: 'Loading indicator persisted beyond 4000ms' });
-      }, STALL_MS));
+      scheduleVisibleStallCheck(key,current);
     } else {
       if (state.pending.has(key)) { clearTimeout(state.pending.get(key)); state.pending.delete(key); }
       const visitKey = `${key}@${state.viewVisitId}`;
@@ -491,7 +485,7 @@
       }
     }
     const banners = [...root.querySelectorAll('[role="alert"], .error-banner, .load-error, .text-red-600, .text-red-700')].filter(node => /Load Failed|Access permissions changed|Some data could not be verified|Chat could not load|Could not load these rows/i.test(node.textContent || ''));
-    for (const banner of banners) record('UI_LOCKOUT_BANNER', { view_id: current, severity: 'high', error_message: 'Operational view displayed a lockout banner' });
+    banners.forEach(() => record('UI_LOCKOUT_BANNER', { view_id: current, severity: 'high', error_message: 'Operational view displayed a lockout banner' }));
   }
   global.addEventListener('error', event => { if (!isExpectedRuntimeCancellation(event.error) && !isIgnorableRuntimeNoise(event.message)) record('UNHANDLED_JS_EXCEPTION', { severity: 'high', error_message: String(event.message || 'Unhandled error'), runtime_error_name:event.error?.name, runtime_source:event.filename, runtime_line:event.lineno, runtime_column:event.colno, runtime_stack:event.error?.stack }); });
   global.addEventListener('unhandledrejection', event => { const message = String(event.reason?.message || event.reason || 'Unhandled rejection'); if (!isExpectedRuntimeCancellation(event.reason) && !isIgnorableRuntimeNoise(message)) record('UNHANDLED_PROMISE_REJECTION', { severity: 'high', error_message: message, runtime_error_name:event.reason?.name, runtime_stack:event.reason?.stack }); });
@@ -512,7 +506,7 @@
         if (!state.username || document.hidden) return;
         inspect();
         for (const node of document.querySelectorAll?.(bannerSelector) || []) inspectBanner(node);
-      } catch (_) { safeIgnoreProbeError('watchdog-inspect'); }
+      } catch { safeIgnoreProbeError('watchdog-inspect'); }
     }, 80);
   });
   if (document.documentElement) observer.observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'aria-busy', 'data-loading', 'data-eval-report-counts-ready', 'data-eval-report-count'] });
@@ -536,4 +530,4 @@
     getDatasetRevisions: () => ({...state.revisions}), observeError, record, capture, reportHandledRuntimeIssue, safeIgnoreProbeError, normalizeRole: normalizedRole, setDatasetRevisions(value) { state.revisions = value && typeof value === 'object' ? value : {}; },
     inspect, flushPendingReports, flushPrebootRecoveries, constants: Object.freeze({ stallMs: STALL_MS, parityStallMs: PARITY_STALL_MS, roles: Object.freeze(Object.keys(ROLE_ALIASES)), maxQueuedReports: MAX_QUEUED_REPORTS })
   });
-})(window);
+}

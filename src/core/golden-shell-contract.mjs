@@ -45,7 +45,7 @@ export function invariant248({functionSource}) {
 }
 
 export function invariant322({read, functionSource}) {
- const source=read('assets/user-access-control.js'),migration=read('supabase/migrations/20261101050000_v23129_super_admin_role.sql'),api=read('supabase/functions/app-api/index.ts'),apply=read('scripts/apply-item-low-stock-migration.mjs');
+ const source=(read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js')),migration=read('supabase/migrations/20261101050000_v23129_super_admin_role.sql'),api=read('supabase/functions/app-api/index.ts'),apply=read('scripts/apply-item-low-stock-migration.mjs');
  const ctx=vm.createContext({});vm.runInContext(source,ctx);const access=ctx.GncUserAccessControl;
  for(const role of ['super-admin','SUPER_ADMIN','Super Admin','superadmin'])assert.equal(access.isSuperAdminRole(role),true);
  access.setAccessMatrixRows([{username:'dylan_collyge',role:'super-admin',manage_user_access:'Y',use_weather_hold_risk_tools:'Y',use_aura_assistant:'Y',view_permissions:{view_smart_moves:'Y',view_nursery_command_tables:'Y'}}]);

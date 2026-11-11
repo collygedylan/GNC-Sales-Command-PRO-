@@ -11,6 +11,7 @@ function installPublisher(h) {
   h.ctx.beginRowEvaluationMemoryPublication = () => () => {};
   h.ctx.scheduleRequestRender = () => {};
   h.ctx.applySuspendTagInventoryReceipt = result => !!result.inventoryRows?.length;
+  h.ctx.canPublishRowEvidenceCommand = () => true;
   vm.runInContext(between('async function publishRowEvaluationToMasterAndNotes(', 'async function publishFlyerInventoryEvidence('), h.ctx);
 }
 

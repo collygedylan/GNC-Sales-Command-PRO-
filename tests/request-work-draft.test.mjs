@@ -44,8 +44,9 @@ test('an explicit completion command owns only its locally edited fields on reba
 });
 
 test('manual Done and queued completion retain their explicit command and matching receipt owner', () => {
-    const start = html.indexOf('        async function saveData(');
+    const start = html.indexOf('        async function persistConfirmedRowEvaluation(');
     const end = html.indexOf('        function normalizeRequestWorkDraftValue(', start);
+    assert.ok(start >= 0 && end > start);
     const save = html.slice(start, end);
     assert.match(save, /requestWork:true,scope:requestSaveIdentityScope,complete:isComplete/);
     assert.match(save, /if \(isComplete\) \{ requestCompletionConfirmed = true; applyConfirmedRequestCompletionReceipt\(itemToSave,receipt,requestSaveIdentityScope\)/);

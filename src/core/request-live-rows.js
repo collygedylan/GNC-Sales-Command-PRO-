@@ -1,5 +1,21 @@
 import {isOperationalTransientError} from '../services/rpc-recovery-domain.js';
 
+export function mergeRequestLiveCanonicalEvidence(row) {
+    if (!row || row.REQUEST_HISTORY || hasConfirmedRequestCompletion(row)) return row;
+    const canonical = resolveCanonicalInventoryRow(row);
+    if (!canonical || !canonicalInventorySameLot(row,canonical)) return row;
+    const merged = {...row};
+    const aliases = {REQ_SPEC:'SPEC',REQ_CALIPER:'CALIPER',REQ_MATCH:'MATCH',REQ_PICK:'PICK',
+        REQ_PHOTO_LINK:'PHOTO_LINK',REQ_PHOTO_NAME:'PHOTO_NAME',AV_NOTE:'AV_NOTE'};
+    for (const [key,source] of Object.entries(aliases)) {
+        const own = merged[key] ?? merged[key.toLowerCase()];
+        const evidence = canonical[source] ?? canonical[source.toLowerCase()];
+        if (String(own ?? '').trim() || evidence == null || String(evidence).trim() === '') continue;
+        merged[key] = merged[key.toLowerCase()] = evidence;
+    }
+    return applyActiveDetailEvaluationDraft(merged,row);
+}
+
 export async function fetchActiveRequestLiveRows(selectFields = '*', options = {}) {
             // Legacy request/footer reads share the same document lifetime as
             // verified reads. Reload cancellation is not a missing-view error.
@@ -35,7 +51,7 @@ export async function fetchActiveRequestLiveRows(selectFields = '*', options = {
 export async function reconcileExactPendingRequestsFromCompletedSources(reason = 'request-source-completion') {
     if (pendingRequestSourceCompletionReconcileInFlight || navigator.onLine === false) return false;
     const scope = getSupabaseReadIdentityScope();
-    const entries = (requestsInventory || []).filter(isRequestPendingVisible)
+    const entries = (requestsInventory || []).filter(row => isRequestPendingVisible(row) && !isRequestEvaluationInProgress(row))
         .map(row => ({ row, source:findExactCompletedSourceForPendingRequestRow(row) }))
         .filter(entry => entry.source && isExactLinkedRequestCompletionMatch(entry.source,entry.row));
     if (!entries.length) return false;
@@ -57,6 +73,12 @@ export async function reconcileExactPendingRequestsFromCompletedSources(reason =
     }
     if (completed) persistCurrentCache(false,String(reason));
     return completed > 0;
+}
+
+function isRequestEvaluationInProgress(row) {
+    const editor = typeof activeItem === 'undefined' ? null : activeItem;
+    if (editor && canonicalInventorySameLot(editor,row)) return true;
+    return globalThis.hasUnsettledDetailRowPhotos?.(row,'req-') === true;
 }
 
 export function findExactCompletedSourceForPendingRequestRow(row) {

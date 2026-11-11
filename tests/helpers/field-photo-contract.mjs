@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { functionSource } from './completed-row-contract.mjs';
+import {saveData} from '../../src/engine/confirmed-evaluation-ui.js';
 
 export function fieldPhotoContract() {
     const context = vm.createContext({ URL, normalizeStoragePublicUrl: url => url });
@@ -27,7 +28,7 @@ export function fieldPhotoContract() {
         assert.equal(tickets.getPendingPhotoUploadsForItem(item,prefix).length,3);
         assert.equal(tickets.getPendingPhotoUploadsForItem({UNIQUE_ID:'other'},prefix).length,0);
     }
-    const command = functionSource('saveData');
+    const command = saveData.toString();
     const save = functionSource('persistConfirmedRowEvaluation');
     assert.match(command, /persistConfirmedRowEvaluation/);
     assert.match(save, /await Promise\.allSettled\(pendingScopedUploads\)/);

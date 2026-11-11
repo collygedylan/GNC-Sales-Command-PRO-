@@ -1,5 +1,6 @@
-(function (root) {
-    'use strict';
+'use strict';
+if (!(typeof window !== 'undefined' ? window : globalThis).GncUserAccessControl) {
+    const root = typeof window !== 'undefined' ? window : globalThis;
 
     const PERMISSION_KEYS = Object.freeze([
         'can_access_drive_mode', 'can_access_av', 'can_access_que', 'can_access_manager_tab',
@@ -12,7 +13,7 @@
         return isSuperAdminRole(matrix.role) || yn(matrix.use_aura_assistant) === 'Y';
     };
     function enforceAccountPermissions(username, permissions, roleValue = '') {
-        const result = normalizePermissions(permissions);
+        const result = normalizePermissions(text(username) ? permissions : null);
         if (isSuperAdminRole(roleValue)) for (const flag of PERMISSION_KEYS) result[flag] = true;
         return result;
     }
@@ -21,7 +22,6 @@
     const ACCESS_FALLBACK_USERS = [{"username":"megan_kelly","role":"Admin","display_name":"megan_kelly"},{"username":"josh_ringleb","role":"REP","display_name":"josh_ringleb"},{"username":"nelly_aguilar","role":"admin","display_name":"nelly_aguilar"},{"username":"troy_lee","role":"REP","display_name":"troy_lee"},{"username":"brandt_emerson","role":"Admin","display_name":"Brandt Emerson"},{"username":"madison_austin","role":"ADMIN","display_name":"madison_austin"},{"username":"madelyn_gray","role":"ADMIN","display_name":"madelyn_gray"},{"username":"dan_mccuistion","role":"QC Supervisor","display_name":"dan_mccuistion"},{"username":"jay_baker","role":"Admin","display_name":"jay_baker"},{"username":"doug_baker","role":"REP","display_name":"doug_baker"},{"username":"tracey_tapscott","role":"REP","display_name":"tracey_tapscott"},{"username":"rand_hopkins","role":"REP","display_name":"rand_hopkins"},{"username":"matt_stubblefield","role":"Grower","display_name":"matt_stubblefield"},{"username":"jd_jones","role":"Admin","display_name":"jd_jones"},{"username":"alyssa_beitz","role":"CSR","display_name":"alyssa_beitz"},{"username":"dylan_collyge","role":"Admin","display_name":"dylan_collyge"},{"username":"annette_hancock","role":"REP","display_name":"annette_hancock"},{"username":"meredith_hilliard","role":"REP","display_name":"meredith_hilliard"},{"username":"wes_lugas","role":"REP","display_name":"wes_lugas"},{"username":"ben_harveson","role":"REP","display_name":"ben_harveson"},{"username":"brian_hatfield","role":"REP","display_name":"brian_hatfield"},{"username":"abbey_burka","role":"REP","display_name":"abbey_burka"},{"username":"chance_alldredge","role":"REP","display_name":"chance_alldredge"},{"username":"morgan_anderson","role":"Admin","display_name":"morgan_anderson"},{"username":"test_test","role":"Admin","display_name":"test_test"},{"username":"jessica_robertson","role":"REP","display_name":"jessica_robertson"},{"username":"mitch_kaiser","role":"Admin","display_name":"mitch_kaiser"},{"username":"nate_douglas","role":"REP","display_name":"nate_douglas"},{"username":"bobby_hooper","role":"QC","display_name":"bobby_hooper"},{"username":"chris_evans","role":"Admin","display_name":"chris_evans"},{"username":"daniel_farrell","role":"QC","display_name":"daniel_farrell"},{"username":"traci_earle","role":"REP","display_name":"traci_earle"},{"username":"david_brandt","role":"REP","display_name":"david_brandt"},{"username":"ben_brown","role":"REP","display_name":"ben_brown"},{"username":"josh_vann","role":"EVAL","display_name":"josh_vann"},{"username":"becky_collins","role":"CSR","display_name":"becky_collins"},{"username":"sandra_epperley","role":"Admin","display_name":"sandra_epperley"},{"username":"katherine_kessler","role":"CSR","display_name":"katherine_kessler"},{"username":"rebekah_poor","role":"CSR","display_name":"rebekah_poor"},{"username":"rod_jones","role":"Foreman","display_name":"rod_jones"},{"username":"molly_dixon","role":"REP","display_name":"molly_dixon"},{"username":"casey_rufener","role":"REP","display_name":"casey_rufener"},{"username":"randy_davis","role":"Admin","display_name":"randy_davis"},{"username":"melissa_dowty","role":"CSR","display_name":"melissa_dowty"},{"username":"take_back","role":"Take Backs","display_name":"take_back"},{"username":"kevin_effinger","role":"REP","display_name":"kevin_effinger"},{"username":"mike_stutchman","role":"Admin","display_name":"mike_stutchman"},{"username":"abigail_vazquez","role":"eval","display_name":"abigail_vazquez"},{"username":"tony_bono","role":"REP","display_name":"tony_bono"},{"username":"ellen_ward","role":"Admin","display_name":"ellen_ward"},{"username":"jorge_colunga","role":"eval","display_name":"jorge_colunga"},{"username":"rhett_davis","role":"Admin","display_name":"rhett_davis"},{"username":"ellen_deely","role":"REP","display_name":"ellen_deely"},{"username":"charley_robertson","role":"eval","display_name":"charley_robertson"},{"username":"sunday_ellis","role":"data entry","display_name":"sunday_ellis"},{"username":"sharon_combs","role":"data entry supervisor","display_name":"sharon_combs"},{"username":"jennifer_wacoche","role":"data entry","display_name":"jennifer_wacoche"},{"username":"nathalia_gracia","role":"QC","display_name":"nathalia_gracia"},{"username":"ricardo_landaverde","role":"QC","display_name":"ricardo_landaverde"},{"username":"claudia_castillo","role":"QC","display_name":"claudia_castillo"},{"username":"edith_castillo","role":"QC","display_name":"edith_castillo"},{"username":"rod_reed","role":"QC","display_name":"rod_reed"},{"username":"mireya_rubio","role":"QC","display_name":"mireya_rubio"},{"username":"ben_maschino","role":"REP","display_name":"ben_maschino"},{"username":"toby_brown","role":"REP","display_name":"toby_brown"},{"username":"stephanie_knight","role":"CSR","display_name":"stephanie_knight"},{"username":"cait_bowden","role":"REP","display_name":"cait_bowden"}];
     const ACCESS_FALLBACK_REPS = ["Abbey Burka","Annette Hancock","Ben Brown","Ben Harveson","Ben Maschino","Brian Hatfield","Cait Bowden","Casey Rufener","Chance Alldredge","Chris Gaydos","David Brandt","Doug Baker","Ellen Deely","InHouse Sales","Interdivision","Jessica Robertson","Josh Ringleb","Kevin Effinger","Marla Voeltner","Meredith Hilliard","Molly Dixon","Nate Douglas","Rand Hopkins","Toby Brown","Tony Bono","Tracey Tapscott","Traci Earle","Troy Lee","Valerie Woodruff","Wes Lugas"];
     const MATRIX_ALIAS_PAIRS = [['make_request','can_make_request'],['edit_any_row','can_edit_all_rows'],['edit_assigned_rows_only','can_edit_assigned_items'],['flyer_folder_access','can_manage_flyers']];
-    const MATRIX_FLAGS = ['make_request','can_make_request','request_all_reps','view_all_requests','edit_any_row','can_edit_all_rows','edit_assigned_rows_only','can_edit_assigned_items','flyer_folder_access','can_manage_flyers','create_project','submit_reclass','complete_suspend_tag','approve_suspend_tags','manage_tables','manage_user_access','use_weather_hold_risk_tools','use_aura_assistant'];
     const MATRIX_VIEWS = ['drive_mode','av','que_request','que_suspend','docks','hl_order','sales','sales_office','historical_requests','managers','qc','office','inventory','production','bloom','flyers','comm','smart_moves','nursery_command_tables'].map(name=>'view_'+name);
     const state = { userAccess: [] };
     const matrixSaves = new Set();
@@ -33,27 +33,11 @@
     }
     const yn = value => value===true || /^(y|yes|true|1)$/i.test(String(value||'')) ? 'Y':'N';
     function resolveUserAccessMatrix(username, roleValue='') {
-        const name=normalizeAccessUsername(typeof username==='object'?username?.username:username);
-        const saved=state.userAccess.find(row=>normalizeAccessUsername(row.username)===name);
-        const fallback=ACCESS_FALLBACK_USERS.find(row=>normalizeAccessUsername(row.username)===name)||{};
-        const sourceRole=saved?.role||roleValue||fallback.role||'';
-        const role=String(sourceRole).replace(/[^a-z]/gi,'').toLowerCase();
-        const isSuperAdmin=isSuperAdminRole(sourceRole);
-        const admin=isSuperAdmin||['admin','administrator','manager'].includes(role);
-        const full=admin||['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson','melissa_dowty'].includes(name);
-        const all=admin||['csr','salesoffice','office','eval','evaluator'].includes(role)||['dylan_collyge','nelly_aguilar','morgan_anderson','jd_jones','megan_kelly','melissa_dowty','mitch_kaiser'].includes(name);
-        const viewAll=['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'].includes(name);
-        const allSuspend=['dylan_collyge','jd_jones','megan_kelly'].includes(name);
-        const flyer=full||['sales','salesrep','rep','csr'].includes(role)||name==='melissa_dowty';
-        const result={username:name,role:sourceRole,display_name:fallback.display_name||name,make_request:'Y',can_make_request:'Y',request_all_reps:all?'Y':'N',view_all_requests:viewAll?'Y':'N',request_default_scope:viewAll?'ALL':'OWN',view_all_suspend:allSuspend?'Y':'N',suspend_default_scope:name==='jd_jones'?'ALL':'OWN',edit_any_row:full?'Y':'N',can_edit_all_rows:full?'Y':'N',edit_assigned_rows_only:['eval','evaluator'].includes(role)?'Y':'N',can_edit_assigned_items:['eval','evaluator'].includes(role)?'Y':'N',flyer_folder_access:flyer?'Y':'N',can_manage_flyers:flyer?'Y':'N',create_project:'Y',submit_reclass:isSuperAdmin?'Y':'N',complete_suspend_tag:isSuperAdmin?'Y':'N',approve_suspend_tags:isSuperAdmin?'Y':'N',manage_tables:isSuperAdmin?'Y':'N',manage_user_access:isSuperAdmin?'Y':'N',use_weather_hold_risk_tools:isSuperAdmin?'Y':'N',use_aura_assistant:isSuperAdmin?'Y':'N',sales_rep_access:{[name]:'Y'},allowed_request_reps:{[name]:'Y'},view_permissions:{},revision:0,...saved};
-        for(const [primary,alias] of MATRIX_ALIAS_PAIRS){const values=[saved?.[primary],saved?.[alias]].filter(v=>v!=null);const flag=values.length?(values.some(v=>yn(v)==='N')?'N':'Y'):result[primary];result[primary]=result[alias]=flag;}
-        result.sales_rep_access=canonicalSalesRepAccess(saved?.allowed_request_reps||result.allowed_request_reps,saved?.sales_rep_access||result.sales_rep_access);
-        result.allowed_request_reps={...result.sales_rep_access};
-        const nurseryFlag=saved?.view_permissions?.view_nursery_command_tables ?? saved?.view_nursery_command_tables ?? (isSuperAdmin?'Y':'N');
-        result.view_nursery_command_tables=yn(nurseryFlag);
-        result.view_permissions={...result.view_permissions,view_nursery_command_tables:result.view_nursery_command_tables};
-        result.verified=!!saved;
-        return result;
+        const name = normalizeAccessUsername(typeof username === 'object' ? username?.username : username);
+        const saved = state.userAccess.find(row => normalizeAccessUsername(row.username) === name);
+        const display = ACCESS_FALLBACK_USERS.find(row => normalizeAccessUsername(row.username) === name);
+        return globalThis.resolveTableDrivenAccessMatrix({name,saved,display,roleValue,aliasPairs:MATRIX_ALIAS_PAIRS,
+            yn,isSuperAdminRole,canonicalSalesRepAccess});
     }
     function canViewAllRequests(username, roleValue='') {
         const matrix=resolveUserAccessMatrix(username,roleValue);
@@ -118,8 +102,8 @@
         const before=resolveUserAccessMatrix(name),owner=getIdentity(),epoch=generation;const next={...before,...patch};
         for(const [primary,alias] of MATRIX_ALIAS_PAIRS){if(primary in patch)next[alias]=patch[primary];else if(alias in patch)next[primary]=patch[alias];}
         if(patch.sales_rep_access)next.allowed_request_reps={...patch.sales_rep_access};
-        matrixSaves.add(name);setAccessMatrixRows([next]);publish('access-matrix-optimistic');
-        try{const result=await transport('save_access_matrix',{username:name,matrix:patch},{commandId:makeCommandId(),expectedRevision:before.revision||0});if(epoch!==generation||owner?.id!==getIdentity()?.id)throw Error('USER_ACCESS_ACCOUNT_CHANGED');if(!result.matrix?.username)throw Error('USER_ACCESS_SAVE_RESPONSE_INVALID');setAccessMatrixRows([result.matrix]);publish('access-matrix-saved');return result.matrix;}
+        matrixSaves.add(name);setAccessMatrixRows([{...next,__pendingAccessWrite:true}]);publish('access-matrix-optimistic');
+        try{const result=await transport('save_access_matrix',{username:name,matrix:patch},{commandId:makeCommandId(),expectedRevision:before.revision||0});if(epoch!==generation||owner?.id!==getIdentity()?.id)throw Error('USER_ACCESS_ACCOUNT_CHANGED');if(!result.matrix?.username)throw Error('USER_ACCESS_SAVE_RESPONSE_INVALID');setAccessMatrixRows([{...result.matrix,__pendingAccessWrite:false}]);publish('access-matrix-saved');return result.matrix;}
         catch(error){if(epoch===generation&&owner?.id===getIdentity()?.id){setAccessMatrixRows([before]);publish('access-matrix-rollback');}throw error;}finally{matrixSaves.delete(name);}
     }
     function accessPermissionColumns(category = 'all') {
@@ -151,7 +135,7 @@
         if(!affected.length && mode!=='role')throw Error('USER_ACCESS_TARGET_INVALID');
         const expectedRevision=mode==='role'?Number((state.roleMatrices||[]).find(r=>r.role===role)?.revision||0):Number(resolveUserAccessMatrix(target).revision||0);
         matrixSaves.add(mode+':'+target);
-        for(const user of affected){setAccessMatrixRows([patchAccessPermission(resolveUserAccessMatrix(user.username,user.role),flag,value)]);if(flag.startsWith('legacy:'))user.effective_permissions[flag.slice(7)]=value==='Y';}
+        for(const user of affected){setAccessMatrixRows([{...patchAccessPermission(resolveUserAccessMatrix(user.username,user.role),flag,value),__pendingAccessWrite:true}]);if(flag.startsWith('legacy:'))user.effective_permissions[flag.slice(7)]=value==='Y';}
         if(mode==='role')state.roleMatrices=[...(state.roleMatrices||[]).filter(r=>r.role!==role),{role,revision:expectedRevision,matrix:patchAccessPermission((state.roleMatrices||[]).find(r=>r.role===role)?.matrix||{},flag,value)}];
         publish('access-permission-optimistic');
         globalThis.showToast?.('Updating Permissions', 'Changes are visible; saving…');
@@ -159,7 +143,7 @@
             const result=await transport('save_access_permission',{mode,target,permission:flag,value},{commandId:makeCommandId(),expectedRevision});
             if(epoch!==generation||owner?.id!==getIdentity()?.id)throw Error('USER_ACCESS_ACCOUNT_CHANGED');
             if(!result.ok||!Array.isArray(result.matrixRows))throw Error('USER_ACCESS_SAVE_RESPONSE_INVALID');
-            setAccessMatrixRows(result.matrixRows);if(result.roleMatrices)state.roleMatrices=result.roleMatrices;
+            setAccessMatrixRows(result.matrixRows.map(row => ({...row,__pendingAccessWrite:false})));if(result.roleMatrices)state.roleMatrices=result.roleMatrices;
             if(result.directory)directoryRecord=normalizeDirectory(result.directory);
             publish('access-permission-saved');return {...result,count:result.matrixRows.length};
         } catch(error){if(epoch===generation&&owner?.id===getIdentity()?.id){state.userAccess=beforeRows;directoryRecord=beforeDirectory;state.roleMatrices=beforeRoles;publish('access-permission-rollback');}throw error;}
@@ -273,7 +257,8 @@
         try {
             const value = typeof config.getSessionIdentity === 'function' ? config.getSessionIdentity() : null;
             if (!value || value.authenticated !== true || !text(value.id) || !key(value.username)) return null;
-            return { id: text(value.id), username: key(value.username), authenticated: true };
+            return { id: text(value.id), username: key(value.username), authenticated: true,
+                sessionKey: text(value.sessionKey) || text(value.id), legacy: value.legacy === true };
         } catch { return null; }
     }
 
@@ -411,7 +396,7 @@
         if (mutation.expectedRevision != null) request.expected_revision = mutation.expectedRevision;
         const owner=getIdentity(),epoch=generation;
         const response=unwrap(await config.transport(request));
-        if(epoch!==generation||owner?.id!==getIdentity()?.id)throw Error('USER_ACCESS_ACCOUNT_CHANGED');
+        if(epoch!==generation||!globalThis.sameAccessSession(owner,getIdentity()))throw Error('USER_ACCESS_ACCOUNT_CHANGED');
         if(response.matrixRows)setAccessMatrixRows(response.matrixRows);
         if(response.roleMatrices)state.roleMatrices=response.roleMatrices;
         if(response.matrix)setAccessMatrixRows([response.matrix]);
@@ -431,7 +416,7 @@
         const baselineSource = value?.baseline;
         const profileRole = normalizeRole(profile?.role);
         const baselineRole = normalizeRole(baselineSource?.role);
-        if (!profile || !identity || profile.id !== identity.id || profile.username !== identity.username
+        if (!profile || !identity || !identity.legacy && profile.id !== identity.id || profile?.username !== identity?.username
             || !profileRole || !baselineRole || profileRole !== baselineRole) {
             throw new Error('USER_ACCESS_IDENTITY_MISMATCH');
         }
@@ -475,15 +460,14 @@
         publish('self-loading');
         selfInFlight = transport('resolve').then(value => {
             const current = getIdentity();
-            if (requestGeneration !== generation || !current || current.id !== identity.id || current.username !== identity.username) return null;
-            selfRecord = validateSelfResponse(value, identity);
+            if (requestGeneration !== generation || !globalThis.sameAccessSession(current,identity)) return null;
+            selfRecord = {...validateSelfResponse(value, identity),sessionKey:identity.sessionKey};
             selfStatus = 'ready'; selfDenied = false;
             return getSelfState();
         }).catch(error => {
             if (requestGeneration === generation) {
                 const current = getIdentity();
-                const samePreviouslyResolvedIdentity = selfRecord?.verified === true && current
-                    && selfRecord.profile.id === current.id && selfRecord.profile.username === current.username;
+                const samePreviouslyResolvedIdentity = !!globalThis.resolveVerifiedAccessSelf(selfRecord,current);
                 selfDenied = isTerminalSelfError(error);
                 if (!samePreviouslyResolvedIdentity || selfDenied) selfRecord = null;
                 selfStatus = 'error'; selfError = text(error?.message) || 'User permissions could not be verified.';
@@ -691,12 +675,11 @@
 
     function getEffectiveUserPermissions(userValue = null) {
         const identity = getIdentity();
-        const selfProfile = selfRecord?.verified === true && identity && selfRecord.profile.id === identity.id
-            && selfRecord.profile.username === identity.username ? selfRecord : null;
+        const selfProfile = globalThis.resolveVerifiedAccessSelf(selfRecord,identity);
         const requested = userValue == null ? identity?.username : userValue;
         const requestedAliases = aliasesFor(requested);
         const isSelf = !!(selfProfile && (requested === identity?.username
-            || (typeof requested === 'object' && text(requested.id) === identity.id && key(requested.username) === identity.username)
+            || (typeof requested === 'object' && text(requested.id) === selfProfile.profile.id && key(requested.username) === identity.username)
             || [...requestedAliases].some(alias => aliasesFor(selfProfile.profile).has(alias))));
         if (isSelf) {
             return { role: selfProfile.role, permissions: { ...selfProfile.effective_permissions },
@@ -711,13 +694,7 @@
     }
 
     function getSelfState() {
-        return { status: selfStatus, denied: selfDenied, verified: selfRecord?.verified === true && selfStatus === 'ready',
-            error: selfError, profile: selfRecord?.profile ? { ...selfRecord.profile } : null,
-            role: selfRecord?.role || '', baseline: selfRecord ? { ...selfRecord.baseline } : null,
-            overrides: selfRecord ? { ...selfRecord.permission_overrides } : null,
-            permissions: selfRecord ? { ...selfRecord.effective_permissions } : null,
-            dataHydrationPolicy: selfRecord?.data_hydration_policy ? { ...selfRecord.data_hydration_policy } : null,
-            revision: selfRecord?.revision || 0 };
+        return globalThis.resolveAccessSelfState({record:selfRecord,status:selfStatus,denied:selfDenied,error:selfError,identity:getIdentity()});
     }
 
     function reset() {
@@ -735,7 +712,7 @@
     function configure(options = {}) {
         config = { ...config, ...options };
         const nextIdentity = getIdentity();
-        const nextKey = nextIdentity ? `${nextIdentity.id}:${nextIdentity.username}` : '';
+        const nextKey = nextIdentity ? `${nextIdentity.id}:${nextIdentity.username}:${nextIdentity.sessionKey}` : '';
         if (configuredIdentityKey && configuredIdentityKey !== nextKey) reset();
         configuredIdentityKey = nextKey;
         if (!cachedDirectoryRecord) cachedDirectoryRecord = readDisplayCache();
@@ -969,4 +946,4 @@
     Object.defineProperty(root, 'AGDATA_USER_ACCESS_TABLE', { configurable: true, get: () => api.users });
     root.getEffectiveUserPermissions = getEffectiveUserPermissions;
     root.GncUserAccessControl = api;
-})(typeof window !== 'undefined' ? window : globalThis);
+}

@@ -295,6 +295,7 @@ export async function publishRequestWorkEvaluation(item, patch, options) {
         }
         if (completedReceipt || photoReceipt) rollback.commit?.();
         reconcileRequestPublicationMaster({ result, saved, item, target, options, completedReceipt, photoReceipt, scope, rollback });
+        acknowledgeDetailEvaluationDraft(item,saved,scope);
         return outcome;
     } catch (error) {
         if (completedReceipt || photoReceipt) {

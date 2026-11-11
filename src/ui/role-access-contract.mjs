@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { isDockSuspendDcRequestMirrorRow, isDockSuspendDcRequestSource } from '../core/dock-order-domain.js';
 
 export function assertLoginFallback({ shellFunction }) {
   const nodes = {
@@ -35,42 +34,9 @@ export function assertLoginFallback({ shellFunction }) {
   assert.doesNotMatch(shellFunction('openAppShellAfterLogin'), /App could not load|Reload app/);
 }
 
-export function assertSharedRowAccess({ shellFunction, html, api, read }) {
-  const constant = html.match(/        const GLOBAL_LIVE_CHANGE_USER_KEYS = Object\.freeze\(new Set\(\[[^]*?\]\)\);/)?.[0];
-  assert.ok(constant, 'global live-change user registry');
-  const ctx = vm.createContext({
-    isDockSuspendDcRequestMirrorRow, isDockSuspendDcRequestSource,
-    currentUser: 'jorge_colunga', currentUserDisplay: 'Jorge Colunga', currentRole:'EVAL', fullInventory:[],
-    EVAL_TASK_USER_ALIASES:{jorge:'jorge_colunga',colunga_jorge:'jorge_colunga'},
-    resolveUserAccessMatrix:user=>({role:user==='other_admin'?'admin':'eval'}),
-    getManagerAssignedColumnState:()=>assignmentState,buildManagerEvalAssignmentKey:v=>String(v||'').trim().toUpperCase(),
-    warehouseAssignedItemsInventory: [{ master_unique_id: 'row-assigned', itemcode: 'ABC.001', assignedto: 'Colunga, Jorge', present_in_drive: true }],
-    rebuildWarehouseAssignedItemIndexes() {},
-    normalizeEvalAccessUserKey: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
-    normalizeWarehouseAssignedCompactPart: value => String(value || '').trim().toUpperCase().replace(/\s+/g, ''),
-    getWarehouseAssignedIdentityParts: row => ({ itemcode: String(row.itemcode || row.ITEMCODE || '').trim().toUpperCase().replace(/\s+/g, '') }),
-    getRoleAccessState: (_role, user) => user === 'other_admin' ? { isAdmin: true } : { isEval: true, isRepLike: false },
-    isRestrictedEvalUser: access => !!access?.isEval && !access?.isAdmin,
-  });
-  const assignmentState = {itemcodeDefaultOwners:new Map([['ABC.001','jorge_colunga']])};
-  vm.runInContext([constant, ...['normalizeEvalAssignableUser','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveInventoryRowOwner','resolveCanonicalRowAccess','canUserEditRow'].map(shellFunction), "const SCOPED_LIVE_CHANGE_USER_KEY = 'jorge_colunga';", shellFunction('normalizeLiveChangeUsername'), shellFunction('isRowAssignedToUser'),
-    shellFunction('canUserMakeLiveChangesOnRow')].join('\n'), ctx);
-  const assigned = { unique_id: 'row-assigned', itemcode: 'ABC.001' };
-  const unassigned = { unique_id: 'row-other', itemcode: 'XYZ.999' };
-  for (const user of ['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']) {
-    assert.equal(ctx.canUserMakeLiveChangesOnRow(user, unassigned), true, `${user} global live change`);
-  }
-  for (const alias of ['jorge_colunga', 'Jorge Colunga', 'jorge.colunga', 'Colunga, Jorge', 'jorge']) {
-    assert.equal(ctx.canUserMakeLiveChangesOnRow(alias, assigned), true, `${alias} assigned row`);
-    assert.equal(ctx.canUserMakeLiveChangesOnRow(alias, unassigned), false, `${alias} unassigned row`);
-  }
-  assert.equal(ctx.canUserMakeLiveChangesOnRow('other_admin', unassigned), true);
-  const migration = read('supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql');
-  assert.match(migration, /ph_inventory_row_assignments[\s\S]*ph_warehouse_assigned_items/);
-  assert.match(migration, /drive\.reclass\.submit','assigned'/);
-  assert.match(api, /assertInventoryLiveChangeActorRows\(supabase, activeProfile, liveChangeRows\)/);
-  assert.match(api, /Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items\./);
+export async function assertSharedRowAccess() {
+  const {assertTableDrivenRowAuthorization} = await import('../../tests/helpers/table-row-authorization-contract.mjs');
+  await assertTableDrivenRowAuthorization();
 }
 
 export async function assertAdminShortcuts({ read }) {
@@ -93,8 +59,9 @@ export async function assertAdminShortcuts({ read }) {
 }
 
 export function assertCurrentRequestMatrix({ read }) {
- const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const a=ctx.GncUserAccessControl;
- for(const username of ['nelly_aguilar','nally_aguilar','morgan_anderson']){const m=a.resolveUserAccessMatrix(username);assert.equal(m.make_request,'Y');assert.equal(m.edit_any_row,'Y');assert.equal(m.flyer_folder_access,'Y');}
+ const ctx=vm.createContext({});vm.runInContext((read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js')),ctx);const a=ctx.GncUserAccessControl;
+ for(const username of ['nelly_aguilar','nally_aguilar','morgan_anderson']){const m=a.resolveUserAccessMatrix(username);assert.equal(m.make_request,'N');assert.equal(m.edit_any_row,'N');assert.equal(m.flyer_folder_access,'N');}
+ a.setAccessMatrixRows([{username:'new_request_actor',role:'REP',make_request:'Y',can_make_request:'Y',edit_any_row:'Y',can_edit_all_rows:'Y',flyer_folder_access:'Y'}]);const granted=a.resolveUserAccessMatrix('new_request_actor');assert.equal(granted.make_request,'Y');assert.equal(granted.edit_any_row,'Y');
  a.setAccessMatrixRows([{username:'melissa_dowty',make_request:'Y',can_make_request:'Y',request_all_reps:'Y',sales_rep_access:{abbey_burka:'N',nate_douglas:'Y'}}]);const m=a.resolveUserAccessMatrix('Melissa Dowty');assert.equal(a.canRequestSalesRep(m,'Abbey Burka'),true);assert.equal(a.canRequestSalesRep(m,'Nate Douglas'),true);
  a.setAccessMatrixRows([{...m,make_request:'N',can_make_request:'N'}]);assert.equal(a.canRequestSalesRep(a.resolveUserAccessMatrix('melissa_dowty'),'Nate Douglas'),false);
  assert.equal(a.canRequestSalesRep(m,''),false);

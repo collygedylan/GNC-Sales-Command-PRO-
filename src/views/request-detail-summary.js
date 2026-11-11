@@ -119,3 +119,37 @@ export function buildRequestOpenInfoHtml(item = activeItem, detailSourceView = '
             const snapshot = getRequestOpenInfoSnapshot(item, detailSourceView);
             return snapshot ? buildCompactRequestDetailHeader(item, snapshot) : '';
         }
+
+
+export function queueLagSensitiveInputSave(prefix = '', inputId = '') {
+            const safePrefix = String(prefix || '');
+            if (!isLagSensitiveDetailPrefix(safePrefix) || !activeItem) return;
+            if (SECURE_DRIVE_EVIDENCE_PREFIXES.has(safePrefix) && getDriveEvidenceConflictState(activeItem)) return;
+            const detailView = document.getElementById('view-detail');
+            if (!detailView || detailView.classList.contains('hidden')) return;
+            if (['req-','lsn-','ssn-','na-'].includes(safePrefix)) return publishActiveDetailInputDraft(safePrefix,inputId);
+            if (detailInputSaveTimers[safePrefix]) clearTimeout(detailInputSaveTimers[safePrefix]);
+            const debounceMs = getDetailInputSaveDebounceMs(inputId);
+            const timerId = setTimeout(() => {
+                requestAnimationFrame(() => {
+                    if (detailInputSaveTimers[safePrefix] === timerId) detailInputSaveTimers[safePrefix] = null;
+                    saveData(false, safePrefix, true);
+                });
+            }, debounceMs);
+            detailInputSaveTimers[safePrefix] = timerId;
+        }
+
+async function publishActiveDetailInputDraft(prefix, inputId) {
+    if (!canEditRowDetails(prefix,activeItem)) return;
+    const snapshot = captureConfirmedRowEvaluation(activeItem,prefix);
+    const key = getDetailEvaluationDraftIdentity(snapshot.source);
+    const prior = snapshot.source.__detailEvaluationDraft;
+    const values = prior?.key === key && prior.scope === snapshot.scope && prior.prefix === prefix ? {...prior.values} : {};
+    const input = document.getElementById(inputId);
+    if (input) values[inputId] = String(input.value ?? '');
+    snapshot.source.__detailEvaluationDraft = snapshot.row.__detailEvaluationDraft = {key,scope:snapshot.scope,prefix,values};
+    const receiptKey = snapshot.isSuspend ? getDockSuspendCompletionKey(snapshot.source) : '';
+    const result = await saveData(false,prefix,true,snapshot.row,{markDoneSnapshot:snapshot});
+    acknowledgeSavedSuspendDetailDraft(snapshot,receiptKey);
+    return result;
+}

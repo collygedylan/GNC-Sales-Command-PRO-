@@ -7,6 +7,13 @@ export function buildAvCardPhotoActivationAttrs(hasPhotos) {
     return 'role="button" tabindex="0" aria-label="Open card photos" onclick="return activateAvCardPhotos(event)" onkeydown="return activateAvCardPhotos(event)"';
 }
 
+export function buildAuthorizedAvCardActivationAttrs(item, sourceView, hasPhotos) {
+    if (isAvDetailSource(sourceView) && !globalThis.canEditEvidenceWorkflow?.('lsn-',item,sourceView)) {
+        return buildAvCardPhotoActivationAttrs(hasPhotos);
+    }
+    return buildCardActivationAttrs(item.DOM_ID,item.UNIQUE_ID,sourceView === 'reserves_drill' ? 'av' : sourceView,'Open Item Detail');
+}
+
 export function activateAvCardPhotos(event) {
     if (event.type === 'keydown' && (event.repeat || !['Enter', ' '].includes(event.key))) return true;
     const photoSurface = event.type === 'click'
@@ -37,7 +44,8 @@ export function openAvInventoryCardPhotos(domId, uniqueId) {
 
 export function isAvDetailReadOnlyContext() {
     return isAvDetailSource(activeDetailSourceView || lastView || '')
-        && ['av', 'detail'].includes(getCurrentVisibleViewId());
+        && ['av', 'detail'].includes(getCurrentVisibleViewId())
+        && !globalThis.canEditEvidenceWorkflow?.('lsn-',activeItem);
 }
 
 export function setAvDetailControlDisabled(control, readOnly) {
@@ -53,7 +61,7 @@ export function setAvDetailControlDisabled(control, readOnly) {
 export function applyAvDetailReadOnlyState(sourceView = activeDetailSourceView || lastView || '') {
     const root = document.getElementById('view-detail');
     if (!root) return;
-    const readOnly = isAvDetailSource(sourceView);
+    const readOnly = isAvDetailSource(sourceView) && !globalThis.canEditEvidenceWorkflow?.('lsn-',activeItem);
     root.classList.toggle('detail-av-readonly', readOnly);
     const editors = ['global-inputs-container', 'det-season-content', 'det-location-content',
         'det-notes-content', 'det-request-content', 'detail-shared-panels', 'task-detail-camera-quick'];
@@ -66,3 +74,20 @@ export function applyAvDetailReadOnlyState(sourceView = activeDetailSourceView |
         tab.classList.toggle('hidden', !['dtab-overview', 'dtab-gallery'].includes(tab.id));
     });
 }
+
+export function getPrimaryDetailTabForItemContext(item = activeItem, detailSourceView = '') {
+            const safeSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
+            const assignment = String(firstNonEmptyValue(item && item.APP_TAB_ASSIGNMENT, item && item.app_tab_assignment, '')).toLowerCase();
+            if (safeSourceView === 'tasks' && activeTaskTab) return getTaskDetailTabForItem(item, activeTaskTab);
+            if (safeSourceView === 'not-on-inventory') return 'not-on-inventory';
+            if (safeSourceView === 'request') return 'request';
+            if (safeSourceView === 'docks') return 'docks';
+            if (safeSourceView === 'review' || safeSourceView === 'move-up') return 'ncr';
+            if (globalThis.isAvDetailSource(safeSourceView)) return globalThis.canEditEvidenceWorkflow?.('lsn-',item,safeSourceView) ? 'location' : 'overview';
+            if (safeSourceView === 'drive') return 'location';
+            if (safeSourceView === 'low-stock') {
+                if (assignment === 'season' && isCurrentSeasonSalesNotesRow(item)) return 'season';
+                if (assignment === 'season' || assignment === 'location') return 'location';
+            }
+            return 'overview';
+        }

@@ -300,6 +300,7 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
         options ||= {prefix:'lsn-',complete:true};
     }
     if (!item) throw new Error('Exact inventory row is required.');
+    if (!canPublishRowEvidenceCommand(item,options)) throw new Error('ROW_EVALUATION_FORBIDDEN');
     if (options?.seasonSalesOffice === true) return publishSeasonSalesOfficeEvaluation(item, patch, options);
     if (options?.requestWork) return publishRequestWorkEvaluation(item, patch, options);
     if (!options || options.suspendCompletionScope) {
@@ -1112,35 +1113,8 @@ function getAssignedQueueOwner(row, index = getCardEvalOwnerIndex(getManagerAssi
     return '';
 }
 
-function resolveInventoryRowOwner(row) {
-    const assigned = getAssignedQueueOwner(row);
-    if (assigned) return assigned;
-    for (const key of ['eval_user', 'default_owner', 'effective_worker', 'default_assignedto', 'assignedto']) {
-        const owner = normalizeEvalAssignableUser(row?.[key] || row?.[key.toUpperCase()]);
-        if (owner && !['unassigned', 'none', 'null', 'n_a'].includes(owner)) return owner;
-    }
-    return '';
-}
-
-function resolveCanonicalRowAccess(user, row) {
-    const actor = normalizeEvalAssignableUser(user).replace(/^nally_aguilar$/, 'nelly_aguilar');
-    const named = GLOBAL_LIVE_CHANGE_USER_KEYS.has(actor) || ['admin','manager'].includes(actor);
-    const matrix = actor && !named ? resolveUserAccessMatrix(actor) : null;
-    const role = String(matrix?.role || (actor === normalizeEvalAssignableUser(currentUser) ? currentRole : '') || '').trim().toUpperCase().replace(/[ _-]/g, '');
-    const power = named
-        || ['SUPERADMIN','ADMIN','ADMINISTRATOR','MANAGER'].includes(role) || matrix?.edit_any_row === 'Y';
-    const scoped = ['EVAL','EVALUATOR'].includes(role) || matrix?.edit_assigned_rows_only === 'Y';
-    const canEdit = !!(actor && row && (power || scoped && resolveInventoryRowOwner(row) === actor || role === 'MANAGER' && !matrix?.verified));
-    return { canView: !!(actor && row), canEditAnyRow: !!(actor && power), canEdit, canUnlock: canEdit, canReclass: canEdit,
-        canUploadPhoto: canEdit, canCompleteTag: canEdit, canManageLocations: canEdit };
-}
-
 function canUserEditRow(user, row) {
     return resolveCanonicalRowAccess(user, row).canEdit;
-}
-function canUserUnlockRow(user, row) {
-    return !!row && (resolveCanonicalRowAccess(user, row).canUnlock
-        || user === currentUser && /^(?:SUPERADMIN|ADMIN|ADMINISTRATOR|MANAGER|QCSUPERVISOR)$/.test(String(currentRole || '').toUpperCase().replace(/[ _-]/g,'')));
 }
 function canUserReclassRow(user, row) {
     return resolveCanonicalRowAccess(user, row).canReclass;
@@ -1157,7 +1131,7 @@ function queueAccessScope(tab = 'suspend-tag') {
         const all = ['ADMIN','ADMINISTRATOR','SUPERADMIN'].includes(role);
         return { user, all, initial: all ? 'ALL' : user };
     }
-    const all = matrix?.view_all_requests == null ? ['dylan_collyge','jd_jones','megan_kelly','nelly_aguilar','morgan_anderson'].includes(user) : matrix.view_all_requests === 'Y';
+    const all = matrix?.verified === true && matrix.view_all_requests === 'Y';
     return { user, all, initial: all && (matrix?.request_default_scope || 'ALL') === 'ALL' ? 'ALL' : user };
 }
 

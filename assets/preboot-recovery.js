@@ -1,3 +1,12 @@
+function applyPrebootOutdoorPreference() {
+  try {
+    const mode = localStorage.getItem('gnc_outdoor_mode_v1');
+    if (mode === 'auto' || mode === 'off') localStorage.setItem('gnc_outdoor_mode_v1', '0');
+    else if (mode === 'on') localStorage.setItem('gnc_outdoor_mode_v1', '1');
+    if (localStorage.getItem('gnc_outdoor_mode_v1') === '1') document.documentElement.classList.add('outdoor-mode');
+  } catch { globalThis.safeIgnoreProbeError?.('shell-bootstrap'); }
+}
+
 function hasPrebootRememberedSession(env) {
   try {
     if (env.window.__agdataSessionBoundary === true || env.localStorage.getItem('gnc_explicit_logout_v1') === '1') return false;

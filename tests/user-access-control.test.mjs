@@ -1,11 +1,11 @@
+import {readAccessControlSource} from './helpers/access-policy-source.mjs';
 // @test-group: user-access-control
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 
-const source = fs.readFileSync(new URL('../assets/user-access-control.js', import.meta.url), 'utf8');
+const source = readAccessControlSource();
 const permissions = {
     can_access_drive_mode: true, can_access_av: true, can_access_que: true,
     can_access_manager_tab: false, can_manage_user_access: false,

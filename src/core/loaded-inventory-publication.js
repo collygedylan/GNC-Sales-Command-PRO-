@@ -63,12 +63,12 @@ function hydrateLoadedRequestRow(item) {
     if (!masterItem) {
         normalizeRowPhotoFields(item);
         buildSearchIndex(item);
-        return item;
+        return mergeRequestLiveCanonicalEvidence(item);
     }
     syncMasterFieldsToRequestRow(masterItem, item);
     item.APP_TAB_ASSIGNMENT = firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, masterItem.APP_TAB_ASSIGNMENT);
     hydrateLoadedRequestEvalMeta(item);
-    return item;
+    return mergeRequestLiveCanonicalEvidence(item);
 }
 
 function publishLoadedRequestInventory(res, hasMaster) {

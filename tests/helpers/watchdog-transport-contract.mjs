@@ -18,7 +18,7 @@ export async function assertWatchdogTransportRecovery() {
     const context=vm.createContext({Response,Headers,AbortController,setTimeout,clearTimeout,URL,URLSearchParams,Map,Set,
         window:{GncRuntimeWatchdog:{observeError:()=>observed++,record:()=>observed++}},document:{body:{dataset:{currentView:'request'}},hidden:false},
         navigator:{},SUPABASE_URL:'https://kzrnyjsosryejjejliii.supabase.co',APP_API_FUNCTION_URL:'https://api.fixture',SUPABASE_KEY:'fixture',
-        SUPABASE_WRITE_TIMEOUT_MS:1000,APP_VERSION:'3.0.73',nativeAuthRecoveryEpoch:1,currentUser:'same-owner',PRELOGIN_BACKGROUND_ACTIONS:new Set(),
+        SUPABASE_WRITE_TIMEOUT_MS:1000,APP_VERSION:'3.0.74',nativeAuthRecoveryEpoch:1,currentUser:'same-owner',PRELOGIN_BACKGROUND_ACTIONS:new Set(),
         isAllowedAppHostname:()=>true,isLoginScreenVisible:()=>false,getCurrentAppSessionToken:()=> 'same-session',
         getSupabaseReadIdentityScope:()=> 'same-owner',getNativeAuthRequestHeaders:async()=>({Authorization:'same-session'}),
         fetchSupabaseRestViaAppApiIfNeeded:async()=>null,

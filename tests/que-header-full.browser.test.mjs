@@ -77,8 +77,8 @@ test('full compiled Que mounts the shared search and all nine view commands with
         assert.deepEqual(errors,[]);
         assert.deepEqual(fixture.blockedMutations,[]);
         if (process.env.GNC_QUE_PROOF_DIRECTORY) {
-            await page.screenshot({path:path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.73-que-full-fixture.png')});
-            fs.writeFileSync(path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.73-que-full-header.json'),JSON.stringify({measurements,errors,blockedMutations:fixture.blockedMutations},null,2));
+            await page.screenshot({path:path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.74-que-full-fixture.png')});
+            fs.writeFileSync(path.join(process.env.GNC_QUE_PROOF_DIRECTORY,'v3.0.74-que-full-header.json'),JSON.stringify({measurements,errors,blockedMutations:fixture.blockedMutations},null,2));
         }
         t.diagnostic('Both mobile widths and all nine actual setReqTab transitions passed.');
     } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}

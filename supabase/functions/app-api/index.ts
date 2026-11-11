@@ -3,9 +3,11 @@ import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanF
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../_shared/historical-snapshot-transport.mjs";
 import { executeManagerTableManagement } from "../../../src/core/erp-action-discrepancy-rpc.ts";
+import { handleScopedPhotoUpload } from "../../../src/services/photo-upload-handler.ts";
+import { authorizePhotoUpload, type PhotoAuthorizationDependencies } from "../../../src/services/photo-upload-authorization.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.72";
-const APP_RUNTIME_RELEASE = "AgData v3.0.72";
+const APP_RUNTIME_VERSION = "3.0.74";
+const APP_RUNTIME_RELEASE = "AgData v3.0.74";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -45,16 +47,7 @@ import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
 import { auraInventoryV2Rpc } from "../_shared/aura-inventory.ts";
 import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail, isPhotoHistoryUsernameAllowed } from "../_shared/photo-history.ts";
 import { isCustomerRepMappingEditorRole, validateCustomerRepMappingRequest } from "../_shared/customer-rep-mapping.ts";
-import {
-  PHOTO_LEGACY_MAX_BYTES,
-  PHOTO_V2_DISPLAY_MAX_BYTES,
-  PHOTO_V2_THUMB_144_MAX_BYTES,
-  PHOTO_V2_THUMB_320_MAX_BYTES,
-  readPositivePhotoDimension,
-  sha256Hex,
-  type ValidatedPhotoPart,
-  validatePhotoPart,
-} from "../_shared/photo-upload.ts";
+import { sha256Hex, type ValidatedPhotoPart } from "../_shared/photo-upload.ts";
 
 const corsHeaders = {
   "Vary": "Origin",
@@ -89,8 +82,6 @@ const PHOTO_BUCKETS: Record<string, string> = {
   "flyer-": "flyer_photos",
   default: "flyer_photos",
 };
-const REP_ALLOWED_PHOTO_PREFIXES = new Set(["req-", "credit-", "eval-"]);
-const PROTECTED_DRIVE_PHOTO_PREFIXES = new Set(["ssn-", "lsn-", "na-", "flyer-"]);
 const LEGACY_TABLE_ALIASES: Record<string, string> = {
   v2_cav: "ph_cav_import",
   ph_cav: "ph_cav_import",
@@ -6749,182 +6740,21 @@ async function alphaTimeoffApprove(session: AuthorizedAuraSession, payload: Reco
 }
 
 async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, req: Request) {
-  if (!session) return errorResponse("Unauthorized", 401);
-  const access = getRoleAccessState(session.role);
-  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
-
-  const form = await req.formData();
-  const prefix = String(form.get("prefix") || "default").trim();
-  if (access.isRepLike && !REP_ALLOWED_PHOTO_PREFIXES.has(prefix)) {
-    return errorResponse("REP users can only upload request or credit photos.", 403);
-  }
-  const file = form.get("file");
-  if (!(file instanceof File)) return errorResponse("No photo file was provided.", 400);
-  const uploadContract = String(form.get("uploadContract") || "").trim().toLowerCase();
-  const isV2Upload = uploadContract === "plant-photo-v2";
-
-  let evalWorkId = "";
-  let evalOriginUid = "";
-  let evalMultiOrigin = false;
-  if (prefix === "eval-") {
-    evalWorkId = String(form.get("workId") || "").trim();
-    const originUid = String(form.get("originUid") || "").trim();
-    evalOriginUid = originUid;
-    if (!/^[A-Za-z0-9._-]+$/.test(originUid)) {
-      return errorResponse("Invalid Eval origin.", 400, { code: "eval_work_photo_origin_invalid" });
-    }
-    const rawRow = await loadAuthorizedEvalWork(session, evalWorkId).catch(() => null);
-    const row = rawRow ? (await withEvalWorkOrigins([rawRow]).catch(() => []))[0] : null;
-    const actor = normalizeUsername(session.username || session.displayName || "");
-    const originAllowed = row && String(row.contract_version || "") === "eval-work-v2-multi-origin"
-      ? (Array.isArray(row.origins) && (row.origins as Record<string, unknown>[])
-        .some((origin) => String(origin.origin_unique_id || "") === originUid))
-      : String(row && row.origin_unique_id || "") === originUid;
-    evalMultiOrigin = !!row && String(row.contract_version || "") === "eval-work-v2-multi-origin";
-    if (!row || !isEvalWorkAssignedTo(row, actor)
-      || !["open", "in_progress"].includes(String(row.status || ""))
-      || !originAllowed) {
-      return errorResponse("Eval photo upload is not authorized for this assignment and row.", 403, { code: "eval_work_photo_forbidden" });
-    }
-  }
-
-  let protectedMasterUid = "";
-  if (PROTECTED_DRIVE_PHOTO_PREFIXES.has(prefix)) {
-    protectedMasterUid = String(form.get("masterUid") || "").trim();
-    const expectedItemcode = String(form.get("itemCode") || "").trim();
-    const expectedLocation = String(form.get("locationCode") || "").trim();
-    const expectedLot = String(form.get("lotCode") || "").trim();
-    if (!protectedMasterUid || !expectedItemcode || !expectedLocation || !expectedLot) {
-      return errorResponse("Exact Drive row identity is required.", 400, { code: "drive_photo_identity_required" });
-    }
-    const { data: masterRow, error: masterError } = await supabase
-      .from("ph_master_inventory")
-      .select("unique_id,itemcode,locationcode,lotcode")
-      .eq("unique_id", protectedMasterUid)
-      .maybeSingle();
-    if (masterError || !masterRow
-      || String(masterRow.itemcode || "").trim() !== expectedItemcode
-      || String(masterRow.locationcode || "").trim() !== expectedLocation
-      || String(masterRow.lotcode || "").trim() !== expectedLot) {
-      return errorResponse("Drive row identity changed. Refresh before uploading.", 409, { code: "drive_photo_row_conflict" });
-    }
-    const actor = await resolveActiveSessionProfile(session).catch(() => null);
-    if (!actor) return errorResponse("An active profile is required for Drive photo uploads.", 403, { code: "drive_photo_forbidden" });
-    const actorKey = normalizeInventoryLiveChangeUsername(actor.username);
-    const matrix = await resolveUserAccessMatrix(supabase,actor.username);
-    if (matrix && matrix.edit_any_row !== 'Y' && matrix.edit_assigned_rows_only !== 'Y' && matrix.flyer_folder_access !== 'Y') return errorResponse("Row updates are disabled for your account.",403,{code:"drive_photo_forbidden"});
-    if (!matrix && !access.isAdmin && !/^(admin|administrator|manager|eval|evaluator)$/i.test(String(actor.role || "")) && !GLOBAL_INVENTORY_LIVE_CHANGE_USERS.has(actorKey) && actorKey !== "jorge_colunga") {
-      return errorResponse("Drive photo upload requires an authorized active profile.", 403, { code: "drive_photo_forbidden" });
-    }
-    try {
-      await assertInventoryLiveChangeActorRows(supabase, actor, [{
-        uniqueId: protectedMasterUid, itemcode: expectedItemcode, locationcode: expectedLocation, lotcode: expectedLot,
-      }]);
-    } catch (error) {
-      const message = actorKey === "jorge_colunga"
-        ? "Live changes for jorge_colunga are only permitted on rows assigned to jorge_colunga in Assigned Items."
-        : "Drive photo upload is only enabled on inventory rows assigned to your account.";
-      return errorResponse(message, 403, { code: String(error instanceof Error ? error.message : "drive_photo_forbidden") });
-    }
-  }
-
-  const bucketName = PHOTO_BUCKETS[prefix] || PHOTO_BUCKETS.default;
-  if (!isV2Upload) {
-    try {
-      const legacy = await validatePhotoPart(file, PHOTO_LEGACY_MAX_BYTES);
-      const requestedFileName = sanitizeStorageFileName(String(form.get("fileName") || file.name || ""));
-      const originalName = sanitizeFileName(String(form.get("fileName") || file.name || "photo"));
-      const requestedBase = requestedFileName ? requestedFileName.replace(/\.[^.]+$/, "") : `${originalName}-${Date.now()}`;
-      const fileName = `${requestedBase}.${legacy.extension}`;
-      const filePath = prefix === "eval-"
-        ? (evalMultiOrigin ? `eval/${evalWorkId}/${String(evalOriginUid)}/${fileName}` : `eval/${evalWorkId}/${fileName}`)
-        : (protectedMasterUid
-          ? `drive/${sanitizeStorageFileName(protectedMasterUid)}/${fileName}`
-          : `${new Date().toISOString().split("T")[0]}/${fileName}`);
-      await uploadImmutablePhotoObject(bucketName, filePath, legacy);
-      const publicUrlData = supabase.storage.from(bucketName).getPublicUrl(filePath);
-      return jsonResponse({
-        ok: true,
-        contractVersion: "plant-photo-legacy-compatible",
-        publicUrl: String(publicUrlData.data.publicUrl || "").trim(),
-        bucketName,
-        filePath,
-        mimeType: legacy.mimeType,
-        byteCount: legacy.bytes.byteLength,
-        masterUid: protectedMasterUid || undefined,
-      });
-    } catch (error) {
-      const code = String(error instanceof Error ? error.message : error || "");
-      if (["PHOTO_TOO_LARGE", "PHOTO_ENCODING_UNSUPPORTED", "PHOTO_MIME_MISMATCH"].includes(code)) {
-        return errorResponse("This app version cannot safely upload that photo. Refresh the app and retry.", 409, { code: "PHOTO_TOO_LARGE_REFRESH_REQUIRED" });
-      }
-      return errorResponse("Photo upload is temporarily unavailable. Retry without retaking the photo.", 503, { code: "PHOTO_UPLOAD_RETRY" });
-    }
-  }
-
-  const thumbnail144 = form.get("thumbnail144");
-  const thumbnail320 = form.get("thumbnail320");
-  if (!(thumbnail144 instanceof File) || !(thumbnail320 instanceof File)) {
-    return errorResponse("The optimized thumbnail set is incomplete. Refresh the app and retry.", 400, { code: "PHOTO_THUMBNAILS_REQUIRED" });
-  }
-  try {
-    const [displayPart, thumb144Part, thumb320Part] = await Promise.all([
-      validatePhotoPart(file, PHOTO_V2_DISPLAY_MAX_BYTES),
-      validatePhotoPart(thumbnail144, PHOTO_V2_THUMB_144_MAX_BYTES),
-      validatePhotoPart(thumbnail320, PHOTO_V2_THUMB_320_MAX_BYTES),
-    ]);
-    if (displayPart.mimeType !== thumb144Part.mimeType || displayPart.mimeType !== thumb320Part.mimeType) {
-      return errorResponse("The optimized photo encodings do not match. Refresh the app and retry.", 400, { code: "PHOTO_MIME_MISMATCH" });
-    }
-    const width = readPositivePhotoDimension(form, "displayWidth", 1920);
-    const height = readPositivePhotoDimension(form, "displayHeight", 1920);
-    const thumbnail144Width = readPositivePhotoDimension(form, "thumbnail144Width", 144);
-    const thumbnail144Height = readPositivePhotoDimension(form, "thumbnail144Height", 144);
-    const thumbnail320Width = readPositivePhotoDimension(form, "thumbnail320Width", 320);
-    const thumbnail320Height = readPositivePhotoDimension(form, "thumbnail320Height", 320);
-    const hash = await sha256Hex(displayPart.bytes);
-    const base = prefix === "eval-" ? (evalMultiOrigin ? `eval/${evalWorkId}/${evalOriginUid}/` : `eval/${evalWorkId}/`) : "";
-    const filePath = `${base}v2/${hash}.${displayPart.extension}`;
-    const thumbnail144Path = `${base}_thumbs/v2/${hash}-w144.${displayPart.extension}`;
-    const thumbnail320Path = `${base}_thumbs/v2/${hash}-w320.${displayPart.extension}`;
-    await Promise.all([
-      uploadImmutablePhotoObject(bucketName, thumbnail144Path, thumb144Part),
-      uploadImmutablePhotoObject(bucketName, thumbnail320Path, thumb320Part),
-    ]);
-    await uploadImmutablePhotoObject(bucketName, filePath, displayPart);
-    const publicUrl = String(supabase.storage.from(bucketName).getPublicUrl(filePath).data.publicUrl || "").trim();
-    const thumbnail144Url = String(supabase.storage.from(bucketName).getPublicUrl(thumbnail144Path).data.publicUrl || "").trim();
-    const thumbnail320Url = String(supabase.storage.from(bucketName).getPublicUrl(thumbnail320Path).data.publicUrl || "").trim();
-    return jsonResponse({
-      ok: true,
-      contractVersion: "plant-photo-v2",
-      publicUrl,
-      bucketName,
-      filePath,
-      thumbnailUrls: { "144": thumbnail144Url, "320": thumbnail320Url },
-      thumbnail144Url,
-      thumbnail320Url,
-      width,
-      height,
-      thumbnail144Width,
-      thumbnail144Height,
-      thumbnail320Width,
-      thumbnail320Height,
-      mimeType: displayPart.mimeType,
-      byteCount: displayPart.bytes.byteLength,
-      thumbnail144ByteCount: thumb144Part.bytes.byteLength,
-      thumbnail320ByteCount: thumb320Part.bytes.byteLength,
-      sha256: hash,
-      masterUid: protectedMasterUid || undefined,
-    });
-  } catch (error) {
-    const code = String(error instanceof Error ? error.message : error || "");
-    if (code === "PHOTO_TOO_LARGE") return errorResponse("The compressed photo is still too large. Retake it or retry after refresh.", 413, { code: "PHOTO_TOO_LARGE" });
-    if (code === "PHOTO_MIME_MISMATCH") return errorResponse("The photo encoding did not match its MIME type.", 400, { code: "PHOTO_MIME_MISMATCH" });
-    if (code === "PHOTO_ENCODING_UNSUPPORTED") return errorResponse("Only JPEG or WebP plant photos can be uploaded.", 415, { code: "PHOTO_ENCODING_UNSUPPORTED" });
-    if (code === "PHOTO_DIMENSIONS_INVALID") return errorResponse("The optimized photo dimensions are invalid. Refresh and retry.", 400, { code: "PHOTO_DIMENSIONS_INVALID" });
-    return errorResponse("Photo upload is temporarily unavailable. Retry without retaking the photo.", 503, { code: "PHOTO_UPLOAD_RETRY" });
-  }
+  const rpc=supabase.rpc.bind(supabase) as unknown as PhotoAuthorizationDependencies["rpc"];
+  return await handleScopedPhotoUpload(session,req,{
+    buckets:PHOTO_BUCKETS,json:jsonResponse,error:errorResponse,normalizeUsername,
+    isRepLike:role=>getRoleAccessState(role).isRepLike,isEvalAssigned:isEvalWorkAssignedTo,
+    loadEvalAssignment:async (activeSession,id)=>{
+      const row=await loadAuthorizedEvalWork(activeSession,id).catch(()=>null);
+      return row ? (await withEvalWorkOrigins([row]).catch(()=>[]))[0]||null : null;
+    },
+    authorize:(activeSession,request,form,prefix)=>authorizePhotoUpload(activeSession,request,form,prefix,{
+      resolveActor:resolveActiveSessionProfile,normalizeUsername,rpc,
+      verifyNativeSession:(actor,request)=>verifySuspendTagSession(supabase,actor,request),
+    }),
+    upload:uploadImmutablePhotoObject,publicUrl:(bucket,path)=>String(supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl||"").trim(),
+    sanitizeFileName,sanitizeStorageFileName,
+  });
 }
 
 type BunchNoteRpcResult = { data: unknown; error: { message?: string; code?: string } | null };

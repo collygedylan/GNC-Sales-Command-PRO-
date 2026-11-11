@@ -1,3 +1,5 @@
+import {inspectWatchdogFooter} from '../../src/services/watchdog-queue-controls.js';
+import {resolveDetailKeypadInsertion} from '../../src/ui/detail-keypad-insertion.js';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
@@ -15,7 +17,7 @@ function install(ctx, source, names) {
 export function keypadContract(source = runtime + '\n' + read('assets/row-workflow-functions.js')) {
     const input = {id:'req-spec',value:'',dataset:{},selectionStart:0,selectionEnd:0,setSelectionRange(){}};
     const preview = {}, keyboard = {classList:{contains:()=>true,remove(){}},dataset:{}};
-    const ctx = vm.createContext({detailMeasurementKeyboardTarget:input,detailMeasurementKeyboardType:'spec',
+    const ctx = vm.createContext({resolveDetailKeypadInsertion,detailMeasurementKeyboardTarget:input,detailMeasurementKeyboardType:'spec',
         detailMeasurementKeyboardChoiceOpen:'',detailMeasurementKeyboardAvNoteMode:'letters',detailMeasurementKeyboardRenderSignature:'',
         document:{activeElement:null,getElementById:id=>id.includes('value-preview')?preview:null},
         getDetailMeasurementKeyboardTypeForInput:()=>ctx.detailMeasurementKeyboardType,
@@ -66,6 +68,7 @@ export function watchdogViewportContract() {
         getElementById:id=>id==='bottom-nav'?nav:null,querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
     const ctx=vm.createContext({document:doc,global:{innerHeight:760,visualViewport:{offsetTop:80,height:740}},state:{username:'test'},
         reportField:(...a)=>alerts.push(a),reportHandledRuntimeIssue:()=>true,isIgnorableRuntimeNoise:()=>false});
+    ctx.inspectWatchdogFooter = inspectWatchdogFooter;
     install(ctx,read('assets/runtime-watchdog.js'),['inspectIntegrity','observeError']);
     ctx.inspectIntegrity(null,'detail');assert.equal(alerts.length,0);
     ctx.global.visualViewport.offsetTop=0; activeClasses.add('detail-measurement-keyboard-open');

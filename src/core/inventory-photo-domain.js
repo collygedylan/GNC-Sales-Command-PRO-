@@ -1,4 +1,5 @@
 import { canonicalInventorySameLot, canonicalInventoryLot, canonicalInventoryRowUid, canonicalInventoryLinkedUid, resolveCanonicalInventoryTarget } from '../engine/canonical-inventory-evidence.js';
+import { waitForOperationalPrerequisite } from '../services/operational-rpc-retry.js';
 
 export function parsePhotoCsvValues(value = '') {
     return String(value || '').replace(/(data:image\/[^,]+),/gi, '$1\u0000').split(',')
@@ -114,18 +115,7 @@ async function sendPreparedNativeRowPhoto(formData, options) {
         nativeForm.set('masterUid',options.nativeMaster.UNIQUE_ID);
     }
     const nativeOptions = options.nativeMaster ? { ...options, attachPhoto:false } : options;
-    try {
-        return await uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
-    } catch (error) {
-        if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())
-            || [401,403].includes(Number(error?.status)) || error?.code === '42501') throw error;
-        try {
-            return await postAppFunctionFormData(APP_API_FUNCTION_URL, formData, { ...options, label:'Secure photo upload' });
-        } catch (edgeError) {
-            if (Number(edgeError?.status) !== 403 || options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw edgeError;
-            return uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
-        }
-    }
+    return uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
 }
 
 export async function sendPreparedRowPhotoUpload(formData, nativeEvidenceUpload, options) {
@@ -149,48 +139,95 @@ function getRowPhotoUploadIdentity(job, master) {
     };
 }
 
-async function resolveQueuedRowPhotoMaster(job) {
+async function resolveQueuedRowPhotoMaster(job, signal) {
     if (job.prefix === 'req-' && isDockSuspendDcRequestMirrorRow(job.item)) {
-        return resolveSuspendPhotoMaster(job.item, job.uploadController.signal);
+        return resolveSuspendPhotoMaster(job.item, signal);
     }
     return ['req-', 'dock-'].includes(job.prefix) ? findLinkedMasterRow(job.item) : null;
 }
 
-async function uploadRowPhotoAttachment(job) {
-    setDrivePhotoAttachmentStatus(job,'Uploading');
-    job.uploadController = new AbortController();
-    const master = await resolveQueuedRowPhotoMaster(job);
-    if ((master || SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix)) && !nativeAuthSessionActive) {
-        await getNativeAuthRequestHeaders().catch(() => null);
+async function prepareQueuedRowPhoto(job) {
+    const cached = job.prefix === 'req-' ? findLinkedMasterRow(job.item) : null;
+    const masterUid = canonicalInventoryLinkedUid(job.item);
+    if (cached && canonicalInventorySameLot(job.item, cached)
+        && (!masterUid || masterUid === canonicalInventoryRowUid(cached))) return cached;
+    const controller = new AbortController();
+    const cancel = () => controller.abort(job.uploadController.signal.reason);
+    job.uploadController.signal.addEventListener('abort', cancel, {once:true});
+    const timer = setTimeout(() => controller.abort(), 500);
+    try {
+        return await waitForOperationalPrerequisite(() => resolveQueuedRowPhotoMaster(job, controller.signal), {
+            signal:controller.signal, current:() => isCurrentDrivePhotoAttachment(job), timeoutMs:500
+        });
+    } catch (error) {
+        if (controller.signal.aborted && !job.uploadController.signal.aborted) {
+            throw Object.assign(new Error('Photo row preparation timed out.'), {code:'TRANSPORT_TIMEOUT'});
+        }
+        throw error;
+    } finally {
+        clearTimeout(timer);
+        job.uploadController.signal.removeEventListener('abort', cancel);
     }
-    if (!isCurrentDrivePhotoAttachment(job)) return;
-    const identity = getRowPhotoUploadIdentity(job, master);
-    const nativeMaster = master ? { UNIQUE_ID: identity.UNIQUE_ID } : null;
-    const uploaded = await uploadPhotoViaAppApi(job.prefix, job.file, job.fileName, job.file.type || 'image/jpeg', {
-        timeoutMs:30000, signal:job.uploadController.signal, isCurrent:() => isCurrentDrivePhotoAttachment(job),
-        singleUploadAttempt:job.prefix !== 'dock-',
-        nativeMaster,
-        formFields:job.formFields || {masterUid:identity.UNIQUE_ID,itemCode:identity.ITEMCODE,
-            locationCode:identity.LOCATIONCODE,lotCode:identity.LOTCODE}
-    });
+}
+
+function acceptQueuedRowPhotoUpload(job, uploaded) {
     if (!isCurrentDrivePhotoAttachment(job)) return;
     if (!uploaded.publicUrl) throw new Error('Photo upload did not return a saved photo.');
     job.upload = {
         publicUrl:normalizeStoragePublicUrl(uploaded.publicUrl), fileName:String(uploaded.filePath || job.fileName).split('/').pop(),
         filePath:uploaded.filePath, receipt:uploaded.receipt
     };
-    if (job.prefix === 'dock-') setDrivePhotoAttachmentStatus(job,'Uploaded');
+    setDrivePhotoAttachmentStatus(job,'Uploaded');
+}
+
+async function getQueuedRowPhotoHeaders(job) {
+    if (nativeAuthSessionActive && nativeAuthAccessToken && nativeAuthProfile?.id
+        && nativeAuthProfile.active !== false && !nativeAuthProfile.disabled_at
+        && String(nativeAuthProfile.username || '').trim().toLowerCase() === String(currentUser || '').trim().toLowerCase()) {
+        return {apikey:SUPABASE_KEY, Authorization:'Bearer ' + nativeAuthAccessToken};
+    }
+    return waitForOperationalPrerequisite(() => getNativeAuthRequestHeaders(), {
+        signal:job.uploadController.signal, current:() => isCurrentDrivePhotoAttachment(job), timeoutMs:500
+    });
+}
+
+async function uploadRowPhotoAttachment(job) {
+    setDrivePhotoAttachmentStatus(job,'Uploading');
+    job.uploadController = new AbortController();
+    const master = await prepareQueuedRowPhoto(job);
+    const nativeHeaders = master || SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) ? await getQueuedRowPhotoHeaders(job) : null;
+    if (!isCurrentDrivePhotoAttachment(job)) return;
+    const identity = getRowPhotoUploadIdentity(job, master);
+    const nativeMaster = master ? { UNIQUE_ID: identity.UNIQUE_ID } : null;
+    const uploaded = await uploadPhotoViaAppApi(job.prefix, job.file, job.fileName, job.file.type || 'image/jpeg', {
+        timeoutMs:4000, signal:job.uploadController.signal, isCurrent:() => isCurrentDrivePhotoAttachment(job),
+        singleUploadAttempt:job.prefix !== 'dock-',
+        nativeMaster, nativeHeaders, onStorageUploaded:uploaded => acceptQueuedRowPhotoUpload(job, uploaded),
+        formFields:{...(job.formFields || {masterUid:identity.UNIQUE_ID,itemCode:identity.ITEMCODE,
+            locationCode:identity.LOCATIONCODE,lotCode:identity.LOTCODE}),...capturedPhotoSourceFields(job)}
+    });
+    acceptQueuedRowPhotoUpload(job, uploaded);
+    if (!uploaded.thumbnailUploads) return;
+    const thumbnails = uploaded.thumbnailUploads.then(results => {
+        if (results.some(result => result.status === 'rejected')) {
+            globalThis.reportHandledRuntimeIssue?.('uploadRowPhotoAttachment','PHOTO_THUMBNAIL_UPLOAD_FAILED');
+        }
+    });
+    registerPendingPhotoUpload(job.item,job.prefix,thumbnails,true);
+}
+
+function capturedPhotoSourceFields(job) {
+    if (job.prefix!=='req-') return {};
+    return isDockSuspendDcRequestMirrorRow(job.item)
+        ? {suspendTagId:getDockSuspendDcRequestSourceUid(job.item)}
+        : {requestId:job.identity.UNIQUE_ID};
 }
 
 async function persistQueuedRowPhoto(job) {
-    if (SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix)) {
-        const actionKey = job.scope + '|' + getRowSaveCoordinatorKey(job.prefix,job.item);
-        await window.__agdataMarkDoneActions?.get(actionKey)?.finished;
-    }
     return retryPhotoOperation(job, () => {
         const conflict = job.commandRow?.__driveEvidenceConflict;
         if (conflict && !resetPhotoAttachmentConflict(job, conflict)) throw new Error('Photo row identity changed.');
-        return persistDrivePhotoAttachment(job);
+        return globalThis.persistDrivePhotoAttachment(job);
     }, ROW_PHOTO_SAVE_RETRY_DELAYS, isRetryablePhotoSave);
 }
 
@@ -220,7 +257,7 @@ function runRowPhotoAttachmentWithRetry(job) {
     const upload = () => job.upload ? undefined : uploadRowPhotoAttachment(job);
     if (job.prefix === 'dock-') return retryPhotoOperation(job, async () => {
         await upload();
-        return enqueueRowPhotoSave(job, null, persistDrivePhotoAttachment);
+        return enqueueRowPhotoSave(job, null, globalThis.persistDrivePhotoAttachment);
     }, [0], isTransientPhotoUploadFailure);
     const uploaded = retryPhotoOperation(job, upload, ROW_PHOTO_TRANSFER_RETRY_DELAYS, isRetryablePhotoTransfer);
     return enqueueRowPhotoSave(job, uploaded);
@@ -233,6 +270,7 @@ export function retryDrivePhotoAttachment(id) {
     if (conflict && !resetPhotoAttachmentConflict(job,conflict)) return false;
     job.running = true;
     const run = runRowPhotoAttachmentWithRetry(job);
+    job.promise = run;
     // An exact-row Drive job owns its append independently of the text evaluation.
     // Keep it in the shared activity registry for update and session safety.
     registerPendingPhotoUpload(job.item,job.prefix,run,SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix));
@@ -242,6 +280,30 @@ export function retryDrivePhotoAttachment(id) {
         showToast('Photo not saved',formatPhotoUploadErrorMessage(error),true);
     }).finally(() => { job.running = false; });
     return false;
+}
+
+function getScopedDetailRowPhotoJobs(item, prefix) {
+    const uid = String(item?.UNIQUE_ID || item?.unique_id || '');
+    return [...drivePhotoAttachments.values()].filter(job => uid && isCurrentDrivePhotoAttachment(job)
+        && String(job.identity.UNIQUE_ID) === uid && (!prefix || job.prefix === prefix));
+}
+
+export function getDetailRowPhotoUploadPromises(item, prefix = '') {
+    return getScopedDetailRowPhotoJobs(item, prefix).map(job => job.promise).filter(Boolean);
+}
+
+export function hasUnsettledDetailRowPhotos(item, prefix = '') {
+    return getScopedDetailRowPhotoJobs(item, prefix).length > 0
+        || getPendingPhotoPreviewEntries(item, prefix).some(entry => entry.status !== 'Uploaded');
+}
+
+export function setDrivePhotoAttachmentStatus(job, status) {
+    if (!isCurrentDrivePhotoAttachment(job)) return;
+    job.status = status;
+    getPendingPhotoPreviewEntries(job.item, job.prefix).forEach(entry => {
+        if (entry.id === job.preview.id) Object.assign(entry, { status, uploadId:job.id, scope:job.scope, storageUrl:job.upload?.publicUrl });
+    });
+    refreshPendingPhotoUiForItem(job.item, job.prefix);
 }
 
 export async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {

@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { assertInventoryLiveChangeActorRows } from '../supabase/functions/_shared/production-workflow.ts';
+import {fixture as rowAccessFixture,engines as rowAccessEngines} from '../src/core/canonical-row-fixture.mjs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const runtime = read('assets/runtime-watchdog.js');
@@ -112,7 +113,7 @@ test('Drive, AV, Docks and Que use the shared non-blocking view hydration coordi
 });
 
 test('super-admin receives every flag while ordinary accounts retain server-authored permissions', async () => {
-  const clientSource = read('assets/user-access-control.js');
+  const clientSource = (read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js'));
   const server = { exports: {} };
   vm.runInNewContext(ts.transpileModule(read('supabase/functions/_shared/canonical-user-access.ts'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
@@ -144,7 +145,7 @@ test('super-admin receives every flag while ordinary accounts retain server-auth
 });
 
 test('AURA uses super-admin or explicit matrix capability while voice routing follows server capabilities', async () => {
-  const clientSource = read('assets/user-access-control.js');
+  const clientSource = (read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js'));
   const clientWindow = {};
   vm.runInNewContext(clientSource, { window: clientWindow });
   const clientAuraOwner = clientWindow.GncUserAccessControl.isAuraOwner;
@@ -207,7 +208,7 @@ test('background Home rendering retains the active Manager module', () => {
   assert.equal(ctx.activeHomeTab, 'access-control');
 });
 
-test('global live-change users and Jorge assigned-row access share one canonical client and server guard', () => assertSharedRowAccess({ shellFunction, html, api, read }));
+test('canonical row writes require verified table grants and exact ownership', assertSharedRowAccess);
 
 test('Jorge server guard accepts exact and legacy Assigned Items ownership and rejects every unassigned row', async () => {
   const rowsByTable = {
@@ -306,23 +307,19 @@ test('Request requester choices allow only REP, CSR, Admin and active mapped rep
   assert.match(html, /key\.startsWith\('rep:'\)\) return \{ rows: sourceRows, shown: sourceRows\.length/);
 });
 
-test('Eval Reclass entry and submit require Assigned Items ownership while global/admin access stays intact', () => {
-  const ctx = vm.createContext({
-    currentRole: 'Evaluator', currentUserDisplay: 'Taylor Eval',
-    GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser']),
-    normalizeLiveChangeUsername: value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
-    getRoleAccessState: role => ({ isEval: /eval/i.test(role || ctx.currentRole), isAdmin: /admin/i.test(role || ctx.currentRole) }),
-    isRowAssignedToUser: (user, row) => ['taylor_eval', 'taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
+test('Eval Reclass entry and submit require table-granted exact ownership', () => {
+  const {ctx} = rowAccessFixture([...rowAccessEngines,'isEvalReclassRowAssigned'],{
+    currentUser:'taylor_eval',currentRole:'Evaluator',nativeAuthProfile:{id:'fixture-profile',username:'taylor_eval',role:'EVAL',active:true},
+    getRoleAccessState:()=>({isEval:true,isAdmin:false}),
+    resolveInventoryRowOwner:row=>row.unique_id==='assigned'?'taylor_eval':'other'
   });
-  Object.assign(ctx,{currentUser:'taylor_eval',normalizeEvalAssignableUser:v=>v,resolveUserAccessMatrix:()=>({role:ctx.currentRole}),
-    resolveInventoryRowOwner:row=>row.unique_id==='assigned'?'taylor_eval':'other'});
-  vm.runInContext(['resolveCanonicalRowAccess','canUserReclassRow','isEvalReclassRowAssigned'].map(shellFunction).join('\n'), ctx);
   assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'assigned' }), true);
   assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'other' }), false);
-  ctx.currentRole = 'Admin';
+  ctx.currentRole = 'Admin';ctx.currentUser='admin_user';ctx.nativeAuthProfile.username='admin_user';
+  ctx.resolveUserAccessMatrix=()=>({verified:true,profile_id:'fixture-profile',role:'Admin',edit_any_row:'Y',view_permissions:{view_drive_mode:'Y'}});
   assert.equal(ctx.isEvalReclassRowAssigned('admin_user', { unique_id: 'other' }), true);
   ctx.currentRole = 'Evaluator';
-  assert.equal(ctx.isEvalReclassRowAssigned('dylan_collyge', { unique_id: 'other' }), true);
+  assert.equal(ctx.isEvalReclassRowAssigned('dylan_collyge', { unique_id: 'other' }), false);
   const actionContext = vm.createContext({
     currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') ?? '',
@@ -383,7 +380,7 @@ test('Eval-user filters retain crop roles while Que owner switching stays admini
 });
 
 test('verified administrator controls remain available during a same-account refresh', () => {
-  const source=read('assets/user-access-control.js');
+  const source=(read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js'));
   const ctx=vm.createContext({selfStatus:'loading',selfDenied:false,selfRecord:{verified:true,profile:{id:'actor',username:'dylan_collyge',role:'super-admin'},effective_permissions:{can_manage_user_access:true}},
     getIdentity:()=>({id:'actor',username:'dylan_collyge'}),resolveUserAccessMatrix:()=>({manage_user_access:'Y'}),yn:value=>value,isSuperAdminRole:role=>role==='super-admin'});
   vm.runInContext(source.match(/    function isVerifiedManager\([^]*?^    }/m)[0],ctx);
@@ -395,7 +392,7 @@ test('full-app administrators ignore stale Tasks-only overrides and produce the 
 
 test('transient access and navigation fallbacks cannot revoke Dylan or pause live refresh', () => {
   const accessContext = shellFunction('getProductionLiveSyncContext');
-  const userAccess = read('assets/user-access-control.js');
+  const userAccess = (read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js'));
   assert.doesNotMatch(accessContext, /getSelfState[^]*denied/);
   assert.match(accessContext, /accessDeniedConfirmed = context\.accessDenied/);
   assert.match(coordinator, /ctx\.accessDenied === true && ctx\.accessDeniedConfirmed !== false/);

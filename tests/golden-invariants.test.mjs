@@ -1767,7 +1767,9 @@ test('Invariant 93 (Jorge Live Changes Require Canonical Assigned-Row Proof at E
   assert.match(runtime, /Live changes are only enabled for rows assigned to you in the Assigned Items tab\./);
   assert.match(workflow, /GLOBAL_INVENTORY_LIVE_CHANGE_USERS[\s\S]*mitch_kaiser/);
   assert.match(workflow, /ph_inventory_row_assignments[\s\S]*ph_warehouse_assigned_items/);
-  assert.match(api, /handlePhotoUpload[\s\S]*assertInventoryLiveChangeActorRows/);
+  assert.match(api, /handlePhotoUpload[\s\S]*authorize:\(activeSession,request,form,prefix\)=>authorizePhotoUpload/);
+  assert.match(read('src/services/photo-upload-handler.ts'), /protectedPrefixes\.has\(prefix\) \? await deps\.authorize\(session,request,form,prefix\)/);
+  assert.match(read('src/services/photo-upload-authorization.ts'), /await deps\.rpc\("authorize_photo_upload_v3074"/);
   assert.match(migration, /require_drive_live_change_profile_v2392[\s\S]*save_drive_evidence_v3/);
   assert.match(migration, /can_access_drive_mode[\s\S]*can_access_av[\s\S]*can_access_que[\s\S]*can_access_manager_tab[\s\S]*can_submit_reclass/);
 });
@@ -5883,15 +5885,10 @@ test('Invariant 434 (coalesces identical row writes and defers background paint 
     await serializedQueueInteractionContract();
 });
 
-test('Invariant 435 (field failures, geometry and personal Queue mismatches reach the sanitized Watchdog)', async () => {
-    const { fieldWatchdogContract } = await import('./helpers/watchdog-field-contract.mjs');
-    await fieldWatchdogContract();
-});
+import {fieldWatchdogContract,watchdogReviewContract,reviewedQueueWatchdogContract} from './helpers/watchdog-field-contract.mjs';
+test('Invariant 435 (field failures, geometry and personal Queue mismatches reach the sanitized Watchdog)', fieldWatchdogContract);
 
-test('Invariant 436 (Watchdog reviews seven days of unresolved fingerprints and routes all three named administrators)', async () => {
-    const { watchdogReviewContract } = await import('./helpers/watchdog-field-contract.mjs');
-    await watchdogReviewContract();
-});
+test('Invariant 436 (Watchdog reviews seven days of unresolved fingerprints and routes all three named administrators)', watchdogReviewContract);
 
 test('Invariant 437 (Complete Tag closes blank False Block rows on the first paint)', async () => {
     const { closeUnreviewedContract } = await import('./helpers/suspend-field-release-contract.mjs');
@@ -6577,10 +6574,8 @@ test('Invariant 526 (explicit physical On Hand zero controls live photo match)',
   dockZeroProjectionContract();
 });
 
-test('Invariant 527 (Suspend editable receipts must identify the requested source)', async () => {
-  const { suspendExactReceiptContract } = await import('./helpers/golden-dock-domain-contract.mjs');
-  suspendExactReceiptContract();
-});
+import {assertTableDrivenRowAuthorization,assertExistingSuspendExactReceiptContract} from './helpers/table-row-authorization-contract.mjs';
+test('Invariant 527 (Suspend editable receipts must identify the requested source)', assertExistingSuspendExactReceiptContract);
 
 test('Invariant 528 (Suspend Plan Start index preserves unique and ambiguous fallback)', async () => {
   const { suspendPlanstartIndexContract } = await import('./helpers/golden-dock-domain-contract.mjs');
@@ -6638,11 +6633,8 @@ test('Invariant 534 (transactionless migrations remain enclosed by one atomic ru
   const { migrationAtomicityInvariant } = await import('../src/core/golden-transport-invariants.mjs');
   migrationAtomicityInvariant();
 });
-test('Invariant 535 (Suspend detail rejects failed pending uploads before publishing or navigation)', async () => {
-  const { detailSaveChecks, suspendUploadFailureChecks } = await import('../src/core/suspend-detail-save-contract.mjs');
-  await detailSaveChecks();
-  await suspendUploadFailureChecks();
-});
+import {assertDetailLiveDraftRetention,assertExistingSuspendDetailContract} from './helpers/detail-live-draft-contract.mjs';
+test('Invariant 535 (Suspend detail rejects failed pending uploads before publishing or navigation)', assertExistingSuspendDetailContract);
 test('Invariant 536 (Suspend completion receipts require current source and a valid completion time)', async () => {
   const { lateSuspendReceiptChecks } = await import('../src/core/suspend-late-receipt-contract.mjs');
   const { suspendTagReceiptMatchesSource } = await import('../src/core/suspend-receipt-domain.js');
@@ -6837,3 +6829,7 @@ test('Invariant 631: only a real update banner tap with a current idle checkpoin
 import {verifyColdProfileIsolation,verifyLateReadIsDiscarded} from './helpers/cold-access-retry-contract.mjs';
 test('Invariant 632: a cold alias sees full navigation only for its verified current profile',verifyColdProfileIsolation);
 test('Invariant 633: a successful operational read from a previous account cannot settle the new session',verifyLateReadIsDiscarded);
+
+test('Invariant 634: exact-row drafts publish before photo completion and survive failed uploads and blank Request refreshes',assertDetailLiveDraftRetention);
+test('Invariant 635: photo, evaluation and completion entrypoints require verified table grants and exact ownership without named-user exceptions',assertTableDrivenRowAuthorization);
+test('Invariant 636: a populated Que dropdown passes Watchdog and review reads preserve open incidents under the same native session',reviewedQueueWatchdogContract);

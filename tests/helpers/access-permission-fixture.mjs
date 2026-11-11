@@ -1,7 +1,7 @@
-import fs from 'node:fs';
+import {readAccessControlSource} from './access-policy-source.mjs';
 import vm from 'node:vm';
 import {JSDOM} from 'jsdom';
-const source=fs.readFileSync(new URL('../../assets/user-access-control.js',import.meta.url),'utf8');
+const source=readAccessControlSource();
 export async function permissionFixture(){
  const dom=new JSDOM('<div id="manager"></div>',{url:'http://localhost'}),root=dom.window;let fail=false;const commands=[],completions=[];
  vm.runInContext(source,vm.createContext({window:root,crypto:root.crypto,console}));const api=root.GncUserAccessControl;

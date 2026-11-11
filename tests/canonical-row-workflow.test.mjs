@@ -3,24 +3,30 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
 
-test('named power users can act on foreign and completed inventory rows', () => {
+test('only a verified table grant permits foreign and completed inventory rows', () => {
     const {ctx} = fixture([...engines,'canUserMakeLiveChangesOnRow','isEvalReclassRowAssigned','canUnlockCompletedRow','canEditRowDetails','canCurrentUserUpdateDrivePhotoData'], {
-        resolveUserAccessMatrix:()=>({edit_any_row:'N',edit_assigned_rows_only:'N',verified:true}),
+        resolveUserAccessMatrix:()=>({edit_any_row:'N',edit_assigned_rows_only:'N',verified:true,view_permissions:{view_drive_mode:'Y'}}),
         getRoleAccessState:()=>({}),getEditableDetailItemForPrefix:(_p,row)=>row
     });
     for (const user of ['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nally_aguilar','nelly_aguilar','morgan_anderson']) {
         ctx.currentUser = user;
+        ctx.nativeAuthProfile.username = user;
         for (const row of [{ITEMCODE:'004424.020.1'},{ITEMCODE:'001973.030.1',completed:true}]) {
-            for (const action of engines.slice(-4)) assert.equal(ctx[action](user,row),true,action);
-            assert.ok(ctx.canEditRowDetails('ssn-',row) && ctx.canUnlockCompletedRow(row) && ctx.canCurrentUserUpdateDrivePhotoData(row) && ctx.isEvalReclassRowAssigned(user,row));
+            for (const action of engines.slice(-4)) assert.equal(ctx[action](user,row),false,action);
+            assert.equal(ctx.canEditRowDetails('ssn-',row),false);
         }
     }
+    ctx.currentUser = 'unlisted_writer';ctx.nativeAuthProfile.username = ctx.currentUser;
+    ctx.resolveUserAccessMatrix = () => ({verified:true,profile_id:'fixture-profile',edit_any_row:'Y',view_permissions:{view_drive_mode:'Y'}});
+    const row = {ITEMCODE:'001973.030.1',completed:true};
+    assert.ok(ctx.canEditRowDetails('ssn-',row) && ctx.canUnlockCompletedRow(row) && ctx.canCurrentUserUpdateDrivePhotoData(row) && ctx.isEvalReclassRowAssigned(ctx.currentUser,row));
 });
-test('assigned evaluators use exact then six-digit owner before mirrored fields', () => {
+test('assigned evaluators require exact owner evidence before mirrored fields', () => {
     const {ctx} = fixture(engines);
-    for (const code of ['004380.010.1','004424.020.1','004380.999.1']) {
+    for (const code of ['004380.010.1','004424.020.1']) {
         for (const action of engines.slice(-4)) assert.equal(ctx[action]('chris_fisher',{ITEMCODE:code,eval_user:'other_eval'}),true);
     }
+    assert.equal(ctx.canUserEditRow('chris_fisher',{ITEMCODE:'004380.999.1',eval_user:'other_eval'}),false);
     assert.equal(ctx.canUserEditRow('chris_fisher',{ITEMCODE:'001973.030.1',eval_user:'chris_fisher'}),false);
 });
 test('unlock paints the exact row while native headers are still pending', () => {

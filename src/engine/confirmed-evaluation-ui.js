@@ -1,4 +1,4 @@
-import { canonicalInventoryRowUid } from './canonical-inventory-evidence.js';
+import { canonicalInventoryRowUid, canonicalInventoryLinkedUid, canonicalInventoryLot, canonicalInventorySameLot } from './canonical-inventory-evidence.js';
 import { beginRowEvaluationMemoryPublication, resolveEvaluationProjectionTarget } from './row-publication-branches.js';
 
 export function applyRequestWorkValuesToItem(item, values = {}) {
@@ -154,4 +154,169 @@ function createConfirmedEvaluationUiState(undo) {
         finally { undo.undoRemoval?.(); }
     };
     return state;
+}
+
+
+export async function saveData(isComplete = false, prefix, isSilentAutoSave = false, specificItem = null, options = {}) {
+            if (!specificItem && globalThis.isAvDetailReadOnlyContext()) return false;
+            if (!isComplete) {
+                const field = document.getElementById(String(prefix || '')+'av-note');
+                if (field?.dataset.explicitAvNote === '1' && activeItem) options={...options,explicit_av_note:true,explicitAvNoteValue:String(field.value ?? ''),explicitAvNoteOwner:String(activeItem.UNIQUE_ID || activeItem.unique_id || '')};
+            }
+            if (!isComplete) return globalThis.persistConfirmedRowEvaluation(false,prefix,isSilentAutoSave,specificItem,options);
+            if (isSilentAutoSave || options.markDoneConfirmationAccepted) return persistPhotoSettledEvaluation(prefix,isSilentAutoSave,specificItem,options);
+            const item = specificItem || activeItem;
+            if (!item) return false;
+            if (!canEditRowDetails(prefix,item) || (prefix === 'req-' && !canCurrentUserWorkRequestItem(item,isDockSuspendDcRequestMirrorRow(item) ? 'edit' : 'complete'))
+                || (prefix !== 'req-' && isProtectedSectionCompleted(prefix,item) && !isProtectedUnlocked(prefix))) {
+                showRowEditRestrictedToast(prefix); return false;
+            }
+            const actionKey = getSupabaseReadIdentityScope() + '|' + getRowSaveCoordinatorKey(prefix,item);
+            const actions = window.__agdataMarkDoneActions ||= new Map();
+            if (actions.has(actionKey)) return false;
+            let finish;
+            const token = { finished:new Promise(resolve => { finish = resolve; }) };
+            actions.set(actionKey,token);
+            let optimistic = null;
+            try {
+                let snapshot = captureConfirmedRowEvaluation(item,prefix);
+                const plan = prepareMarkDoneCompletionPrompt(snapshot.row,prefix);
+                // This call paints the confirmation before any coordinator, upload or RPC await.
+                if (!await openMarkDoneConfirmModal(plan)) return false;
+                if (snapshot.scope !== getSupabaseReadIdentityScope()) return false;
+                snapshot = await settleDetailEvaluationPhotos(snapshot);
+                const coordinator = getRowSaveCoordinatorState(getRowSaveCoordinatorKey(prefix,item));
+                if (coordinator) coordinator.completionIntentUntil = Date.now() + ROW_SAVE_COMPLETE_INTENT_MS;
+                optimistic = beginConfirmedRowEvaluationUi(snapshot);
+                if (optimistic.prepareBeforePersist && !await optimistic.prepareBeforePersist()) return false;
+                const persistOptions = { ...options, markDoneConfirmationAccepted:true, markDoneSnapshot:snapshot,
+                    optimisticCompletion:optimistic, suspendTagValues:snapshot.values || undefined,
+                    suspendTagScope:snapshot.scope, suspendTagNavigationSignal:null };
+                const pendingSave = globalThis.persistConfirmedRowEvaluation(true,prefix,false,snapshot.row,persistOptions);
+                // Independent optional inventory edits may run alongside the canonical save.
+                const followups = [pendingSave];
+                if (plan.shouldSaveInventory) followups.push(Promise.resolve().then(() => saveInventoryEditMockInlineForm(plan.inventoryForm,{silent:true})));
+                const results = await Promise.allSettled(followups);
+                if (results[0].status === 'rejected') { optimistic.rollback(); throw results[0].reason; }
+                if (!optimistic.settled) optimistic.rollback();
+                for (const result of results.slice(1)) if (result.status === 'rejected' || result.value?.ok === false) showToast('Inventory Checks','The row save finished, but inventory edits need retry.',true);
+                return optimistic.confirmed;
+            } catch (error) {
+                if (optimistic?.confirmed) { queueVisibleDatasetCatchup(0); globalThis.reportHandledRuntimeIssue?.('saveData','HANDLED_OPERATION_FAILURE'); return true; }
+                optimistic?.rollback(); showToast('Save Stopped',error?.message || 'Your draft is retained. Please retry.',true); return false;
+            }
+            finally {
+                if (actions.get(actionKey) === token) actions.delete(actionKey);
+                finish();
+            }
+        }
+
+async function persistPhotoSettledEvaluation(prefix, silent, item, options) {
+    const snapshot = options.markDoneSnapshot || captureConfirmedRowEvaluation(item || activeItem,prefix);
+    try {
+        const settled = await settleDetailEvaluationPhotos(snapshot);
+        if (settled.scope !== getSupabaseReadIdentityScope()) return false;
+        return await globalThis.persistConfirmedRowEvaluation(true,prefix,silent,settled.row,{...options,markDoneSnapshot:settled});
+    } catch (error) {
+        options.optimisticCompletion?.rollback();
+        if (!silent) showToast('Save Stopped',error?.message || 'Your draft is retained. Please retry.',true);
+        return false;
+    }
+}
+
+async function settleDetailEvaluationPhotos(snapshot) {
+    const rows = snapshot.uploadRows?.length ? snapshot.uploadRows : [snapshot.source];
+    const collect = row => [...getPendingPhotoUploadsForItem(row,snapshot.prefix),
+        ...(globalThis.getDetailRowPhotoUploadPromises?.(row,snapshot.prefix) || [])];
+    const uploads = [...new Set([...snapshot.uploads,...rows.flatMap(collect)])];
+    const unsettled = () => rows.some(row => globalThis.hasUnsettledDetailRowPhotos?.(row,snapshot.prefix));
+    if (!uploads.length && !unsettled()) return snapshot;
+    await globalThis.persistConfirmedRowEvaluation(false,snapshot.prefix,true,snapshot.row,{markDoneSnapshot:snapshot});
+    showToast('Saving','Your entries are retained while the photo finishes uploading.');
+    const results = await Promise.allSettled(uploads);
+    if (snapshot.scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+    if (results.some(result => result.status === 'rejected') || unsettled()) {
+        throw new Error('Photo not saved. Your entries and photos are retained on this row. Retry the photo, then Mark Done.');
+    }
+    const navigation = snapshot.detailNavigation;
+    if (navigation?.ownsEditor && activeItem === navigation.editor && detailHydrationToken === navigation.token) {
+        snapshot = captureConfirmedRowEvaluation(snapshot.source,snapshot.prefix);
+    }
+    mergeConfirmedRowEvaluationUploads(snapshot);
+    return snapshot;
+}
+
+function getActiveDetailEvaluationDraft(row) {
+    const editor = typeof activeItem === 'undefined' ? null : activeItem;
+    if (!editor || !canonicalInventorySameLot(editor,row)) return null;
+    const rowMaster = canonicalInventoryLinkedUid(row) || canonicalInventoryRowUid(row);
+    const editorMaster = canonicalInventoryLinkedUid(editor) || canonicalInventoryRowUid(editor);
+    if (rowMaster !== editorMaster) return null;
+    if (canonicalInventoryRowUid(row) !== rowMaster && canonicalInventoryRowUid(row) !== canonicalInventoryRowUid(editor)) return null;
+    const retained = editor.__detailEvaluationDraft;
+    const sameOwner = retained?.scope === getSupabaseReadIdentityScope()
+        && retained.key === getDetailEvaluationDraftIdentity(editor);
+    if (!sameOwner) return null;
+    const activePrefix = typeof getDetailTabPrefix === 'function' && typeof activeDetailTab !== 'undefined'
+        ? getDetailTabPrefix(activeDetailTab) : '';
+    const prefix = activePrefix || retained.prefix;
+    if (!['req-','lsn-','ssn-','na-'].includes(prefix) || retained.prefix !== prefix) return null;
+    const draft = {...readRowEvaluationDraft(editor,prefix),...retained.values};
+    return Object.keys(draft).length ? {prefix,draft,retained} : null;
+}
+
+export function getDetailEvaluationDraftIdentity(row) {
+    const part = key => String(row?.[key] ?? row?.[key.toLowerCase()] ?? '').trim().toUpperCase();
+    return JSON.stringify([canonicalInventoryRowUid(row),part('ITEMCODE'),part('LOCATIONCODE'),canonicalInventoryLot(row)]);
+}
+
+export function acknowledgeDetailEvaluationDraft(row, receipt, scope) {
+    if (scope !== getSupabaseReadIdentityScope() || !canonicalInventorySameLot(row,receipt)) return;
+    const saved = getActiveDetailEvaluationDraft(row);
+    if (!saved?.retained) return;
+    const aliases = {spec:['REQ_SPEC','DOCK_SPEC','SPEC'],caliper:['REQ_CALIPER','DOCK_CALIPER','CALIPER'],
+        match:['REQ_MATCH','DOCK_MATCH_PCT','MATCH','LOC_MATCH_PCT'],'av-note':['AV_NOTE'],
+        pick:['REQ_PICK','REQ_PIC_NOTE','PICK','PIC_NOTE'],comments:['REQ_COMMENTS','SALES_NOTE','COMMENTS']};
+    for (const [id,value] of Object.entries(saved.retained.values)) {
+        const field = id.slice(saved.prefix.length);
+        const key = (aliases[field] || []).find(key => Object.hasOwn(receipt,key) || Object.hasOwn(receipt,key.toLowerCase()));
+        if (!key) continue;
+        const stored = receipt[key] ?? receipt[key.toLowerCase()] ?? '';
+        if (String(stored).trim() === String(value).trim()) delete saved.retained.values[id];
+    }
+    if (Object.keys(saved.retained.values).length) return;
+    for (const item of [row,typeof activeItem === 'undefined' ? null : activeItem]) {
+        if (item?.__detailEvaluationDraft === saved.retained) delete item.__detailEvaluationDraft;
+    }
+}
+
+export function acknowledgeSavedSuspendDetailDraft(snapshot, key) {
+    if (!key || snapshot.scope !== getSupabaseReadIdentityScope()) return;
+    const state = getDockSuspendCompletionState();
+    const receipt = state.scope === snapshot.scope ? state.receipts?.[key] : null;
+    if (receipt?.row) acknowledgeDetailEvaluationDraft(snapshot.source,receipt.row,snapshot.scope);
+}
+
+export function applyActiveDetailEvaluationDraft(result, row) {
+    if (typeof readRowEvaluationDraft !== 'function') return result;
+    const saved = getActiveDetailEvaluationDraft(row);
+    if (!saved) return result;
+    const {prefix,draft} = saved;
+    if (saved.retained) result.__detailEvaluationDraft = saved.retained;
+    const fields = {spec:['SPEC'],caliper:['CALIPER'],match:['MATCH','MATCH_PCT','LOC_MATCH_PCT'],
+        'av-note':['AV_NOTE'],pick:['PIC_NOTE','PICK_NOTE','PICK'],comments:['SALES_NOTE','COMMENTS']};
+    for (const [field,keys] of Object.entries(fields)) {
+        const id = prefix + field;
+        if (!Object.hasOwn(draft,id)) continue;
+        const value = field === 'match' ? getEditableLocMatchPercentValue(draft[id]) : String(draft[id] ?? '');
+        for (const key of keys) result[key] = result[key.toLowerCase()] = value;
+        if (prefix === 'req-') {
+            const key = field === 'av-note' ? 'AV_NOTE' : 'REQ_' + field.toUpperCase();
+            result[key] = result[key.toLowerCase()] = value;
+        }
+        if (field !== 'match') continue;
+        const quantity = getEditorLocMatchQtyValue(result,value);
+        result.LOC_PHOTO_MATCH = result.loc_photo_match = result.LOC_MATCH_QTY = result.loc_match_qty = quantity;
+    }
+    return result;
 }
