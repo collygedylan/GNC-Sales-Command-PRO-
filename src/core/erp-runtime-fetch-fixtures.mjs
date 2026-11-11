@@ -1,4 +1,10 @@
+import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
+
+export function fixtureErpReceipt(dataset, fileName, rows) {
+  return { ok: true, skip: false, stage_commit: 'canonical_atomic_import',
+    dataset_key: dataset, file_name: fileName, source_rows: rows, staged_rows: rows };
+}
 
 export function mockDriveMetadata(url,init){
   if(!url.pathname.match(/\/files\/[^/]+$/)||!url.searchParams.has('fields')||init?.method==='PATCH')return null;
@@ -84,4 +90,43 @@ export async function failedSourceFetch(input,init,{archived, listed}){
       return new Response('itemcode,commonname,brandcode\n001,Blue Grass,B1\n');
     }
     throw new Error(`unexpected Drive call ${url}`);
+}
+
+export function withArchiveProof(fetcher, bytes, originalParents) {
+  const parents = new Map(), versions = new Map();
+  const checksum = createHash('sha256').update(bytes).digest('hex');
+  return async (input, init = {}) => {
+    const url = new URL(input);
+    const id = url.pathname.split('/').at(-1);
+    if (init.method !== 'PATCH' && String(url.searchParams.get('fields')).includes('sha256Checksum')) {
+      return Response.json({ id, parents: parents.get(id) || originalParents, version: String(versions.get(id) || 1), sha256Checksum: checksum });
+    }
+    const response = await fetcher(input, init);
+    if (init.method === 'PATCH' && response.ok) {
+      parents.set(id, url.searchParams.get('addParents').split(','));
+      versions.set(id, (versions.get(id) || 1) + 1);
+    }
+    return response;
+  };
+}
+
+export function singleXlsxDriveSource(bytes) {
+  const file = {id:'xlsx-1', name:'DriveAroundMC-10-12000020261105120000.xlsx',
+    mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    modifiedTime:'2026-10-28T12:00:00Z', parents:['drive-folder']};
+  let archived = false;
+  async function fetchWorkbook(input, init = {}) {
+    const url = new URL(input);
+    const metadata = mockDriveMetadata(url, init);
+    if (metadata) return metadata;
+    if (url.pathname.endsWith('/files')) {
+      const folder = url.searchParams.get('q').match(/'([^']+)'/)[1];
+      return Response.json({files:folder === 'drive-folder' && !archived ? [file] : []});
+    }
+    if (!url.pathname.endsWith('/files/xlsx-1')) throw Error('Unexpected workbook fixture URL ' + url);
+    if (init.method !== 'PATCH') return new Response(bytes);
+    archived = true;
+    return Response.json({id:file.id});
+  }
+  return {fetch:withArchiveProof(fetchWorkbook, bytes, file.parents), get archived() { return archived; }};
 }

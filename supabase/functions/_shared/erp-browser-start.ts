@@ -50,3 +50,36 @@ export async function startBrowserErpSyncCommand(command: Data, actor: string, p
   return port.json({ ok: true, status: status.active === true ? "CONTINUE" : status.status || "complete",
     cloudRelay: true, data: { ...status, cloudRelay: true } });
 }
+
+type StatusWriter = { readonly current: Data; persist(...[]: [Data]): Promise<void> };
+
+export function createErpStageCheckRecorder(runId: string, workerId: string, port: Pick<Port, 'rpc' | 'object'>) {
+  return async (key: string): Promise<string> => {
+    const { data, error } = await port.rpc('record_erp_stage_checked_v3070',
+      { p_run_id: runId, p_worker_id: workerId, p_stage_key: key });
+    const result = port.object(data);
+    if (error || result.ok !== true || !result.last_checked_at) throw error || new Error('ERP_STAGE_CHECK_UNCONFIRMED');
+    return String(result.last_checked_at);
+  };
+}
+
+export function deferredErpRetry(status: Data, cursor: Data) {
+  return Number(status.retryNotBefore || 0) > Date.now() ? { result: { done: false, cursor }, status } : null;
+}
+
+export function withErpStageCheckRecording(writer: StatusWriter, record: (...[]: [string]) => Promise<string>): StatusWriter {
+  return {
+    get current() { return writer.current; },
+    async persist(patch: Data) {
+      const progress = patch.sourceProgressDelta;
+      if (progress && typeof progress === 'object' && !Array.isArray(progress)) {
+        const delta = progress as Data;
+        if (delta.checked === true && delta.stage === 'complete') {
+          const checkedAt = await record(String(delta.key || ''));
+          patch = { ...patch, sourceProgressDelta: { ...delta, checkedAt, last_checked_at: checkedAt } };
+        }
+      }
+      await writer.persist(patch);
+    }
+  };
+}

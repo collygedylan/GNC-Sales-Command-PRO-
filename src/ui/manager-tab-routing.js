@@ -1,6 +1,7 @@
 export function setHomeTab(tab = 'dashboard') {
     const requestedTab = String(tab || 'dashboard').trim().toLowerCase();
     if (!managerTableManagementDirectOpen && requestedTab === MANAGER_TABLE_MANAGEMENT_VIEW) return openManagerTableManagement();
+    if (requestedTab === 'action-discrepancy') return openManagerTableManagement(requestedTab);
     if (requestedTab === MANAGER_SALES_REPS_VIEW) return openManagerSalesRepsModule();
     if (!managerTableManagementDirectOpen && typeof getManagerTableManagementKey === 'function' && getManagerTableManagementKey(requestedTab)) return openManagerTableManagement(getManagerTableManagementKey(requestedTab));
     if (!managerTableManagementDirectOpen && requestedTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return openManagerTableManagement('assigned-items');

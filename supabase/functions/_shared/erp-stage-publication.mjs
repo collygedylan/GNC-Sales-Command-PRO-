@@ -4,6 +4,16 @@ export function isRetryableErpFinalizeError(error) {
     || /lock timeout|statement timeout|signal timed out|fetch failed|network|502|503|504|546/i.test(String(error?.message || error || ''));
 }
 
+export function isConfirmedPendingStageReceipt(receipt, dataset, fileName, expectedRows) {
+  const relation = { drive_around: 'ph_master_inventory', cav: 'ph_cav_import',
+    reserves: 'ph_reserves', soc: 'ph_soc_master' }[dataset];
+  return Boolean(relation && receipt?.ok === true && receipt.skip !== true
+    && receipt.stage_commit === 'canonical_atomic_import' && receipt.file_name === fileName
+    && receipt.dataset_key === relation && Number.isSafeInteger(expectedRows) && expectedRows > 0
+    && Number.isSafeInteger(receipt.staged_rows) && receipt.staged_rows === expectedRows
+    && Number.isSafeInteger(receipt.source_rows) && receipt.source_rows > 0);
+}
+
 function publicationProgress(key, fileName, rows, published) {
   return {
     key, fileName, rowsParsed: rows, rowsStaged: rows, rowsTotal: rows,
@@ -37,9 +47,10 @@ async function retryPublication(error, state, status) {
 }
 
 export async function finishStageContinuation({
-  supabase, fetcher, token, file, dataset, stageKey, parentId, processedId, next, status, moveProcessed, maxRows
+  supabase, fetcher, token, file, dataset, stageKey, parentId, processedId, next, status, moveProcessed, maxRows, requireReceipt = false
 }) {
   let finalized = next;
+  let receipt;
   if (Number(finalized.retryNotBefore || 0) > Date.now()) return { done: false, state: finalized };
   try {
     if (finalized.expectedRowsPending) {
@@ -56,16 +67,22 @@ export async function finishStageContinuation({
       } });
       return { done: false, state: { ...finalized, phase: 'finalize', retryNotBefore } };
     }
-    if (error || data?.ok !== true || finalized.expectedRows < 1) throw error || new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
+    if (error || data?.ok !== true || data?.skip === true || Number(data?.source_rows ?? 1) < 1 || finalized.expectedRows < 1) {
+      throw error || new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
+    }
+    if (requireReceipt && !isConfirmedPendingStageReceipt(data, dataset, file.name, finalized.expectedRows)) {
+      throw new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
+    }
+    receipt = data;
     await status({ sourceProgressDelta: publicationProgress(stageKey, file.name, finalized.expectedRows, true) });
   } catch (error) {
     return retryPublication(error, finalized, status);
   }
   try {
-    await moveProcessed(fetcher, token, file, parentId, processedId);
+    await moveProcessed(fetcher, token, { ...file, publishedContentHash: finalized.contentHash }, parentId, processedId);
     return { done: true, result: { key: dataset, outcome: 'processed', sourceFileName: file.name,
       processedFiles: 1, rowCount: finalized.expectedRows } };
   } catch {
-    return { done: false, state: { ...finalized, phase: 'move', moveAttempts: 1 } };
+    return { done: false, state: { ...finalized, phase: 'move', moveAttempts: 1, ...(requireReceipt ? { receipt } : {}) } };
   }
 }

@@ -1,4 +1,8 @@
-import { finishStageContinuation } from './erp-stage-publication.mjs';
+import { finishStageContinuation, isConfirmedPendingStageReceipt } from './erp-stage-publication.mjs';
+import { discoverLatestErpFile, discoverPendingErpFiles } from '../../../src/core/erp-pending-discovery.mjs';
+import { runPendingErpWorkerStep } from '../../../src/core/erp-worker-step.mjs';
+import { parseLegacyErpPage } from '../../../src/core/erp-legacy-workbook.mjs';
+import { moveVerifiedErpFile } from '../../../src/core/erp-archive-receipt.mjs';
 export { isRetryableErpFinalizeError } from './erp-stage-publication.mjs';
 
 function erpFilenameTimestamp(fileName = '', modifiedTime = '') {
@@ -749,34 +753,11 @@ export async function listFiles(fetcher, token, folderId, importableOnly = false
   if (pageToken) throw new Error('ERP_DRIVE_PAGINATION_LIMIT');
   return files;
 }
-export async function listErpSourceFiles(fetcher, token, folders, stage) {
-  const folderId = String(folders[stage.key] || ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0] || '').trim();
-  const processedId = String(folders.processed?.[stage.key] || folders[stage.key + '_processed'] || '').trim();
-  const metadata = folderId ? await driveJson(fetcher, token, 'files/' + encodeURIComponent(folderId), {fields:'id,parents',supportsAllDrives:true}).catch(() => ({})) : {};
-  const locations = [...new Set([folderId,processedId,...(metadata.parents || []),...(ERP_SYNC_SOURCE_FOLDERS[stage.key] || [])].filter(Boolean))];
-  const prefixes = {drive:/^DriveAround/i,cav:/^(?:Dylan Wide Open|CAV)/i,reserves:/^SOC-10\s+Reserves/i,soc:/^SOC-10\s+Open Orders/i};
-  const eligible = file => prefixes[stage.key]?.test(file.name || '') && !shouldIgnoreErpFile(file.name) && /\.(xlsx|csv)$/i.test(file.name || '');
-  const batches = await Promise.allSettled(locations.map(id => listFiles(fetcher,token,id,true)));
-  const files = batches.flatMap(result => result.status === 'fulfilled' ? result.value : []).filter(eligible);
-  const drop = batches[locations.indexOf(folderId)];
-  if (drop?.status !== 'fulfilled' || !drop.value.some(eligible)) {
-    const names = {drive:['DriveAroundMC-10'],soc:['SOC-10 Open Orders'],reserves:['SOC-10 Reserves'],cav:['Dylan Wide Open','CAV']}[stage.key];
-    if (names) {
-      const query = 'trashed=false and (' + names.map(name => "name contains '" + name + "'").join(' or ') + ')';
-      try { files.push(...(await listFiles(fetcher,token,'',true,query)).filter(eligible)); }
-      catch (error) { if (!files.length) throw error; }
-    }
-  }
-  if (!files.length && batches.length && batches.every(result => result.status === 'rejected')) throw new Error('ERP_DROP_FOLDER_READ_FAILED');
-  // Canonical folders win ties for duplicate names; filename timestamps own recency.
-  const unique = [...new Map(files.map(file => [file.id,file])).values()];
-  const sorted=unique.sort(compareErpFiles),newest=sorted[0];
-  if(!newest)return [];
-  const destination=processedId||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[1]||'';
-  const pendingLocations=new Set(locations.filter(id=>id!==destination));
-  return [{...newest,supersededFiles:sorted.slice(1).filter(file=>(file.parents||[]).some(id=>pendingLocations.has(id))
-    && !(file.parents||[]).includes(destination)
-    && erpFilenameTimestamp(file.name,file.modifiedTime)<=erpFilenameTimestamp(newest.name,newest.modifiedTime))}];
+export async function listErpSourceFiles(fetcher, token, folders, stage, options = {}) {
+  const discover = options.pendingOnly ? discoverPendingErpFiles : discoverLatestErpFile;
+  return discover(fetcher, token, folders, stage, {
+    driveJson, listFiles, compareErpFiles, sourceFolders: ERP_SYNC_SOURCE_FOLDERS
+  });
 }
 
 export async function prefetchErpFolders(fetcher,token,folders,existing={}) {
@@ -786,7 +767,7 @@ export async function prefetchErpFolders(fetcher,token,folders,existing={}) {
     const folderId=String(folders[stage.key]||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0]||'').trim(),started=performance.now();
     if(!folderId){snapshot[stage.key]={files:[],listDurationMs:Math.max(0,Math.round(performance.now()-started)),error:'ERP_DROP_FOLDER_ID_MISSING'};return;}
     try {
-      const files=await listErpSourceFiles(fetcher,token,folders,stage);
+      const files=await listErpSourceFiles(fetcher,token,folders,stage,{pendingOnly:true});
       snapshot[stage.key]={files,listDurationMs:Math.max(0,Math.round(performance.now()-started)),fetchedAt:new Date().toISOString()};
     } catch(error) {
       snapshot[stage.key]={files:[],listDurationMs:Math.max(0,Math.round(performance.now()-started)),
@@ -807,20 +788,23 @@ export async function processedFolder(fetcher, token, parentId, configuredId = '
   return created.id;
 }
 export async function moveProcessed(fetcher, token, file, parentId, configuredId = '') {
-  const destination = await processedFolder(fetcher,token,parentId,configuredId);
-  if ((file.parents||[]).includes(destination)) {
-    for(const older of file.supersededFiles||[])await moveProcessed(fetcher,token,older,parentId,destination);
-    return;
+  if (file.publishedContentHash) {
+    return moveVerifiedErpFile(fetcher, token, file, parentId, configuredId,
+      { driveUrl, processedFolder, sourceBytes });
   }
+  const destination = await processedFolder(fetcher,token,parentId,configuredId);
+  if ((file.parents||[]).includes(destination)) return;
   const current = await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
-    fields:'id,parents',supportsAllDrives:true,
+    fields:'id,parents,modifiedTime,md5Checksum',supportsAllDrives:true,
   });
+  if (file.md5Checksum && (current?.md5Checksum !== file.md5Checksum || current?.modifiedTime !== file.modifiedTime)) {
+    throw new Error('ERP_DRIVE_SOURCE_CHANGED_BEFORE_ARCHIVE');
+  }
   const actualParents = Array.isArray(current?.parents) ? current.parents.map(value=>String(value||'').trim()).filter(Boolean) : [];
   if (!actualParents.length) throw new Error('ERP_DRIVE_SOURCE_PARENTS_UNAVAILABLE');
   if (!actualParents.includes(destination)) await driveJson(fetcher,token,`files/${encodeURIComponent(file.id)}`,{
     addParents:destination,removeParents:actualParents.join(','),fields:'id,parents',supportsAllDrives:true,
   },'PATCH');
-  for(const older of file.supersededFiles||[])await moveProcessed(fetcher,token,older,parentId,destination);
 }
 
 export async function sourceBytes(fetcher, token, file) {
@@ -952,8 +936,11 @@ async function stageFile({supabase,fetcher,token,file,dataset,stageKey,parentId,
 }
 
 async function continueProcessedMove({fetcher,token,file,dataset,parentId,processedId,state}) {
+    if (!isConfirmedPendingStageReceipt(state.receipt,dataset,file.name,Number(state.expectedRows))) {
+      throw new Error('ERP_PENDING_RECEIPT_UNCONFIRMED');
+    }
     try {
-      await moveProcessed(fetcher,token,file,parentId,processedId);
+      await moveProcessed(fetcher,token,{...file,publishedContentHash:state.contentHash},parentId,processedId);
       return {done:true,result:{key:dataset,outcome:state.moveOutcome||'processed',sourceFileName:file.name,processedFiles:1,
         ...(state.expectedRows?{rowCount:state.expectedRows}:{})}};
     } catch (error) {
@@ -963,34 +950,30 @@ async function continueProcessedMove({fetcher,token,file,dataset,parentId,proces
     }
 }
 
-export async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,state,
+export async function stageFileContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,status,state,syncRunId,
   maxRowsPerSlice=ERP_SLICE_ROWS_DEFAULT[dataset]||2500}) {
   if (state?.phase === 'move') return continueProcessedMove({fetcher,token,file,dataset,parentId,processedId,state});
   if (state?.phase === 'finalize') {
-    return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next:state,status,moveProcessed,maxRows:maxErpImportRows(dataset)});
+    return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next:state,status,moveProcessed,maxRows:maxErpImportRows(dataset),requireReceipt:true});
   }
-  const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString()};
-  const {data:check,error:checkError} = await supabase.rpc('check_erp_file_sync_needed_v1',{
-    p_dataset_key:dataset,p_file_id:file.id,p_file_name:file.name,p_modified_at:meta.modified_at,p_content_hash:null,
-  });
-  if (checkError) throw checkError;
-  if (check?.skip === true) {
-    try { await moveProcessed(fetcher,token,file,parentId,processedId); }
-    catch { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows:0,nextOffset:0,processedRows:0,identityCounts:{},moveAttempts:1}}; }
-    return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
-  }
+  const meta = {file_id:file.id,file_name:file.name,modified_at:file.modifiedTime || new Date().toISOString(),
+    ...(syncRunId ? {sync_run_id:syncRunId} : {})};
   await status({sourceProgressDelta:{key:stageKey,fileName:file.name,stage:state?'staging':'downloading',percent:state?70:25,updatedAt:new Date().toISOString()}});
   let bytes = await sourceBytes(fetcher,token,file);
   if (state?.modifiedAt && state.modifiedAt !== meta.modified_at) throw new Error('ERP_SOURCE_CHANGED_DURING_IMPORT');
   const isCsv=/\.csv$/i.test(file.name);
-  const contentHash=state?null:await hashHex(bytes);
+  const contentHash=await hashHex(bytes);
+  if (state?.contentHash && state.contentHash !== contentHash) throw new Error('ERP_SOURCE_CHANGED_DURING_IMPORT');
   await status({sourceProgressDelta:{key:stageKey,fileName:file.name,stage:state?'staging':'parsing',percent:state?70:45,updatedAt:new Date().toISOString(),error:''}});
   let allCsvRows=isCsv?parseErpCsv(new TextDecoder('utf-8').decode(bytes)):null;
   const expectedRowsForNew=state?null:isCsv?countImportableRows(allCsvRows,dataset):maxErpImportRows(dataset);
   const pageSize=resolveErpRowsPerSlice(dataset,maxRowsPerSlice);
   // Every workbook, including SOC, checkpoints a bounded worksheet page.
-  const page = isCsv ? null : await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,
-      {...(state?{headerRowIndex:state.headerRowIndex,header:state.header}:{}),dataset});
+  const checkpoint={...(state?{headerRowIndex:state.headerRowIndex,header:state.header}:{}),dataset};
+  const page = isCsv ? null : /\.xls$/i.test(file.name)
+    ? await parseLegacyErpPage(bytes,state?.nextOffset||0,pageSize,checkpoint,{
+      loadWorkbook:()=>import('npm:xlsx@0.18.5'),maxRows:maxErpImportRows(dataset),normalizeHeader:normalizeErpHeader,toObjects:recordsToObjects})
+    : await parseErpXlsxPage(bytes,state?.nextOffset||0,pageSize,checkpoint);
   const pageRows=isCsv?allCsvRows.slice(state?.nextOffset||0,(state?.nextOffset||0)+pageSize):page.rows;
   const nextRawOffset=isCsv?Math.min(allCsvRows.length,(state?.nextOffset||0)+pageRows.length):page.nextOffset;
   const pageDone=isCsv?nextRawOffset>=allCsvRows.length:page.done;
@@ -1012,22 +995,23 @@ export async function stageFileContinuation({supabase,fetcher,token,file,dataset
 async function openStageCheckpoint({supabase,fetcher,token,file,dataset,parentId,processedId},
   {expectedRowsForNew:expectedRows,meta,contentHash,isCsv,page}) {
     if (!expectedRows || expectedRows > maxErpImportRows(dataset)) throw new Error('ERP_ROWS_INVALID');
-    const {data:begin,error:beginError} = await supabase.rpc('fast_begin_erp_stage_v1',{
+    const {data:begin,error:beginError} = await supabase.rpc('begin_pending_erp_stage_v3070',{
       p_dataset_key:dataset,p_file_meta:{...meta,content_hash:contentHash,...(isCsv?{}:{expected_rows_pending:true})},p_expected_rows:expectedRows,
     });
     if (beginError) throw beginError;
-    if (begin?.skipped === true) {
-      try { await moveProcessed(fetcher,token,file,parentId,processedId); }
-      catch { return {done:false,state:{phase:'move',moveOutcome:'UP_TO_DATE',expectedRows,nextOffset:0,processedRows:expectedRows,identityCounts:{},moveAttempts:1}}; }
-      return {done:true,result:{key:dataset,outcome:'UP_TO_DATE',sourceFileName:file.name,processedFiles:1}};
+    if (begin?.committed === true && isConfirmedPendingStageReceipt(begin.receipt,dataset,file.name,Number(begin.expected_rows))) {
+      try { await moveProcessed(fetcher,token,{...file,publishedContentHash:contentHash},parentId,processedId); }
+      catch { return {done:false,state:{phase:'move',moveOutcome:'processed',contentHash,receipt:begin.receipt,expectedRows:Number(begin.expected_rows),moveAttempts:1}}; }
+      return {done:true,result:{key:dataset,outcome:'processed',sourceFileName:file.name,processedFiles:1,rowCount:Number(begin.expected_rows)}};
     }
+    if (begin?.committed === true) throw new Error('ERP_PENDING_RECEIPT_UNCONFIRMED');
     const stageId = String(begin?.stage_id||'');
     const stagedExpected=Number(begin?.expected_rows);
     if (!stageId || !Number.isSafeInteger(stagedExpected) || stagedExpected<1 || stagedExpected>maxErpImportRows(dataset)
       || (isCsv&&stagedExpected!==expectedRows)) throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
     const stagedRows=Math.max(0,Number(begin?.staged_rows)||0);
     if(stagedRows>stagedExpected)throw new Error('ERP_STAGE_BEGIN_UNCONFIRMED');
-    return {state:{stageId,expectedRows:stagedExpected,expectedRowsPending:!isCsv,nextOffset:0,
+    return {state:{stageId,expectedRows:stagedExpected,expectedRowsPending:!isCsv,nextOffset:0,contentHash,
       processedRows:stagedRows,stagedPrefixRows:stagedRows,identityCounts:{},modifiedAt:meta.modified_at,
       ...(isCsv?{}:{headerRowIndex:page.headerRowIndex,header:page.header})}};
 }
@@ -1056,7 +1040,7 @@ async function appendStageCheckpoint({supabase,fetcher,token,file,dataset,stageK
   if (!pageDone) return {done:false,state:next};
   if(next.stagedPrefixRows)throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
   // EOF plus an exact staged count is the publication boundary; do not idle at 95%.
-  return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status,moveProcessed,maxRows:maxErpImportRows(dataset)});
+  return finishStageContinuation({supabase,fetcher,token,file,dataset,stageKey,parentId,processedId,next,status,moveProcessed,maxRows:maxErpImportRows(dataset),requireReceipt:true});
 }
 
 export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,accessToken}) {
@@ -1105,143 +1089,12 @@ export async function runErpSyncWorker({supabase,env,fetcher=fetch,status,access
   return {ok:!blocked && !failed,stageResults};
 }
 
-export async function runErpSyncWorkerStep({supabase,env,fetcher=fetch,status,cursor={},accessToken,maxRowsPerSlice}) {
-  const sliceStartMs=performance.now();
-  const foldersRaw = env('ERP_SYNC_DROP_FOLDERS_JSON');
-  if (!foldersRaw || !accessToken) throw new Error('ERP_SYNC_CREDENTIALS_NOT_CONFIGURED');
-  const folders = JSON.parse(foldersRaw), token = String(accessToken);
-  const stageResults = Array.isArray(cursor.stageResults) ? cursor.stageResults.slice() : [];
-  const attemptedByStage = cursor.attemptedByStage && typeof cursor.attemptedByStage === 'object' ? {...cursor.attemptedByStage} : {};
-  let stageIndex = Math.max(0,Math.min(STAGES.length,Number(cursor.stageIndex)||0));
-  const initialStageIndex = stageIndex;
-  let folderSnapshot=cursor.folderSnapshot&&typeof cursor.folderSnapshot==='object'&&!Array.isArray(cursor.folderSnapshot)?{...cursor.folderSnapshot}:{};
-  folderSnapshot=await prefetchErpFolders(fetcher,token,folders,folderSnapshot);
-  const resume = cursor.fileContinuation && typeof cursor.fileContinuation === 'object' ? cursor.fileContinuation : null;
-  const activeStage=STAGES[resume?Number(resume.stageIndex):stageIndex];
-  const resumePhase=resume?.state?.phase;
-  const resumeProgress=resumePhase==='move'?{stage:'published',percent:100,publicationConfirmed:true,publishedFileName:resume.file?.name,rowsPublished:resume.state?.expectedRows||0}:resumePhase==='finalize'?{stage:'publishing',percent:95}:resume?{stage:'staging',percent:70}:{stage:'checking',percent:10};
-  const effectiveMaxRowsPerSlice=resolveErpRowsPerSlice(activeStage?.dataset,
-    maxRowsPerSlice??resume?.state?.maxRowsPerSlice??cursor.maxRowsPerSlice);
-  const snapshotCursor={stageIndex,stageResults:stageResults.slice(),attemptedByStage,folderSnapshot,
-    maxRowsPerSlice:effectiveMaxRowsPerSlice,
-    ...(resume?{fileContinuation:resume}:{})};
-  await status({status:'CONTINUE',stageIndex,currentStage:STAGES[stageIndex]?.key||'hl_po_parsed',currentStageLabel:STAGES[stageIndex]?.key.toUpperCase()||'HL PO',continuationCursor:snapshotCursor,
-    ...(activeStage?{sourceProgressDelta:{key:activeStage.key,...resumeProgress,
-      ...(resume?{fileName:resume.file?.name,rowsParsed:resume.state?.processedRows||0}:{}),updatedAt:new Date().toISOString(),error:''}}:{})});
-  if (resume) {
-    const stage = STAGES[Number(resume.stageIndex)];
-    const file = resume.file;
-    if (!stage || !file?.id) throw new Error('ERP_CONTINUATION_INVALID');
-    const folderId = String(folders[stage.key]||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0]||'').trim();
-    const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
-    const sliceStarted=performance.now();
-    const step = await stageFileContinuation({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,
-      parentId:folderId,processedId,status,state:resume.state||null,maxRowsPerSlice:effectiveMaxRowsPerSlice,sliceStartMs});
-    const hasPriorElapsed=resume.state?.elapsedMs!==undefined&&Number.isFinite(Number(resume.state.elapsedMs));
-    const listDurationMs=Math.max(0,Number(resume.state?.listDurationMs??folderSnapshot[stage.key]?.listDurationMs)||0);
-    const elapsedMs=(hasPriorElapsed?Number(resume.state.elapsedMs):listDurationMs)+Math.max(0,Math.round(performance.now()-sliceStarted));
-    let nextCursor;
-    if (step.done) {
-      stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,
-        listDurationMs,durationMs:elapsedMs});
-      const attempted = new Set(Array.isArray(attemptedByStage[stage.key])?attemptedByStage[stage.key]:[]);
-      attempted.add(String(file.id)); attemptedByStage[stage.key]=[...attempted];
-      const pending=(folderSnapshot[stage.key]?.files||[]).some(candidate=>!attempted.has(String(candidate.id)));
-      stageIndex=Number(resume.stageIndex)+(pending?0:1);
-      if(!pending)await status({sourceProgressDelta:buildOperationalStageCheckpoint(stage.key,stageResults)});
-      nextCursor={stageIndex,stageResults,attemptedByStage,folderSnapshot};
-    } else nextCursor={stageIndex:Number(resume.stageIndex),stageResults,attemptedByStage,maxRowsPerSlice:effectiveMaxRowsPerSlice,
-      fileContinuation:{...resume,state:step.state?{...step.state,elapsedMs,maxRowsPerSlice:effectiveMaxRowsPerSlice}:null},folderSnapshot};
-    await status({status:'CONTINUE',currentStage:STAGES[nextCursor.stageIndex]?.key||'hl_po_parsed',currentStageLabel:STAGES[nextCursor.stageIndex]?.key.toUpperCase()||'HL PO',stageIndex:nextCursor.stageIndex,
-      continuationCursor:nextCursor,stageResults:stageResults.slice(),fileId:file.id,
-      nextOffset:step.state?.nextOffset??null,lastCompletedFile:step.done?file.name:undefined});
-    return {done:false,cursor:nextCursor};
-  }
-  while (stageIndex < STAGES.length) {
-    if(stageIndex>initialStageIndex && performance.now()-sliceStartMs>=ERP_SLICE_BUDGET_MS){
-      const nextStage=STAGES[stageIndex];
-      const nextRowsPerSlice=resolveErpRowsPerSlice(nextStage?.dataset,maxRowsPerSlice??cursor.maxRowsPerSlice);
-      const nextCursor={stageIndex,stageResults,attemptedByStage,folderSnapshot,maxRowsPerSlice:nextRowsPerSlice};
-      await status({status:'CONTINUE',currentStage:nextStage?.key||'idle',stageIndex,continuationCursor:nextCursor,
-        stageResults:stageResults.slice()});
-      return {done:false,cursor:nextCursor};
-    }
-    const stageStarted=performance.now();
-    const stage = STAGES[stageIndex], folderId = String(folders[stage.key]||ERP_SYNC_SOURCE_FOLDERS[stage.key]?.[0]||'').trim();
-    const stageRowsPerSlice=resolveErpRowsPerSlice(stage.dataset,maxRowsPerSlice??cursor.maxRowsPerSlice);
-    const processedId = String(folders.processed?.[stage.key]||folders[`${stage.key}_processed`]||'').trim();
-    const snapshot=folderSnapshot[stage.key]&&typeof folderSnapshot[stage.key]==='object'?folderSnapshot[stage.key]:{};
-    const listDurationMs=Math.max(0,Number(snapshot.listDurationMs)||0);
-    if (!folderId) {
-      stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,error:'ERP_DROP_FOLDER_ID_MISSING',
-        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted))});
-      stageIndex += 1; continue;
-    }
-    const stageCursor={stageIndex,stageResults:stageResults.slice(),attemptedByStage,folderSnapshot};
-    await status({currentStage:stage.key,currentStageLabel:stage.key==='hl_po_parsed'?'HL ORDER':stage.key.toUpperCase(),
-      message:`Processing ${stage.key==='hl_po_parsed'?'HL ORDER':stage.key.toUpperCase()} in the cloud.`,
-      stageIndex,continuationCursor:stageCursor});
-    if(stageIndex>initialStageIndex && performance.now()-sliceStartMs>=ERP_SLICE_BUDGET_MS){
-      const nextCursor={...stageCursor,maxRowsPerSlice:effectiveMaxRowsPerSlice};
-      await status({status:'CONTINUE',currentStage:stage.key,stageIndex,continuationCursor:nextCursor,
-        stageResults:stageResults.slice()});
-      return {done:false,cursor:nextCursor};
-    }
-    let files;
-    try {
-      if(snapshot.error)throw new Error(String(snapshot.error));
-      files = (Array.isArray(snapshot.files)?snapshot.files:[]).filter(file => file.mimeType !== 'application/vnd.google-apps.folder'
-        && !shouldIgnoreErpFile(file.name) && /\.(?:xlsx|csv)$/i.test(file.name))
-        .sort(compareErpFiles).slice(0,1);
-    } catch (error) {
-      stageResults.push({key:stage.key,outcome:'failed',sourceFileName:'',processedFiles:0,
-        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted)),
-        error:String(error?.message||'ERP_DROP_FOLDER_READ_FAILED').slice(0,200)});
-      stageIndex += 1; continue;
-    }
-    const attempted = new Set(Array.isArray(attemptedByStage[stage.key]) ? attemptedByStage[stage.key] : []);
-    const file = files.find(candidate => !attempted.has(String(candidate.id||'')));
-    if (!file) {
-      if (!stageResults.some(result=>result.key===stage.key)) stageResults.push({key:stage.key,outcome:'UP_TO_DATE',sourceFileName:'',processedFiles:0,
-        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted))});
-      await status({sourceProgressDelta:buildOperationalStageCheckpoint(stage.key,stageResults)});
-      stageIndex += 1; continue;
-    }
-    try {
-      const step = await stageFileContinuation({supabase,fetcher,token,file,dataset:stage.dataset,stageKey:stage.key,parentId:folderId,
-        processedId,status,state:null,maxRowsPerSlice:stageRowsPerSlice,sliceStartMs});
-      const elapsedMs=listDurationMs+Math.max(0,Math.round(performance.now()-sliceStartMs));
-      if (step.done) {
-        attempted.add(String(file.id||'')); attemptedByStage[stage.key]=[...attempted];
-        stageResults.push({...step.result,key:stage.key,dataset:stage.dataset,listDurationMs,durationMs:elapsedMs});
-        if(!files.some(candidate=>!attempted.has(String(candidate.id)))) {
-          await status({sourceProgressDelta:buildOperationalStageCheckpoint(stage.key,stageResults)});stageIndex+=1;
-        }
-      } else {
-        const nextCursor={stageIndex,stageResults,attemptedByStage,maxRowsPerSlice:stageRowsPerSlice,
-          fileContinuation:{stageIndex,file,state:step.state?{...step.state,elapsedMs,maxRowsPerSlice:stageRowsPerSlice,
-            listDurationMs}:null},folderSnapshot};
-        await status({status:'CONTINUE',currentStage:stage.key,stageIndex,continuationCursor:nextCursor,
-          stageResults:stageResults.slice(),fileId:file.id,nextOffset:step.state?.nextOffset??null});
-        return {done:false,cursor:nextCursor};
-      }
-    } catch (error) {
-      attempted.add(String(file.id||'')); attemptedByStage[stage.key]=[...attempted];
-      stageResults.push({key:stage.key,dataset:stage.dataset,outcome:'failed',sourceFileName:file.name,processedFiles:0,
-        listDurationMs,durationMs:listDurationMs+Math.max(0,Math.round(performance.now()-stageStarted)),
-        error:String(error?.message||'ERP_FILE_IMPORT_FAILED').slice(0,200)});
-    }
-    const nextCursor = {stageIndex,stageResults,attemptedByStage,folderSnapshot};
-    await status({currentStage:STAGES[stageIndex]?.key||'hl_po_parsed',currentStageLabel:STAGES[stageIndex]?.key.toUpperCase()||'HL PO',stageIndex,stageResults:stageResults.slice(),continuationCursor:nextCursor,lastCompletedFile:file.name});
-    return {done:false,cursor:nextCursor};
-  }
-  const blocked = stageResults.some(result=>result.outcome==='requires_template'), failed = stageResults.some(result=>result.outcome==='failed');
-  await status({active:false,status:blocked?'blocked':failed?'failed':'complete',currentStage:'idle',currentStageLabel:'Idle',
-    stageIndex:STAGES.length,stageResults,continuationCursor:{stageIndex:STAGES.length,stageResults,attemptedByStage,folderSnapshot},
-    finishedAt:new Date().toISOString(),message:blocked?'HL ORDER workbook contract requires confirmation.':failed?'One or more ERP files could not be imported.':'ERP sync completed.',
-    error:blocked?'HL ORDER workbook contract requires confirmation.':failed?'One or more ERP files could not be imported.':'',
-    errorCode:blocked?'ERP_SYNC_REQUIRES_TEMPLATE':failed?'ERP_SYNC_STAGE_FAILED':''});
-  return {done:true,ok:!blocked&&!failed,cursor:{stageIndex:STAGES.length,stageResults,attemptedByStage,folderSnapshot}};
+export async function runErpSyncWorkerStep(args) {
+  return runPendingErpWorkerStep(args, {
+    stages: STAGES, sourceFolders: ERP_SYNC_SOURCE_FOLDERS, prefetch: prefetchErpFolders,
+    resolveRows: resolveErpRowsPerSlice, stageFile: stageFileContinuation,
+    buildCheckpoint: buildOperationalStageCheckpoint
+  });
 }
 
 export { STAGES as ERP_SYNC_STAGES };

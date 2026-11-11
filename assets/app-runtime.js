@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.69';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.70';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -21082,6 +21082,8 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/suspend-exact-owner.js */
         /* @runtime-fragment assets/que-header.js */
         /* @runtime-fragment assets/manager-table-workspace.js */
+        /* @runtime-fragment assets/erp-action-discrepancies.js */
+        /* @runtime-fragment assets/action-discrepancy-table.js */
         /* @runtime-fragment assets/manager-table-layout.js */
         /* @runtime-fragment assets/manager-excel-export.js */
         /* @runtime-fragment assets/manager-excel-mounts.js */
@@ -24855,7 +24857,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.69';
+        const APP_VERSION = '3.0.70';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -25893,6 +25895,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 : ((source.active || rawCurrentStage) ? MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT.slice() : []));
             return {
                 active: retiredStatus ? false : !!source.active,
+                serverFinishedAt: confirmedErpRunTime(raw),
                 status: String(source.status || ''), percent: Number(source.percent) || 0,
                 workerActive: source.workerActive, leaseExpired: source.leaseExpired, recoveryDue: source.recoveryDue, recoveryClaimedAt: source.recoveryClaimedAt,
                 runId: String(firstNonEmptyValue(source.runId, source.run_id, '')).trim(),
@@ -107297,50 +107300,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return nativeAuthProfile?.id && currentUser ? 'gnc_sync_filenames_v1:' + JSON.stringify([nativeAuthProfile.id, currentUser, String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')]) : '';
         }
 
-        function updateDashboardSyncSummary() {
-            const accordionEl = document.getElementById('dashboard-sync-accordion');
-            const stampEl = document.getElementById('dashboard-sync-stamp');
-            const summaryEl = document.getElementById('dashboard-sync-summary');
-            const filesEl = document.getElementById('dashboard-sync-files');
-            if (!accordionEl || !stampEl || !summaryEl || !filesEl) return;
-            const canView = canViewDashboardSyncStatus();
-            accordionEl.classList.toggle('hidden', !canView);
-            if (!canView) return;
-            const owner = getSupabaseReadIdentityScope();
-            if (dashboardSyncMetadataOwner !== owner) {
-                dashboardSyncMetadataSummaries = [];
-                dashboardSyncMetadataFetchedAt = 0;
-                try {
-                    const cached = JSON.parse(localStorage.getItem(dashboardSyncFilenameCacheKey()) || 'null');
-                    if (Array.isArray(cached)) dashboardSyncMetadataSummaries = cached.filter(entry => entry && typeof entry.label === 'string' && Array.isArray(entry.files));
-                } catch (_) { globalThis.safeIgnoreProbeError?.("updateDashboardSyncSummary"); }
-                dashboardSyncMetadataOwner = owner;
-            }
-            const sourceSummaries = [
-                collectDashboardSyncSource(fullInventory, 'Drive'),
-                collectDashboardSyncSource(socInventory, 'SOC'),
-                collectDashboardSyncSource(reservesInventory, 'Reserves'),
-                collectDashboardSyncSource(cavInventory, 'CAV')
-            ].filter((entry) => entry.iso || entry.files.length);
-            if ((!dashboardSyncMetadataInFlight || dashboardSyncMetadataRequestOwner !== owner) && (!dashboardSyncMetadataFetchedAt || (Date.now() - dashboardSyncMetadataFetchedAt) > DASHBOARD_SYNC_METADATA_TTL_MS)) {
-                refreshDashboardSyncMetadata(false).catch(() => {});
-            }
-            const mergedSummaries = mergeDashboardSyncSummaries([...sourceSummaries, ...dashboardSyncMetadataSummaries]);
-            try { const key = dashboardSyncFilenameCacheKey(); if (key && mergedSummaries.length) localStorage.setItem(key, JSON.stringify(mergedSummaries)); } catch (_) { globalThis.safeIgnoreProbeError?.("updateDashboardSyncSummary"); }
-            const overall = mergedSummaries.reduce((winner, entry) => !winner || entry.ms > winner.ms ? entry : winner, null);
-            stampEl.innerText = overall && overall.iso ? formatDashboardSyncDateTime(overall.iso) : 'Awaiting imported file data';
-            summaryEl.innerText = '';
-            // Preserve all four source positions while metadata arrives independently.
-            const fileMarkup = ['DRIVE', 'CAV', 'RESERVES', 'SOC'].map((label) => {
-                const entry = mergedSummaries.find((item) => String(item.label || '').toUpperCase() === label);
-                const fileName = entry && entry.files.length ? entry.files[0] : '';
-                return '<div class="dashboard-sync-card" data-sync-source="' + label + '">' +
-                    '<div class="dashboard-sync-card-heading"><strong>' + label + '</strong>' +
-                    '<time>' + escapeDashboardSyncText(entry && entry.iso ? formatDashboardSyncDateTime(entry.iso) : 'Awaiting import metadata') + '</time></div>' +
-                    '<div class="dashboard-sync-filename">' + escapeDashboardSyncText(fileName || 'Filename pending') + '</div></div>';
-            }).join('');
-            syncRequestChromeMarkup(filesEl, fileMarkup, homeMarkupByNode);
-        }
+
 
         function normalizeProductivityUsername(value = '') {
             return String(value || '').trim().toLowerCase().replace(/@.*$/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -119548,36 +119508,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
 
-
-        function getManagerToolTabs(access = getManagersToolAccess()) {
-            const tabs = [];
-            if (access.canViewApproval) tabs.push({ id: MANAGER_APPROVAL_HOME_VIEW, label: 'Approval' });
-            if (access.canViewMoves) tabs.push({ id: 'moves', label: 'Move' });
-            if (access.canManageSeasonSettings) tabs.push({ id: APP_SEASON_SETTINGS_VIEW, label: 'Season' });
-            if (access.canViewSeasonPriority) tabs.push({ id: MANAGER_SEASON_PRIORITY_VIEW, label: 'Season Priority' });
-            if (access.canViewProductionSchedule) tabs.push({ id: MANAGER_PRODUCTION_SCHEDULE_VIEW, label: 'Production Schedule' });
-            if (access.canViewHrCommand) tabs.push({ id: MANAGER_HR_COMMAND_VIEW, label: 'HR & Labor' });
-            if (access.canManageCompanyDirectory) tabs.push({ id: MANAGER_COMPANY_DIRECTORY_VIEW, label: 'Company Directory' });
-            if (access.canManageAvBlanksPhotoBypass) tabs.push({ id: AV_BLANKS_PHOTO_BYPASS_SETTINGS_VIEW, label: 'AV Note Users' });
-            if (access.canManageItemInquiryCoverage) tabs.push({ id: ITEM_INQUIRY_COVERAGE_SETTINGS_VIEW, label: 'Inquiry Coverage' });
-            if (access.canViewInventoryTransactions) tabs.push({ id: INVENTORY_TRANSACTION_HISTORY_VIEW, label: 'Transaction History' });
-            if (access.canViewTransactionsKeyed) tabs.push({ id: MANAGER_TRANSACTIONS_KEYED_VIEW, label: 'Transactions Keyed' });
-            if (access.canViewOrders) tabs.push({ id: MANAGER_ORDERS_VIEW, label: 'Orders' });
-            if (access.canViewTableManagement) tabs.push({ id: MANAGER_TABLE_MANAGEMENT_VIEW, label: 'Table Management' });
-            if (access.canViewAssignedItemsExport) tabs.push({ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' });
-            if (access.canManageCustomerRepMappings) tabs.push({ id: MANAGER_CUSTOMER_REP_MAP_VIEW, label: 'Customer Assignments' });
-            if (access.canViewEvalReports) tabs.push({ id: MANAGER_EVAL_REPORTS_VIEW, label: 'Eval Reports' });
-            if (access.canViewEvalReports2) tabs.push({ id: MANAGER_EVAL_REPORTS_2_VIEW, label: 'Eval Reports #2' });
-            if (access.canViewHistoricalReport) tabs.push({ id: MANAGER_HISTORICAL_REPORT_VIEW, label: 'Historical Report' });
-            if (access.canViewShortageCancel) tabs.push({ id: MANAGER_SHORTAGE_CANCEL_VIEW, label: 'Shortage/Cancel' });
-            if (access.canViewBlockClearing) tabs.push({ id: MANAGER_BLOCK_CLEARING_VIEW, label: 'Block Clearing' });
-            if (access.canManageAccessControl) tabs.push({ id: MANAGER_ACCESS_CONTROL_VIEW, label: 'User & Role Access' });
-            if (access.canViewCodexOperations) tabs.push({ id: MANAGER_CODEX_OPERATIONS_VIEW, label: 'Codex Operations' });
-
-            if (access.canManageDeliveryRecovery) tabs.push({ id: MANAGER_DELIVERY_RECOVERY_VIEW, label: 'Delivery Recovery' });
-            if (access.canViewLaborHours) tabs.push({ id: 'hours', label: 'Labor Hours' });
-            return tabs;
-        }
 
         function getManagerModuleOptions(access = getManagersToolAccess(), approvalTabs = null, toolTabs = null) {
             const safeApprovalTabs = Array.isArray(approvalTabs) ? approvalTabs : getManagerApprovalTabs(access);

@@ -142,3 +142,71 @@ export async function loadLegacyErpHomeMetadata(owner, signal) {
     updateDashboardSyncSummary();
     return true;
 }
+
+export function confirmedErpRunTime(status) {
+    if (!status?.runId || status.active !== false || status.status !== 'complete' || status.error || status.errorCode) return '';
+    const timestamp = Object.hasOwn(status, 'serverFinishedAt') ? status.serverFinishedAt : status.finishedAt || status.finished_at;
+    return Number.isFinite(Date.parse(timestamp)) ? timestamp : '';
+}
+
+export function latestErpHomeTimestamp(summaries, status) {
+    const latest = summaries.reduce((winner, entry) => !winner || entry.ms > winner.ms ? entry : winner, null);
+    const finished = confirmedErpRunTime(status);
+    return Date.parse(finished) >= (latest?.ms ?? 0) ? finished : latest?.iso || '';
+}
+
+function restoreDashboardSyncFilenames(owner) {
+    if (dashboardSyncMetadataOwner === owner) return;
+    dashboardSyncMetadataSummaries = [];
+    dashboardSyncMetadataFetchedAt = 0;
+    try {
+        const cached = JSON.parse(localStorage.getItem(dashboardSyncFilenameCacheKey()) || 'null');
+        if (Array.isArray(cached)) dashboardSyncMetadataSummaries = cached.filter(entry =>
+            entry && typeof entry.label === 'string' && Array.isArray(entry.files));
+    } catch { globalThis.safeIgnoreProbeError?.("updateDashboardSyncSummary"); }
+    dashboardSyncMetadataOwner = owner;
+}
+
+function saveDashboardSyncFilenames(summaries) {
+    try {
+        const key = dashboardSyncFilenameCacheKey();
+        if (key && summaries.length) localStorage.setItem(key, JSON.stringify(summaries));
+    } catch { globalThis.safeIgnoreProbeError?.("updateDashboardSyncSummary"); }
+}
+
+export function updateDashboardSyncSummary() {
+    const accordionEl = document.getElementById('dashboard-sync-accordion');
+    const stampEl = document.getElementById('dashboard-sync-stamp');
+    const summaryEl = document.getElementById('dashboard-sync-summary');
+    const filesEl = document.getElementById('dashboard-sync-files');
+    if (!accordionEl || !stampEl || !summaryEl || !filesEl) return;
+    const canView = canViewDashboardSyncStatus();
+    accordionEl.classList.toggle('hidden', !canView);
+    if (!canView) return;
+    const owner = getSupabaseReadIdentityScope();
+    restoreDashboardSyncFilenames(owner);
+    const sourceSummaries = [
+        collectDashboardSyncSource(fullInventory, 'Drive'),
+        collectDashboardSyncSource(socInventory, 'SOC'),
+        collectDashboardSyncSource(reservesInventory, 'Reserves'),
+        collectDashboardSyncSource(cavInventory, 'CAV')
+    ].filter((entry) => entry.iso || entry.files.length);
+    if ((!dashboardSyncMetadataInFlight || dashboardSyncMetadataRequestOwner !== owner) && (!dashboardSyncMetadataFetchedAt || (Date.now() - dashboardSyncMetadataFetchedAt) > DASHBOARD_SYNC_METADATA_TTL_MS)) {
+        refreshDashboardSyncMetadata(false).catch(() => {});
+    }
+    const mergedSummaries = mergeDashboardSyncSummaries([...sourceSummaries, ...dashboardSyncMetadataSummaries]);
+    saveDashboardSyncFilenames(mergedSummaries);
+    const overall = latestErpHomeTimestamp(mergedSummaries, manualSyncStatusState);
+    stampEl.innerText = overall ? formatDashboardSyncDateTime(overall) : 'Awaiting imported file data';
+    summaryEl.innerText = '';
+    // Preserve all four source positions while metadata arrives independently.
+    const fileMarkup = ['DRIVE', 'CAV', 'RESERVES', 'SOC'].map((label) => {
+        const entry = mergedSummaries.find((item) => String(item.label || '').toUpperCase() === label);
+        const fileName = entry && entry.files.length ? entry.files[0] : '';
+        return '<div class="dashboard-sync-card" data-sync-source="' + label + '">' +
+            '<div class="dashboard-sync-card-heading"><strong>' + label + '</strong>' +
+            '<time>' + escapeDashboardSyncText(entry && entry.iso ? formatDashboardSyncDateTime(entry.iso) : 'Awaiting import metadata') + '</time></div>' +
+            '<div class="dashboard-sync-filename">' + escapeDashboardSyncText(fileName || 'Filename pending') + '</div></div>';
+    }).join('');
+    syncRequestChromeMarkup(filesEl, fileMarkup, homeMarkupByNode);
+}

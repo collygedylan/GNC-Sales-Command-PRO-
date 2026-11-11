@@ -704,26 +704,6 @@ nurseryIdentity: identity,
             return !document.hidden && !!modal && !modal.hidden && !modal.classList.contains('hidden') && modal.style.display !== 'none';
         }
 
-function getManagerTableManagementItems(access = getManagersToolAccess()) {
-            return [
-                ...(globalThis.GncNurseryModel?.TABLES || []).map(item => ({...item,visible:canViewNurseryCommandTables()})),
-                { id:'assigned-items', label:'Assigned Items', section:'editable', visible:access.canViewAssignedItemsExport },
-                { id:'company-directory', label:'Company Directory', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
-                { id:'inquiry-coverage', label:'Inquiry Coverage', section:'editable', visible:typeof canonicalFeaturePermission !== 'function' || canonicalFeaturePermission('can_access_manager_tab') !== false },
-                { id:'customer-assignments', label:'Customer Assignments', section:'editable', visible:access.canManageCustomerRepMappings },
-                { id:'user-role-access', label:'User & Role Access', section:'editable', visible:access.canManageAccessControl },
-                { id:'av-note-users', label:'AV Note Users', section:'editable', visible:access.canManageAvBlanksPhotoBypass },
-                { id:'season', label:'Season', section:'editable', visible:access.canManageSeasonSettings },
-                { id:'season-priority', label:'Season Priority', section:'editable', visible:access.canViewSeasonPriority },
-                { id:'production-schedule', label:'PROD SCHEDULE 102726 (2026-10-29_1232)', section:'schedule', visible:access.canViewProductionSchedule },
-                { id:'historical-drive-mode', label:'Historical Drive Mode', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'historical-soc-open-orders', label:'Historical SOC Open Orders', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'historical-soc-reserves', label:'Historical SOC Reserves', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'historical-requests', label:'Historical Requests', section:'archive', visible:canUseHistoricalRequests() },
-                { id:'photo-history', label:'Photo History', section:'archive', visible:canOpenPhotoHistory() }
-            ].filter(item => item.visible);
-        }
-
 function openManagerTableManagement(table = '') {
             const key = getManagerTableManagementKey(table) || String(table || '').trim().toLowerCase();
             if (!key) managersSearchTerm = '';

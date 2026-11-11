@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { fixtureErpReceipt } from '../src/core/erp-runtime-fetch-fixtures.mjs';
 import { compactErpRowsPreservingNullColumnUnion, parseErpXlsxImportRows, parseErpXlsxPage, resolveErpRowsPerSlice, runErpSyncWorkerStep } from '../supabase/functions/_shared/erp-sync.mjs';
 
 function mockDriveMetadata(url,init){
   if(!url.pathname.match(/\/files\/[^/]+$/)||!url.searchParams.has('fields')||init?.method==='PATCH')return null;
   const id=decodeURIComponent(url.pathname.split('/').at(-1));
   return Response.json({id,parents:id==='resume-xlsx'?['soc-folder']:id==='soc-bounded'?['soc-folder','shared-folder']:['soc-folder']});
+}
+
+function mockArchiveMetadata(url, init, file, bytes, archived) {
+  if (!url.pathname.endsWith(`/files/${file.id}`) || init.method === 'PATCH'
+      || !String(url.searchParams.get('fields')).includes('sha256Checksum')) return null;
+  return Response.json({ id: file.id, parents: archived ? ['processed-folder'] : file.parents,
+    version: archived ? '2' : '1', sha256Checksum: createHash('sha256').update(bytes).digest('hex') });
 }
 
 function makeZip(entries) {
@@ -79,6 +88,7 @@ test('cloud SOC XLSX caps each continuation at the requested retry slice and rem
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder','shared-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);
+    const archive=mockArchiveMetadata(url,init,file,bytes,archived);if(archive)return archive;
     const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files')&&init.method!=='POST'){
       const folder=url.searchParams.get('q').match(/'([^']+)'/)[1];
@@ -94,12 +104,12 @@ test('cloud SOC XLSX caps each continuation at the requested retry slice and rem
   const supabase={rpc:async(name,args)=>{
     if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
     if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock']};
-    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'soc-bounded-stage',expected_rows:100000,staged_rows:0}};
+    if((name==='fast_begin_erp_stage_v1'||name==='begin_pending_erp_stage_v3070'))return {data:{stage_id:'soc-bounded-stage',expected_rows:100000,staged_rows:0}};
     if(name==='fast_append_erp_stage_batch_v1'){
       appended.push(args.p_rows.length);return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
     }
     if(name==='fast_seal_erp_stage_v1')return {data:{ok:true}};
-    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true}};
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:fixtureErpReceipt('ph_soc_master',file.name,1601)};
     throw new Error(`unexpected RPC ${name}`);
   }};
   const env=key=>key==='ERP_SYNC_DROP_FOLDERS_JSON'?JSON.stringify({drive:'drive-folder',cav:'cav-folder',reserves:'reserves-folder',
@@ -169,26 +179,27 @@ test('XLSX stage resumes the identical persisted prefix before appending its rem
     'xl/_rels/workbook.xml.rels':'<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>',
     'xl/worksheets/sheet1.xml':`<worksheet><sheetData>${xmlRows.join('')}</sheetData></worksheet>`,
   });
-  const appends=[];let downloads=0;
+  const appends=[];let downloads=0,archived=false;
   const file={id:'resume-xlsx',name:'SOC-10 Open Orders-12000020261105120000.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);
+    const archive=mockArchiveMetadata(url,init,file,bytes,archived);if(archive)return archive;
     const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files/resume-xlsx')&&url.searchParams.get('alt')==='media'){downloads+=1;return new Response(bytes);}
-    if(url.pathname.endsWith('/files/resume-xlsx')&&init.method==='PATCH')return Response.json({id:file.id});
+    if(url.pathname.endsWith('/files/resume-xlsx')&&init.method==='PATCH'){archived=true;return Response.json({id:file.id});}
     throw new Error(`Unexpected Drive request: ${init.method||'GET'} ${url.pathname}`);
   };
   const supabase={rpc:async(name,args)=>{
     if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false},error:null};
     if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock'],error:null};
-    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'resume-stage',expected_rows:100000,staged_rows:2},error:null};
+    if((name==='fast_begin_erp_stage_v1'||name==='begin_pending_erp_stage_v3070'))return {data:{stage_id:'resume-stage',expected_rows:100000,staged_rows:2},error:null};
     if(name==='fast_append_erp_stage_batch_v1'){
       appends.push({start:args.p_start_row,count:args.p_rows.length});
       return {data:{staged_rows:args.p_start_row+args.p_rows.length},error:null};
     }
     if(name==='fast_seal_erp_stage_v1')return {data:{ok:true},error:null};
-    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true},error:null};
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:fixtureErpReceipt('ph_soc_master',file.name,5),error:null};
     throw new Error(`Unexpected RPC ${name}`);
   }};
   const result=await runErpSyncWorkerStep({supabase,fetcher,accessToken:'fixture-token',
@@ -212,6 +223,7 @@ test('new SOC XLSX stage appends at most 1,500 rows per continuation and publish
     modifiedTime:'2026-10-28T12:00:00Z',parents:['soc-folder']};
   const fetcher=async(input,init={})=>{
     const url=new URL(input);
+    const archive=mockArchiveMetadata(url,init,file,bytes,archived);if(archive)return archive;
     const metadata=mockDriveMetadata(url,init);if(metadata)return metadata;
     if(url.pathname.endsWith('/files/soc-xlsx-1')&&url.searchParams.get('alt')==='media'){downloads+=1;return new Response(bytes);}
     if(url.pathname.endsWith('/files/soc-xlsx-1')&&init.method==='PATCH'){archived=true;return Response.json({id:file.id});}
@@ -221,14 +233,14 @@ test('new SOC XLSX stage appends at most 1,500 rows per continuation and publish
     calls.push({name,args});
     if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false},error:null};
     if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','dock'],error:null};
-    if(name==='fast_begin_erp_stage_v1'){
+    if((name==='fast_begin_erp_stage_v1'||name==='begin_pending_erp_stage_v3070')){
       assert.equal(args.p_expected_rows,100000);
       assert.equal(args.p_file_meta.expected_rows_pending,true);
       return {data:{stage_id:'stage-1',expected_rows:100000,staged_rows:0},error:null};
     }
     if(name==='fast_append_erp_stage_batch_v1')return {data:{staged_rows:args.p_start_row+args.p_rows.length},error:null};
     if(name==='fast_seal_erp_stage_v1'){assert.equal(args.p_expected_rows,10001);return {data:{ok:true},error:null};}
-    if(name==='fast_commit_erp_stage_swap_v1')return {data:{ok:true},error:null};
+    if(name==='fast_commit_erp_stage_swap_v1')return {data:fixtureErpReceipt('ph_soc_master',file.name,10001),error:null};
     throw new Error(`Unexpected RPC ${name}`);
   }};
   const env=name=>({

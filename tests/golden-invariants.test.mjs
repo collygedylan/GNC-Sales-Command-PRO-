@@ -6515,14 +6515,7 @@ test('Invariant 512 (operational HL PO discovery selects one newest original PDF
  assert.equal(visited.length,3);assert.deepEqual(result.hl_po_parsed.files.map(f=>f.id),['new']);
 });
 
-test('Invariant 513 (every ERP stage row carries the current snapshot filename without changing evidence)',async()=>{
- const {stampErpSnapshotFilename}=await import('../supabase/functions/_shared/erp-sync.mjs');
- const input=[{unique_id:'soc',filename:'old.xlsx',spec:'saved'},{values:{unique_id:'master',filename:'old.xlsx',photos:['saved.jpg'],pick_note:'keep'},rawFields:['itemcode']}];
- const output=stampErpSnapshotFilename(input,'midday.xlsx');
- assert.equal(output[0].filename,'midday.xlsx');assert.equal(output[1].values.filename,'midday.xlsx');
- assert.equal(output[0].spec,'saved');assert.deepEqual(output[1].values.photos,['saved.jpg']);assert.equal(output[1].values.pick_note,'keep');assert.deepEqual(output[1].rawFields,['itemcode']);
- assert.equal(input[0].filename,'old.xlsx');assert.equal(input[1].values.filename,'old.xlsx');assert.throws(()=>stampErpSnapshotFilename(input,''),/ERP_SOURCE_FILENAME_REQUIRED/);
-});
+test('Invariant 513 (every ERP stage row carries the current snapshot filename without changing evidence)',assertSnapshotFilenameEvidence);
 
 test('Invariant 514 (afternoon ERP clocks and explicit Warehouse 10 docks govern source membership)',assertAfternoonErpSources);
 
@@ -6852,3 +6845,6 @@ test('Invariant 623: SUSPEND follows exact Assigned Items ownership, admin scope
 import {assertQueHeaderContract} from './helpers/que-header-contract.mjs';
 
 test('Invariant 624: Que retains expanded header commands and normalized exact owners without ambiguous grants',assertQueHeaderContract);
+
+import {assertSnapshotFilenameEvidence, assertCheckedRunTime} from '../src/core/golden-erp-run-receipts.mjs';
+test('Invariant 625: a completed manual check advances Home using the exact server receipt', assertCheckedRunTime);

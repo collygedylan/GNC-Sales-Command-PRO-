@@ -39,11 +39,13 @@ export function createDashboardMetadataFixture(html) {
     const stateEnd = html.indexOf('let pendingRequestArchiveFlushTimer', stateStart);
     const signalStart = html.indexOf('async function withProductionLiveSyncSignal(');
     const metadataStart = html.indexOf('function dashboardFilenameTimestamp(');
-    const metadataEnd = html.indexOf('function updateDashboardSyncSummary()', metadataStart);
+    const metadataEnd = html.indexOf('function normalizeProductivityUsername(', metadataStart);
     assert.ok(stateStart > 0 && stateEnd > stateStart && metadataEnd > metadataStart);
+    const observeRender = ctx.updateDashboardSyncSummary;
     vm.runInContext(html.slice(stateStart, stateEnd)
         + html.slice(signalStart, html.indexOf('function ', signalStart + 15)).trim()
         + html.slice(metadataStart, metadataEnd)
         + '\nthis.metadataState = () => ({ summaries: dashboardSyncMetadataSummaries, fetchedAt: dashboardSyncMetadataFetchedAt, pending: dashboardSyncMetadataInFlight });', ctx);
+    ctx.updateDashboardSyncSummary = observeRender;
     return { ctx, calls };
 }

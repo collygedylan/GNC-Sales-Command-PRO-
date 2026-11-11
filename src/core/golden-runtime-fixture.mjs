@@ -1,6 +1,8 @@
 import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint } from '../../supabase/functions/_shared/erp-scan-recovery.mjs';
+import { createErpStageCheckRecorder, deferredErpRetry, withErpStageCheckRecording } from '../../supabase/functions/_shared/erp-browser-start.ts';
 
 export const erpScanFixtureDependencies = { AbortSignal, cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint,
+  createErpStageCheckRecorder, deferredErpRetry, withErpStageCheckRecording,
   PRODUCTION_SCHEDULE_APPS_SCRIPT_URL: '', PRODUCTION_SCHEDULE_SIGNING_SECRET: '', signProductionScheduleCommand: () => {} };
 
 export function installGoldenRuntimeDefaults(file, names, context, appApiVersion) {

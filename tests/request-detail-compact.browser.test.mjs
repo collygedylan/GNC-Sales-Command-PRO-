@@ -158,11 +158,11 @@ async function checkProfile(engine,width,measurements) {
     } finally { await browser.close(); }
 }
 
-test('v3.0.69 compact Request/Suspend geometry and confirmed multi-row additions',async t => {
-    assert.match(readDetailSource('version.json'),/3\.0\.69/);
+test('v3.0.70 compact Request/Suspend geometry and confirmed multi-row additions',async t => {
+    assert.match(readDetailSource('version.json'),/3\.0\.70/);
     const measurements=[];
     for (const [engine,width] of [[chromium,1440],[chromium,390],[webkit,390]]) await checkProfile(engine,width,measurements);
-    const evidence='G:/My Drive/GNC/AgData/Release Evidence/v3.0.69-detail-geometry.json';
-    fs.writeFileSync(evidence,JSON.stringify({version:'3.0.69',componentFixture:true,measurements},null,2));
+    const evidence='G:/My Drive/GNC/AgData/Release Evidence/v3.0.70-detail-geometry.json';
+    fs.writeFileSync(evidence,JSON.stringify({version:'3.0.70',componentFixture:true,measurements},null,2));
     t.diagnostic(`12 geometry/addition cases and 3 failed-write cases passed; ${evidence}`);
 });

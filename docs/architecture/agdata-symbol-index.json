@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.69",
+  "release": "AgData v3.0.70",
   "sourceLayers": [
     "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
     "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs", "supabase/functions/_shared/erp-secondary-sync.mjs", "assets/agdata-kernel.js", "assets/bloom-runtime-functions.js", "assets/smart-hold-intelligence.js", "assets/smart-hold-runtime-functions.js",
@@ -1834,8 +1834,12 @@
       }
     },
     "agdata-sync-and-supabase-architect": {
+      "src/core/erp-pending-discovery.mjs": ["discoverPendingErpFiles"],
+      "src/core/erp-worker-step.mjs": ["runPendingErpWorkerStep"],
+      "assets/erp-manual-continuation.js": ["runGoogleAppsScriptTrigger","getTransientManualErpSliceStatus","reduceManualErpSliceLimit"],
+      "assets/dataset-load-runtime.js": ["ensureDatasetLoaded","hydrateFirstDatasetPageForRender"],
+      "assets/erp-sync-ui-functions.js": ["syncGoogleScriptButton"],
       "assets/app-runtime.js": [
-        "runGoogleAppsScriptTrigger",
         "applyManualSyncStatus",
         "refreshManualSyncStatus",
         "isDatasetFrozenDuringManualSync",
@@ -1846,11 +1850,8 @@
         "runDedupeSupabaseRead",
         "abortSupabaseReadsBeforeGeneration",
         "fetchRequestCustomerMapRows",
-        "syncGoogleScriptButton",
         "refreshManualSyncOnForeground",
         "scheduleManualSyncCompletionRefresh",
-        "getTransientManualErpSliceStatus",
-        "reduceManualErpSliceLimit",
         "getUniversalLiveSyncTables",
         "applyUniversalLiveSyncPatch",
         "getRowPatchDatasetKey",
@@ -1860,14 +1861,12 @@
         "replayHydratedRowPatches",
         "ensureColdOperationalHydration",
         "getProductionCoreLiveProjection",
-        "ensureDatasetLoaded",
         "hasAuthenticatedOperationalReadIdentity",
         "redactEvalSensitiveData",
         "supabaseRpc",
         "fetchAllSupabaseRows",
         "fetchAllInventoryReadRows",
-        "fetchManagerItemLowStockTargets",
-        "hydrateFirstDatasetPageForRender"
+        "fetchManagerItemLowStockTargets"
       ],
       "supabase/functions/app-api/index.ts": [
         "handleDatasetRevisionsAction",
@@ -1903,7 +1902,7 @@
       "supportingFiles": {
         "supabase/functions/_shared/erp-browser-start.ts": ["startBrowserErpSyncCommand"],
         "supabase/functions/_shared/erp-stage-publication.mjs": ["finishStageContinuation"],
-        "src/core/erp-foreground-recovery.js": ["refreshManualErpHomeRevisionMetadata","loadLegacyErpHomeMetadata","readLegacyErpHomeSource"],
+        "src/core/erp-foreground-recovery.js": ["refreshManualErpHomeRevisionMetadata","loadLegacyErpHomeMetadata","readLegacyErpHomeSource","confirmedErpRunTime","latestErpHomeTimestamp","updateDashboardSyncSummary"],
         "supabase/migrations/20261110223000_agdata3064_manual_scan_restart.sql": ["erp_manual_scan_restartable_v3064","claim_erp_sync_job_v2"],
         "supabase/migrations/20261110224000_agdata3064_batched_publication_worker.sql": ["prepare_erp_publication_part_v3064","run_erp_stage_publication_v3042","fast_commit_erp_stage_swap_v1"],
         "scripts/fast-live-erp-sync.mjs": [
@@ -1989,7 +1988,6 @@
           "isOperationalErpSyncComplete",
           "buildOperationalStageCheckpoint",
           "maxErpImportRows",
-          "finishStageContinuation",
           "runProductionScheduleSyncStep",
           "parseProductionSchedulePage",
           "mapProductionScheduleRecords"
@@ -2185,10 +2183,12 @@
       }
     },
     "agdata-table-management-and-directory": {
+      "src/views/manager-table-workspace.js": ["getManagerTableManagementItems","getManagerToolTabs"],
+      "src/ui/action-discrepancy-table.js": ["mountActionDiscrepancies"],
+      "src/core/erp-action-discrepancies.js": ["readActionDiscrepancyRows","createActionDiscrepancySource"],
       "assets/app-runtime.js": [
         "renderManagerTableManagementPanel",
         "openManagerTableManagement",
-        "getManagerTableManagementItems",
         "downloadManagerRowsToExcel",
         "openDylanPhotoHistory",
         "renderCompanyDirectoryPanel",

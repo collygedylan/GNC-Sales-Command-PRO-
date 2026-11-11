@@ -17,6 +17,16 @@ export function mountCustomerRepMappingView(root) {
 export function mountManagerTableManagementPanel(root) {
     if (!root || !canAccessView('managers')) { destroyManagerTableManagement(); return; }
     if (managerTableManagementInstance?.root === root) return;
+    if (managerTableManagementSelection === 'action-discrepancy') {
+        destroyManagerTableManagement();
+        const identity = getSupabaseReadIdentityScope();
+        managerTableManagementInstance = {
+            root, identity, selected: managerTableManagementSelection,
+            tableKeys: getManagerTableManagementItems().map(item => item.id).join('|'),
+            ...mountActionDiscrepancies(root, createActionDiscrepancySource(identity), esc)
+        };
+        return;
+    }
     if (canViewNurseryCommandTables()) void ensureDatasetLoaded('master', 'full', {preserveRequestedMode:true}).catch(() => false);
     destroyManagerTableManagement();
     if (!window.GncManagerTableManagement?.mountManagerTableManagement) {

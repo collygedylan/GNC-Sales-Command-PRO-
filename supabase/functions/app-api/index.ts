@@ -1,12 +1,11 @@
-import { startBrowserErpSyncCommand } from "../_shared/erp-browser-start.ts";
+import { startBrowserErpSyncCommand, withErpStageCheckRecording, createErpStageCheckRecorder, deferredErpRetry } from "../_shared/erp-browser-start.ts";
 import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint, mintCloudDriveAccessToken } from "../_shared/erp-scan-recovery.mjs";
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../_shared/historical-snapshot-transport.mjs";
-import { isOperationalErpSyncComplete } from "../_shared/erp-sync.mjs";
-import { executeManagerTableManagement } from "../_shared/table-management.ts";
+import { executeManagerTableManagement } from "../../../src/core/erp-action-discrepancy-rpc.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.68";
-const APP_RUNTIME_RELEASE = "AgData v3.0.68";
+const APP_RUNTIME_VERSION = "3.0.70";
+const APP_RUNTIME_RELEASE = "AgData v3.0.70";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
@@ -37,7 +36,7 @@ import { jsonObject, jsonValue, type Json } from "../../../services/database-con
 import { renderBunchNoteReportsPdf } from "../../../services/bunch-note-pdf.mjs";
 import { validateNurseryPdfInput, assertNurseryPdfApprovals, renderNurseryPdf } from "../_shared/nursery-bunch-pdf.ts";
 import type { NurseryPdfDatabase } from "../_shared/nursery-bunch-pdf.ts";
-import { ERP_SYNC_STAGES, runErpSyncWorkerStep, runProductionScheduleSyncStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
+import { isOperationalErpSyncComplete, ERP_SYNC_STAGES, runErpSyncWorkerStep, runProductionScheduleSyncStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
 import { SECONDARY_ERP_STAGES, runSecondaryErpSyncStep } from "../_shared/erp-secondary-sync.mjs";
 import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, isSuperAdminRole, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
@@ -7227,10 +7226,10 @@ async function processCloudErpSyncStep(runId: string, workerId: string, step: nu
   const status = claimedStatus.status && typeof claimedStatus.status === "object" ? jsonObject(claimedStatus.status) : claimedStatus;
   const cursor: Record<string, unknown> = status.continuationCursor && typeof status.continuationCursor === "object"
     ? jsonObject(status.continuationCursor) : { stageIndex: 0, stageResults: [], attemptedByStage: {} };
-  if (Number(status.retryNotBefore || 0) > Date.now()) {
-    return { result: { done: false, cursor }, status };
-  }
-  const writer = createCloudErpStatusWriter(supabase, runId, workerId, status, cursor, jsonObject);
+  const retry = deferredErpRetry(status, cursor);
+  if (retry) return retry;
+  const writer = withErpStageCheckRecording(createCloudErpStatusWriter(supabase, runId, workerId, status, cursor, jsonObject),
+    createErpStageCheckRecorder(runId, workerId, { rpc: async (name, args) => supabase.rpc(name as never, args as never), object: jsonObject }));
   if (Number(status.continuationStep ?? step) !== step) throw new Error("ERP_SYNC_WORKER_LEASE_INVALID");
   try {
     return await advanceCloudErpSyncStep(writer, cursor, maxRowsPerSlice);
@@ -7257,7 +7256,7 @@ async function advanceCloudErpSyncStep(writer: CloudErpWriter, cursor: Record<st
   else if (cursor.coreComplete === true) result = await runCloudErpSecondaryStep(writer, cursor, accessToken);
   else {
     const coreStatus = guardErpScanCheckpoint(scanDeadline, (patch: Record<string, unknown>) => persist(cloudErpCoreCheckpoint(patch)));
-    result = await runErpSyncWorkerStep({ supabase, fetcher: scanFetch, env: (key: string) => Deno.env.get(key) || "", cursor, status: coreStatus, accessToken, maxRowsPerSlice: cap });
+    result = await runErpSyncWorkerStep({ supabase, fetcher: scanFetch, env: (key: string) => Deno.env.get(key) || "", cursor: { ...cursor, syncRunId: String(writer.current.runId || "") }, status: coreStatus, accessToken, maxRowsPerSlice: cap });
   }
   if (result.done && cursor.coreComplete !== true && cursor.secondaryComplete !== true) {
     const nextCursor = { ...result.cursor, coreComplete: true };
