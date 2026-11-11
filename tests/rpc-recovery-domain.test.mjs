@@ -40,7 +40,7 @@ test('forbidden or changed-account failures do not replay', async () => {
     opts.inScope = () => state !== 'changed';
     if (state === 'denied') assert.equal((await dispatchRpcWithRecovery(opts)).status, 403);
     else await assert.rejects(dispatchRpcWithRecovery(opts));
-    assert.equal(calls, 1, state);
+    assert.equal(calls, state === 'changed' ? 0 : 1, state);
   }
 });
 

@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.71';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.72';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -18434,7 +18434,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             const wanted=new Set(datasetKeys);
             return {...metadata,sources:metadata.sources.filter(source=>wanted.has(source.key))};
         }
-        /* @runtime-fragment assets/rpc-recovery-domain.js */
+/* @runtime-fragment assets/rpc-recovery-domain.js */
 
         async function readDatasetRevisionRpc(body, requestOptions) {
             if (requestOptions.signal?.aborted) throw Object.assign(new Error('Dataset revision read cancelled.'), { code: 'REQUEST_ABORTED' });
@@ -18459,88 +18459,11 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             return result.data;
         }
 
-        async function prepareRpcAuthorization(rpcName, body, requestOptions) {
-            const rpcScope = getSupabaseReadIdentityScope();
-            const rpcEpoch = nativeAuthRecoveryEpoch;
-            const inScope = () => rpcEpoch === nativeAuthRecoveryEpoch && rpcScope === getSupabaseReadIdentityScope() && !requestOptions.signal?.aborted;
-            let nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
-            if (!nativeHeaders?.Authorization && inScope() && nativeReadRequiresRls()) {
-                nativeHeaders = await getNativeAuthRequestHeaders(true).catch(() => null);
-            }
-            if (!inScope()) throw staleSupabaseReadScopeError();
-            if (requestOptions.requestSubmissionOwnerKey && (requestOptions.requestSubmissionOwnerKey !== getRequestSubmissionOwnerKey()
-                || requestOptions.requestSubmissionGeneration !== requestSubmissionGeneration)) {
-                throw Object.assign(new Error('Request account changed before dispatch.'), { code: 'REQUEST_SCOPE_CHANGED', hlOrderCommandDispatch: 'not_sent' });
-            }
-            if (requestOptions.signal?.aborted) throw Object.assign(new Error(`RPC ${rpcName} cancelled.`), { code: 'REQUEST_ABORTED', hlOrderCommandDispatch: 'not_sent' });
-            if (!nativeHeaders || !nativeHeaders.Authorization) {
-                throw Object.assign(nativeSessionRecoveryError(), { hlOrderCommandDispatch: 'not_sent' });
-            }
-            let requestBody;
-            try { requestBody = JSON.stringify(body || {}); }
-            catch (error) { error.hlOrderCommandDispatch = 'not_sent'; throw error; }
-            return { inScope, nativeHeaders, requestBody };
-        }
 
-        async function finishSupabaseRpc(response, rpcName, body, request, timeoutMs, inScope) {
-            if (response.status === 401 && inScope()) {
-                const failure = await response.clone().json().catch(() => null);
-                if (['PGRST301','PGRST303','AUTH_REQUIRED'].includes(failure?.code)) {
-                    const fresh = await getNativeAuthRequestHeaders(true);
-                    if (!inScope()) throw staleSupabaseReadScopeError();
-                    if (fresh?.Authorization) response = await window.GncDatabase.fetchRpc(SUPABASE_URL, rpcName,
-                        { ...request, headers:{ ...request.headers, ...fresh }, referrerPolicy:'no-referrer' }, timeoutMs, 'Authenticated RPC retry');
-                }
-            }
-            if (!response.ok) {
-                let responseCode = '';
-                try { responseCode = String((await response.clone().json())?.code || '').trim().toUpperCase(); } catch { globalThis.reportHandledRuntimeIssue?.("supabaseRpc", 'HANDLED_OPERATION_FAILURE'); }
-                const error = new Error(await getResponseError(response, `${rpcName} failed (${response.status})`));
-                error.status = response.status;
-                if (responseCode) error.code = responseCode;
-                if (!(response.status === 409 && /^save_request_work/.test(rpcName))) window.GncRuntimeWatchdog?.observeError?.(rpcName, responseCode + ' HTTP ' + response.status,false,'RPC_FAILURE',rpcName === 'save_drive_evidence_v3' ? body.p_idempotency_key : '');
-                error.hlOrderCommandDispatch = 'response_received';
-                throw error;
-            }
-            if (rpcName === 'set_itemcode_default_owners_v1' && Object.prototype.hasOwnProperty.call(response, '__gncValidatedData')) {
-                return redactEvalSensitiveData(response.__gncValidatedData);
-            }
-            const text = await response.text();
-            return redactEvalSensitiveData(text ? JSON.parse(text) : null);
-        }
 
-        async function supabaseRpc(functionName, body = {}, requestOptions = {}) {
-            const rpcName = String(functionName || '').trim();
-            assertEvalDataSourceAllowed(rpcName);
-            if (!rpcName) throw new Error('RPC name is required.');
-            if (rpcName === 'get_my_dataset_revisions_v1') return readDatasetRevisionRpc(body, requestOptions);
-            const { inScope, nativeHeaders, requestBody } = await prepareRpcAuthorization(rpcName, body, requestOptions);
-            if (!inScope()) throw staleSupabaseReadScopeError();
-            const timeoutMs = Math.max(1000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
-            if (rpcName === 'save_request_work') {
-                const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'request_work',
-                    operation: rpcName === 'get_request_capabilities' ? 'capabilities' : 'save',
-                    ...(rpcName === 'save_request_work' ? { requestId: body.request_id, expectedVersion: body.expected_version, patch: body.patch, complete: body.complete === true } : {})
-                }, { timeoutMs, signal: requestOptions.signal, label: 'Request work' });
-                if (!result?.ok || !result.data) throw new Error(result?.code || 'REQUEST_SAVE_UNCONFIRMED');
-                return result.data;
-            }
-            const request = {
-                method: 'POST', ...(['set_itemcode_default_owners_v1','save_drive_evidence_v3'].includes(rpcName) ? { priority: 'high', keepalive: requestBody.length * 3 < 60000 } : {}),
-                headers: {
-                    ...nativeHeaders,
-                    'Content-Type': 'application/json',
-                    'Prefer': ['set_itemcode_default_owners_v1','save_drive_evidence_v3','nursery_command_v23127'].includes(rpcName) ? 'return=minimal' : 'return=representation'
-                },
-                    body: requestBody,
-                signal: requestOptions && requestOptions.signal ? requestOptions.signal : undefined
-            };
-            const hedgeScope = getSupabaseReadIdentityScope();
-            const response = await dispatchRpcWithRecovery({ bridge: window.GncDatabase, baseUrl: SUPABASE_URL,
-                rpcName, body, request, requestOptions, timeoutMs, inScope,
-                hedgeInScope: () => hedgeScope === getSupabaseReadIdentityScope() });
-            return finishSupabaseRpc(response, rpcName, body, request, timeoutMs, inScope);
-        }
+
+
+
 
         const SECURE_DRIVE_EVIDENCE_PREFIXES = new Set(['ssn-', 'lsn-', 'na-']);
         const PROTECTED_DRIVE_PHOTO_PREFIXES = new Set(['ssn-', 'lsn-', 'na-', 'flyer-']);
@@ -20553,78 +20476,7 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
             };
         }
 
-        async function requestAuthorizedDatasetReadPage(table, query = '', limit = 500, offset = 0, options = {}) {
-            const config = getAuthorizedDatasetRead(table);
-            const params = buildAuthorizedDatasetReadParams(table, query, limit, offset);
-            const identityScope = getSupabaseReadIdentityScope();
-            const permissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
-            const cacheOwner = JSON.stringify([identityScope, permissionVersion]);
-            if (requestAuthorizedDatasetReadPage.cacheOwner !== cacheOwner) {
-                requestAuthorizedDatasetReadPage.cacheOwner = cacheOwner;
-                requestAuthorizedDatasetReadPage.cache = new Map();
-            }
-            const cache = requestAuthorizedDatasetReadPage.cache;
-            const cacheKey = JSON.stringify([config.dataset, params]);
-            const cached = cache.get(cacheKey);
-            const cacheable = ['soc', 'cav', 'reserves', 'suspend_tag', 'request_queue', 'active_request'].includes(config.dataset);
-            if (cached && ['soc', 'cav', 'reserves'].includes(config.dataset)) params.ifRevision = cached.revision;
-            let payload;
-            for (let attempt = 0; attempt < 2; attempt += 1) {
-                try {
-                    payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
-                        action: 'dataset_read', dataset: config.dataset, params
-                    }, {
-                        timeoutMs: Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS,
-                        signal: options.signal,
-                        label: `${config.dataset} data`
-                    });
-                    break;
-                } catch (error) {
-                    if (attempt === 0 && isInventoryRevisionAdoptionError(error) && !options.signal?.aborted) continue;
-                    throw error;
-                }
-            }
-            if (identityScope !== getSupabaseReadIdentityScope() || permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
-            if (payload?.ok === true && payload.data?.retained === true) {
-                if (cached) return { ...structuredClone(cached), retained: true }; // Retention never means empty data.
-                const direct = await fetchDirectPostgrestReadPage(table, query + '&limit=' + params.limit + '&offset=' + params.offset, { ...options, count: true }).catch(() => null);
-                if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError(); if (direct && Number.isInteger(direct.total)) return { ...direct, offset: params.offset, limit: params.limit, hasMore: params.offset + direct.rows.length < direct.total };
-                throw Object.assign(new Error('Authorized dataset refresh retained the current snapshot.'), { code: 'DATASET_READ_RETAINED' });
-            }
-            if (payload?.ok === true && payload.data?.up_to_date === true && cached
-                && String(payload.data.revision) === cached.revision) return structuredClone(cached);
-            if (!payload || payload.ok !== true || !payload.data || !Array.isArray(payload.data.rows)
-                || !Number.isInteger(Number(payload.data.total)) || Number(payload.data.total) < 0
-                || Number(payload.data.offset) !== params.offset || Number(payload.data.limit) < 1 || Number(payload.data.limit) > 500) {
-                const error = new Error(String(payload?.error || payload?.message || `${config.dataset} returned an invalid page.`));
-                error.status = Number(payload?.status || 0);
-                error.code = String(payload?.code || '').trim().toUpperCase();
-                error.payload = payload;
-                throw error;
-            }
-            if (config.dataset === 'suspend_tag' && params.offset === 0 && payload.data.retained !== true) {
-                const hasSourceFreshness = Object.prototype.hasOwnProperty.call(payload.data, 'sourceFreshness');
-                const sourceFreshness = hasSourceFreshness && payload.data.sourceFreshness && typeof payload.data.sourceFreshness === 'object'
-                    ? payload.data.sourceFreshness : {};
-                suspendTagSourceFreshness = {
-                    scope: identityScope,
-                    permissionVersion,
-                    loaded: hasSourceFreshness,
-                    filename: String(firstNonEmptyValue(sourceFreshness.filename, sourceFreshness.FILENAME, '') || '').trim(),
-                    lastUpdated: String(firstNonEmptyValue(sourceFreshness.last_updated, sourceFreshness.lastUpdated, sourceFreshness.LAST_UPDATED, '') || '').trim()
-                };
-            }
-            const inventoryRevision = String(payload.data.inventoryRevision || payload.data.rows.find(row => row?.loc_on_hand_revision || row?.LOC_ON_HAND_REVISION)?.loc_on_hand_revision || payload.data.rows.find(row => row?.LOC_ON_HAND_REVISION)?.LOC_ON_HAND_REVISION || '');
-            if (inventoryRevision && acceptCardLocationOnHandSourceReceipt(identityScope, permissionVersion, inventoryRevision)) {
-                payload.data.rows.forEach(row => stampCardLocationOnHandReceipt(row, identityScope, permissionVersion, inventoryRevision));
-            }
-            if (cacheable && (['suspend_tag', 'request_queue', 'active_request'].includes(config.dataset) || /^\d+$/.test(String(payload.data.revision || '')))) {
-                cache.delete(cacheKey);
-                cache.set(cacheKey, structuredClone(payload.data));
-                while (cache.size > 32) cache.delete(cache.keys().next().value);
-            }
-            return payload.data;
-        }
+
         async function requestAvReadPage(table, query, options = {}) {
             const dataset = getAvReadDataset(table, query);
             if (!dataset) throw new Error('Unsupported AV dataset.');
@@ -24857,7 +24709,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.71';
+        const APP_VERSION = '3.0.72';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -51765,6 +51617,7 @@ function toggleDriveQuickRequestItem(domId) {
             return true;
         }
 
+        /* @runtime-fragment assets/canonical-row-unlock.js */
         function getProtectedEditConfig(prefix) {
             return PROTECTED_EDIT_CONFIG[prefix] || null;
         }
@@ -58422,14 +58275,7 @@ function toggleDriveQuickRequestItem(domId) {
             };
         }
 
-        async function chatApiGet(table, query = 'select=*', label = 'Chat', options = {}) {
-            const safeTable = normalizeAppTableName(table);
-            const readKey = `legacy:${safeTable}:${String(query || '').trim()}`;
-            return await withProductionLiveSyncSignal(options.signal || null, (signal) => runDedupeSupabaseRead(readKey, ({ signal: readSignal }) => runAppApiSupabaseWrite(safeTable, 'GET', null, query, {
-                timeoutMs: SUPABASE_READ_TIMEOUT_MS,
-                signal: readSignal
-            }), { signal }));
-        }
+
 
         function isMissingSupabaseSchemaError(error = null) {
             const raw = [
@@ -106895,87 +106741,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 && Array.isArray(adapter.sourceKeys) && adapter.sourceKeys.includes(ACTIVE_REQUEST_TABLE)) || null;
         }
 
-        async function forceRefreshRequestsForView(reason = 'request-view', options = {}) {
-            const navigationSeq = navTransitionSeq;
-            const safeOptions = options && typeof options === 'object' ? options : {};
-            if (isRequestViewReadTerminalForCurrentIdentity() && safeOptions.manualRetry !== true) return false;
-            if (safeOptions.manualRetry === true) {
-                clearSupabaseReadTerminalDenialsForIdentity();
-                requestViewTerminalReadIdentityScope = '';
-                clearRequestViewReadFailure();
-            }
-            if (!currentUser || navigator.onLine === false) return false;
-            if (requestViewForceRefreshInFlight) return true;
-            const readCooldown = requestViewReadCooldownRemaining();
-            if (readCooldown > 0) return false;
-            const retryIfInteractive = () => {
-                if (safeOptions.allowWhileInteractive || !shouldDeferInteractiveBackgroundWork()) return false;
-                queueRequestInteractiveRefresh(reason, safeOptions);
-                return true;
-            };
-            if (retryIfInteractive()) return false;
-            const now = Date.now();
-            const minInterval = Math.max(0, Number(safeOptions.minIntervalMs ?? REQUEST_VIEW_FORCE_REFRESH_MIN_INTERVAL_MS) || 0);
-            if (!safeOptions.force && lastRequestViewForceRefreshAt && (now - lastRequestViewForceRefreshAt) < minInterval) return false;
-            requestViewForceRefreshInFlight = true;
-            lastRequestViewForceRefreshAt = now;
-            try {
-                const nativeAdapter = getNativeForegroundRequestRefreshAdapter();
-                if (nativeAdapter) {
-                    const owner = getProductionLiveSyncContext();
-                    const didRefresh = await productionLiveSyncCoordinator.ensure(nativeAdapter,
-                        safeOptions.force === true || safeOptions.manualRetry === true);
-                    const currentOwner = getProductionLiveSyncContext();
-                    const currentAdapter = getNativeForegroundRequestRefreshAdapter();
-                    if (!didRefresh || !isCurrentNavigationTransition(navigationSeq, 'request') || owner.scope !== currentOwner.scope
-                        || owner.dataPermissionVersion !== currentOwner.dataPermissionVersion
-                        || owner.view !== currentOwner.view || owner.viewKey !== currentOwner.viewKey || !currentAdapter
-                        || nativeAdapter.cacheKey !== currentAdapter.cacheKey) return false;
-                    // The coordinator owns snapshot validation, cache commits and
-                    // rendering. Reapplying its rows through the legacy path can
-                    // cancel a verified preview and rebuild the same list twice.
-                    await refreshActiveRequestQueueSideData(reason || 'request-force-refresh', {
-                        force: safeOptions.force === true,
-                        allowWhileInteractive: true,
-                        minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
-                    });
-                    return true;
-                }
-                const rows = await fetchActiveRequestLiveRows('*', { force_fresh: true, cache: 'no-store' });
-                if (retryIfInteractive()) return false;
-                const formattedRows = buildDatasetPayload('requests', rows).requestsData;
-                requestViewRetryAttempts = 0;
-                clearRequestViewReadFailure();
-                if (requestViewForceRefreshRetryTimer) clearTimeout(requestViewForceRefreshRetryTimer);
-                requestViewForceRefreshRetryTimer = null;
-                if (requestViewInteractiveRefreshTimer) clearTimeout(requestViewInteractiveRefreshTimer);
-                requestViewInteractiveRefreshTimer = null;
-                processAndLoadData({ requestsData: formattedRows });
-                await refreshActiveRequestQueueSideData(reason || 'request-force-refresh', {
-                    force: safeOptions.force === true,
-                    allowWhileInteractive: true,
-                    minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
-                });
-                const state = getDatasetState('requests');
-                state.initialLoaded = true;
-                state.fullLoaded = true;
-                state.lastLoadedAt = new Date().toISOString();
-                requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
-                updateFooterRequestBadge();
-                schedulePendingRequestSourceCompletionReconcile(24, reason || 'request-force-refresh');
-                markViewDirty('request');
-                markViewDirty('reports');
-                if (isCurrentNavigationTransition(navigationSeq, 'request')) queueInteractiveViewRender('request', false, true, 0, REQUEST_REALTIME_UI_DELAY_MS);
-                if (isCurrentNavigationTransition(navigationSeq, 'reports')) queueInteractiveViewRender('reports', false, true, 0, 180);
-                persistCurrentCache(false, reason);
-                return true;
-            } catch (error) {
-                recordRequestViewReadFailure(error);
-                return false;
-            } finally {
-                requestViewForceRefreshInFlight = false;
-            }
-        }
+
 
         function syncRequestViewLiveSync(delay = 0, options = {}) {
             const safeOptions = options && typeof options === 'object' ? { ...options } : {};

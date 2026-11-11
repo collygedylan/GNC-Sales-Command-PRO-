@@ -1,3 +1,5 @@
+import {retryOperationalRpc, isRecoverableOperationalRead, isRecoverableRequestRead} from './rpc-recovery-domain.js';
+
 export async function decodeAppFunctionResponse(response) {
     const version = String(response.headers?.get('x-agdata-latest-version') || response.headers?.get('x-agdata-app-version') || '').trim();
     if (version) void window.forceAgDataVersionUpgrade?.(version, APP_SHELL_VERSION, {reason:'app-api-response'});
@@ -100,7 +102,7 @@ export async function postReclassCommand(body, options = {}) {
     }
 }
 
-export async function postAppFunctionJson(url, body, options = {}) {
+async function postAppFunctionAttempt(url, body, options = {}) {
             if (!isAllowedAppHostname()) throw Object.assign(new Error('Origin not allowed'), { code: 'APP_ORIGIN_DENIED' });
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const action = String(body?.action || '').trim().toLowerCase();
@@ -141,10 +143,10 @@ export async function postAppFunctionJson(url, body, options = {}) {
                     const refreshed = await getNativeAuthRequestHeaders(true);
                     if (refreshed && authEpoch === nativeAuthRecoveryEpoch && callOwner === String(currentUser || '').trim().toLowerCase()
                         && (action !== 'erp_sync' || canRunManualInventoryImport())) {
-                        return postAppFunctionJson(url, body, { ...safeOptions, authRetried:true, nativeHeaders:refreshed, includeSession:false });
+                        return postAppFunctionAttempt(url, body, { ...safeOptions, authRetried:true, nativeHeaders:refreshed, includeSession:false });
                     }
                 }
-                reportAppFunctionFailure(action,body,response,responseCode);
+
                 throw createAppFunctionError(message,response,payload,responseCode,safeOptions);
             }
             return payload;
@@ -190,8 +192,8 @@ export async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_W
                 aborted.code = 'REQUEST_ABORTED';
                 throw aborted;
             }
-            const readPage = /^(GET|HEAD)$/i.test(options.method || 'GET') || /\/rest\/v1\/rpc\/(get_|read_|list_)/i.test(String(url));
-            if (!readPage && !/watchdog|Suspend Tag/i.test(label)) window.GncRuntimeWatchdog?.observeError?.(label,'TIMEOUT',false,'RPC_FAILURE');
+            const readPage = isRecoverableRequestRead(url, options);
+            if (!readPage && !options.recoverableRpcAttempt && !/watchdog|Suspend Tag/i.test(label)) window.GncRuntimeWatchdog?.observeError?.(label,'TIMEOUT',false,'RPC_FAILURE');
             throw Object.assign(new Error(`${label} timed out after ${Math.ceil(timeoutMs / 1000)}s`), {code:'TRANSPORT_TIMEOUT'});
         }
         throw error;
@@ -303,4 +305,19 @@ export async function uploadDrivePhotoWithNativeSession(formData, options = {}) 
     if (!response.ok || !saved?.id) throw Object.assign(new Error(saved?.message || 'Photo recovery did not confirm the upload.'),{status:response.status});
     return {ok:true,publicUrl:APP_API_FUNCTION_URL + '?photo_blob=' + saved.id,filePath,fileName:String(formData.get('fileName')||''),bucketName,
         storage:'postgres',...(saved.receipt ? {receipt:{...saved.receipt,writeConfirmed:true}} : {})};
+}
+
+export async function postAppFunctionJson(url, body, options = {}) {
+    const owner = getSupabaseReadIdentityScope();
+    const epoch = nativeAuthRecoveryEpoch;
+    try {
+        const result = await retryOperationalRpc(async () => ({ok:true,value:await postAppFunctionAttempt(url,body,options)}), {
+            safe:isRecoverableOperationalRead(body), signal:options.signal,
+            current:() => owner === getSupabaseReadIdentityScope() && epoch === nativeAuthRecoveryEpoch
+        });
+        return result.value;
+    } catch (error) {
+        if (error.status) reportAppFunctionFailure(String(body?.action || ''),body,{status:error.status},error.code || '');
+        throw error;
+    }
 }

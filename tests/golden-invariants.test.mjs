@@ -300,7 +300,6 @@ test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
   assert.match(read('assets/request-sales-impact.js'), /final lines \\u2022/);
 });
 test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => badgeConnectionContract(runFunctions,functionSource,read));
-
 test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
   const migration = read('supabase/migrations/20261023234500_request_quantity_recovery_v3.sql');
   const runner = read('scripts/apply-item-low-stock-migration.mjs');
@@ -313,7 +312,6 @@ test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
   assert.doesNotMatch(migration, /update\s+public\.ph_request_delivery_outbox/i);
   assert.match(runner, /requestQuantityRecoveryMigrationName[^]*20261023234500_request_quantity_recovery_v3\.sql/);
 });
-
 test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', async () => {
   const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
   const rows = [
@@ -399,7 +397,6 @@ test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', asyn
   assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
   assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);
 });
-
 test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
   const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
   const shared = {
@@ -419,11 +416,9 @@ test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
   assert.equal(result.line_items.filter(row => row.folder_id === 'REQ-SHARED').length, 4);
   assert.equal(new Set(result.line_items.map(row => row.unique_id)).size, 3);
 });
-
 test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => escapedTextContract(runFunctions,read,functionSource));
 import { assertRequestHistoryIsolatedSync } from '../src/core/golden-request-history-isolated-sync.mjs';
 test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => assertRequestHistoryIsolatedSync(read));
-
 test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser Gate)', () => {
   const migration = read('supabase/migrations/20261025080000_agdata_v2365_anon_security_hardening.sql');
   assert.match(migration, /revoke insert, update, delete, truncate on all tables in schema public from anon/);
@@ -480,7 +475,6 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
   assert.match(runner, /agdataV2365AnonSecurityHardeningMigrationName[^]*registeredReleaseDatabaseMigrations/);
   assert.match(runner, /agdataV2365SalesImpactUnionFixMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });
-
 test('Invariant 25 (Indexed Four-Domain Historical Archive)', () => {
   const migration = read('supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql');
   for (const table of ['ph_orders_history', 'ph_reserves_history', 'ph_drive_mode_history_files', 'ph_drive_mode_history']) {
@@ -506,7 +500,6 @@ test('Invariant 25 (Indexed Four-Domain Historical Archive)', () => {
   assert.match(read('assets/app-runtime.js'), /\['master', 'soc', 'reserves', 'requests', 'requestHistory', 'customerRepMap'\]/);
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'), /agdataV2366HistoricalArchiveMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });
-
 test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => {
   const migration = read('supabase/migrations/20261025234500_agdata_v2366_queue_resolution_cleanup.sql');
   for (const marker of ['queue_cleanup_recount_jobs_v2366', 'queue_cleanup_bunch_jobs_v2366',
@@ -533,7 +526,6 @@ test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => {
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
     /agdataV2366QueueResolutionCleanupMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });
-
 test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolidation)', () => {
   const dedup = read('supabase/migrations/20261026003000_agdata_v2366_historical_state_dedup.sql');
   for (const marker of ['deduplicate_drive_around_report_rows_batch_v1(p_max_files integer default 25)',
@@ -564,7 +556,6 @@ test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolid
     /drive-search-row-alias-v2366[^]*drive_around_report_state_hash_v2366\(raw_row\)/);
   assert.match(read('scripts/apply-item-low-stock-migration.mjs'), /agdataV2366HistoricalStateDedupMigrationName[^]*agdataV2366InventoryConsolidationMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });
-
 test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () => {
   const migration = read('supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql');
   for (const marker of ['get_consolidation_move_candidates_v1', "'CARRY_OVER'", "'CURRENT_CROP'", "'FUTURE_CROP'",
@@ -6842,3 +6833,10 @@ test('Invariant 625: a completed manual check advances Home using the exact serv
 import {assertPublicationDeadline} from './helpers/erp-publication-deadline-contract.mjs';
 test('Invariant 626: staged ERP publication yields within its RPC deadline and reaches 100 only on a durable receipt',assertPublicationDeadline);
 test('Invariant 627: normalized exact Assigned Items owners precede stale projections and base-prefix aliases',assertQueHeaderContract);
+
+import {assertWatchdogRpcRecovery,assertWatchdogReadContinuity} from './helpers/watchdog-recovery-contract.mjs';
+test('Invariant 628: RPC lock and server failures recover through bounded identical-command retries without unsafe replay',assertWatchdogRpcRecovery);
+test('Invariant 629: Request refresh retains same-account rows, Home defers Suspend boot reads and chat rejects empty filters',assertWatchdogReadContinuity);
+
+import {assertWatchdogTransportRecovery} from './helpers/watchdog-transport-contract.mjs';
+test('Invariant 630: native AV retry retains its batch identity and app-api reads recover HTTP 500 without terminal telemetry',assertWatchdogTransportRecovery);

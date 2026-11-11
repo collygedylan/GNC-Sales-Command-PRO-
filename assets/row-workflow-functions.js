@@ -1363,87 +1363,9 @@ function canUnlockCompletedRow(item = activeItem) {
     return canUserUnlockRow(currentUser, item);
 }
 
-function unlockProtectedSection(prefix) {
-    const item = activeItem;
-    if (!canUnlockCompletedRow(item)) { showRowEditRestrictedToast(prefix); return false; }
-    const state = getManagerAssignedColumnState(), key = getCompletedRowUnlockKey(item);
-    if (!key) return false;
-    const pending = state.pendingRowUnlocks ||= new Map();
-    if (pending.has(key)) return false;
-    const overrides = state.unlockedRowsByKey ||= new Map();
-    const signature = String(item.LAST_UPDATED || item.last_updated || '');
-    state.failedRowUnlocks?.delete(key);
-    overrides.set(key, true);
-    for (const row of new Set([item, masterInventoryById.get(key)])) {
-        if (row) Object.assign(row, {completed:false, is_completed:false, locked:false, row_locked:false,
-            DATE_COMPLETED:null, date_completed:null, completed_at:null});
-    }
-    protectedEditState[prefix] = key;
-    clearProtectedTimers(prefix);
-    applyProtectedEditState(prefix);
-    const scope = getSupabaseReadIdentityScope();
-    const task = serializeSuspendTagRowWrite({UNIQUE_ID:key}, () => persistCanonicalRowUnlock(state, item, prefix, key, signature, scope), 'unlock|' + signature);
-    pending.set(key, task);
-    task.finally(() => { if (pending.get(key) === task) pending.delete(key); }).catch(() => {});
-    return false;
-}
 
-async function persistCanonicalRowUnlock(state, item, prefix, key, signature, scope) {
-    const current = () => scope === getSupabaseReadIdentityScope() && state === getManagerAssignedColumnState();
-    const delays = [300,800,1600];
-    for (let attempt = 0; attempt <= delays.length && current(); attempt++) {
-        try {
-            const headers = await getNativeAuthRequestHeaders(attempt > 0);
-            if (!current()) return false;
-            if (!headers?.Authorization) throw Object.assign(new Error('Native sign-in is required to unlock this row.'), {retryable:false});
-            const response = await fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/unlock_drive_evidence_v1', {
-                method:'POST', headers, referrerPolicy:'no-referrer',
-                body:JSON.stringify({p_master_uid:key,p_expected_signature:signature})
-            }, 25000, 'Unlock row');
-            const result = await response.json();
-            if (!response.ok || result.ok !== true) {
-                if (result.message === 'DRIVE_ROW_STALE' && attempt < delays.length) {
-                    const fresh = await loadExactMasterDetailRow(key);
-                    if (!current() || fresh.__masterDetailRaw?.unique_id !== key) return false;
-                    if (!fresh.__masterDetailRaw.date_completed) return true;
-                    signature = fresh.__masterDetailRaw.last_updated || '';
-                    continue;
-                }
-                const retryable = response.status >= 500 || [401,429].includes(response.status) || /55P03|lock_not_available|lock timeout|DRIVE_SAVE_BUSY/i.test([result.code,result.message].join(' '));
-                throw Object.assign(new Error(result.message || result.code || 'Unlock was not confirmed.'), {retryable});
-            }
-            if (!current()) return false;
-            if (String(result.row?.unique_id || result.row?.UNIQUE_ID || '') !== key) throw Object.assign(new Error('Unlock receipt identity mismatch.'),{retryable:false});
-            // Only publish the unlock revision. A late receipt must not overwrite a photo, field draft or subsequent Mark Done.
-            for (const row of new Set([item, masterInventoryById.get(key)])) {
-                if (row && result.row.last_updated && String(row.LAST_UPDATED || row.last_updated || '') === signature) row.LAST_UPDATED = row.last_updated = result.row.last_updated;
-            }
-            if (state.unlockedRowsByKey.get(key) === true) state.unlockedRowsByKey.set(key, result.row.last_updated || true);
-            return true;
-        } catch (error) {
-            if (!current()) return false;
-            if (error.retryable === false || attempt === delays.length) {
-                if (error.retryable !== false || /DRIVE_ROW_STALE/.test(error.message)) {
-                    const row = await loadExactMasterDetailRow(key).catch(() => null);
-                    if (!current()) return false;
-                    if (row && String(row.UNIQUE_ID || row.unique_id) === key && (row.LAST_UPDATED || row.last_updated) !== signature
-                        && row.__masterDetailRaw?.date_completed === null && !isCompletedInventoryRow(row)) {
-                        state.unlockedRowsByKey.set(key, row.LAST_UPDATED || row.last_updated);
-                        return true;
-                    }
-                }
-                (state.failedRowUnlocks ||= new Set()).add(key);
-                if (activeItem && getCompletedRowUnlockKey(activeItem) === key) {
-                    renderProtectedControls(prefix);
-                    showToast('Unlock not confirmed', 'Your edits are retained. Tap Retry Unlock before saving.', true);
-                }
-                return false;
-            }
-            await new Promise(resolve => setTimeout(resolve, delays[attempt]));
-        }
-    }
-    return false;
-}
+
+
 
 function applySuspendEvalUserFilter(items = []) {
     const owner = getSuspendEvalUserFilter();

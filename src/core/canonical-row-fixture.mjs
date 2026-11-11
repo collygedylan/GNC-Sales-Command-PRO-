@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 
 export const read = file => fs.readFileSync(new URL('../../' + file, import.meta.url), 'utf8');
-export const rows = read('assets/row-workflow-functions.js') + '\n' + read('assets/suspend-exact-owner.js');
+export const rows = read('assets/row-workflow-functions.js') + '\n' + read('assets/suspend-exact-owner.js') + '\n' + read('assets/canonical-row-unlock.js');
 export const runtime = read('assets/app-runtime.js');
 export function fixture(names, extra = {}) {
     const ctx = vm.createContext({
@@ -30,4 +30,4 @@ export function fixture(names, extra = {}) {
     }
     return {ctx, state};
 }
-export const engines = ['resolveSuspendOwner','resolveExactSuspendOwner','normalizeEvalAssignableUser','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveInventoryRowOwner','resolveCanonicalRowAccess','canUserReclassRow','canUserUnlockRow','canUserEditRow','canUserUploadRowPhoto'];
+export const engines = ['normalizeSuspendOwnerCode','validSuspendOwner','suspendOwnerFromRow','resolveSuspendOwnerFallback','collectSuspendOwnerCandidates','resolveSuspendOwner','resolveExactSuspendOwner','normalizeEvalAssignableUser','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveInventoryRowOwner','resolveCanonicalRowAccess','canUserReclassRow','canUserUnlockRow','canUserEditRow','canUserUploadRowPhoto'];

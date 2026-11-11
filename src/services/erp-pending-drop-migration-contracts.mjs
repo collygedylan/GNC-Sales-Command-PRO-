@@ -1,3 +1,5 @@
+import {watchdogRpcRecoveryMigration, watchdogRpcRecoveryInstalled, watchdogRequestReceiptIndexMigration, watchdogRequestReceiptIndexInstalled} from './watchdog-rpc-migration-contract.mjs';
+
 function actionDiscrepanciesInstalled() {
   return `select coalesce((
     select count(*) = 3 and bool_and(relrowsecurity)
@@ -35,5 +37,7 @@ function erpStagePublicationInstalled() {
 
 export const erpPendingDropContracts = [
   ['20261111120000_agdata3070_action_discrepancies.sql', actionDiscrepanciesInstalled],
-  ['20261111120001_agdata3070_erp_stage_publication.sql', erpStagePublicationInstalled]
+  ['20261111120001_agdata3070_erp_stage_publication.sql', erpStagePublicationInstalled],
+  [watchdogRpcRecoveryMigration, watchdogRpcRecoveryInstalled],
+  [watchdogRequestReceiptIndexMigration, watchdogRequestReceiptIndexInstalled]
 ];

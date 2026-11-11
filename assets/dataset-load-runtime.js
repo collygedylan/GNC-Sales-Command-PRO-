@@ -104,7 +104,7 @@ function recoverLegacyDatasetRows(plan, error) {
     const {key,definition,wantsFull,modeLabel,fetchAll,firstPage} = plan;
     const failure = classifyDatasetLoadFailureCode(error);
     if (failure === null) {
-        if (error?.code === 'DATASET_READ_RETAINED') queueDatasetLoad(key,modeLabel,3000);
+        if (error?.code === 'DATASET_READ_RETAINED' && !error.retryOnViewChange) queueDatasetLoad(key,modeLabel,3000);
         return null;
     }
     if (isInventorySourceReadinessError(error)) {
