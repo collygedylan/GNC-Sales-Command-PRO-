@@ -1,20 +1,20 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.74';
+const APP_SHELL_BUILD = 'AgData v3.0.75';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.74';
+const APP_ASSET_VERSION = '3.0.75';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
 const { installCurrentShell, fetchWithTimeout, handleShellResourceRequest, releaseDescriptorUrl,
-  broadcastShellVersion, retireUnusedShellGenerations } = self.GncLiveShellWorker;
+  broadcastShellVersion, retireUnusedShellGenerations, activateBannerCheckpoint, prepareCurrentShellActivation } = self.GncLiveShellWorker;
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.74';
+const CACHE_VERSION = 'agdata-v3.0.75';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -486,25 +486,17 @@ async function navigateClientToForcedUpgrade(client, reportedBuild = '') {
 }
 
 const cameraCaptureClients = new Map();
-const cameraCaptureBlocked = () => Array.from(cameraCaptureClients.values()).some(until => until > Date.now());
+const cameraCaptureBlocked = clientId => Number(cameraCaptureClients.get(clientId)) > Date.now();
 self.addEventListener('install', (event) => {
   event.waitUntil(installCurrentShell());
 });
 self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    if (!await hasCompleteShellInstall()) return;
-    // Claimed tabs can still run an older shell and request its exact versioned assets.
-    // Retire generations only after a complete install with no production clients.
-    const windows = await self.clients.matchAll({ type:'window', includeUncontrolled:true }).catch(() => null);
-    if (windows && !windows.some(client => isProductionShellUrl(client.url))) {
-      const keys = await caches.keys();
-      await Promise.all(keys.filter(isRetiredRootCacheName).map(key => caches.delete(key)));
-    }
-    const preload = self.registration.navigationPreload;
-    return Promise.resolve(preload?.disable?.()).catch(() => {})
+  event.waitUntil(prepareCurrentShellActivation().then(complete => {
+    if (!complete) return false;
+    return Promise.resolve()
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'));
-  })());
+  }));
 });
 self.addEventListener('message', (event) => {
   const data = event && event.data ? event.data : {};
@@ -523,8 +515,9 @@ self.addEventListener('message', (event) => {
     cameraCaptureClients.set(event.source.id,data.active === true ? Math.min(Number(data.until)||0,Date.now()+30*60_000) : 0);
     return;
   }
-  if (data.type === 'SKIP_WAITING' && self.GncLiveShellWorker.acceptsBannerCheckpoint(data) && !cameraCaptureBlocked()) {
-    event.waitUntil(hasCompleteShellInstall().then(complete => complete && !cameraCaptureBlocked() ? self.skipWaiting() : false));
+  if (data.type === 'SKIP_WAITING') {
+    // Claiming a sibling does not navigate it or disturb its active camera work.
+    event.waitUntil(activateBannerCheckpoint(data, () => cameraCaptureBlocked(event.source.id)));
     return;
   }
   if (data.type === 'GNC_GET_SHELL_VERSION') {

@@ -7,16 +7,17 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         if(root.navigator?.onLine===false || ['AbortError','QuotaExceededError','SecurityError'].includes(error?.name) || /ABORT|SCOPE_CHANGED|NETWORK|TIMEOUT/.test(String(error?.code || '')) || error?.name==='TypeError' && /fetch|network|load failed/i.test(String(error?.message || '')))return;
         if(reportedErrors.has(code))return;reportedErrors.add(code);root.reportHandledRuntimeIssue?.('live_app_update',code);
     };
-    const workerVersions = new WeakMap(), workerWaiters = new Map(), watchedRegistrations = new WeakSet();
+    const workerVersions = new WeakMap(), workerWaiters = new Map(), watchedRegistrations = new WeakSet(), watchedInstallations = new WeakSet();
     const normalize = value => String(value || '').trim().match(/^(?:AgData\s+v|v)?((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/i)?.[1] || '';
     const currentVersion = () => normalize(root.__APP_RELEASE_VERSION__ || root.__APP_SHELL_VERSION__);
     const newer = (a,b) => { const x=normalize(a).split('.').map(Number),y=normalize(b).split('.').map(Number); if(x.length!==3||y.length!==3)return false;for(let i=0;i<3;i++){if(x[i]!==y[i])return x[i]>y[i];}return false; };
     let targetVersion = '', inFlightCheck = null, applyFlight = null, registrationFlight = null, registration = null;
     let registeredVersion = '', activation = null, activationTimer = null;
     let restoreReady = false, started = false, reloading = false, lastCheckAt = 0, lastShellProof = null;
-    let prepareExplicitUpdate = null;
+    let prepareExplicitUpdate = null, applyMessage = '', userRequestedUpdateApply = false;
     let retryNotBefore = 0, manifestBackoff = 45000;
     let retiredWorkerCleanupStarted = false;
+    let handoffFlight = null, handoffPostedWorker = null;
     const visible = () => !doc.hidden && root.navigator?.onLine !== false;
     const deadline = work => typeof root.withBootDeadline === 'function' ? root.withBootDeadline(work,null) : Promise.resolve(null);
     const runtimeReady = () => typeof root.saveWorkStateBeforeAppUpdate === 'function' && typeof root.getAppUpdateBusyState === 'function' && typeof root.isAppUpdateSnapshotCurrent === 'function' && typeof root.commitAppUpdateSnapshotForReload === 'function';
@@ -34,9 +35,9 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             pill.addEventListener('click',event => { if (event.isTrusted) void applyBannerTap(); });
             doc.body.appendChild(pill);
         }
-        pill.textContent = message || (activation?.target === targetVersion
+        pill.textContent = message || (userRequestedUpdateApply
             ? 'Applying v' + targetVersion + '…'
-            : 'Update ready — tap to apply');
+            : applyMessage || 'Update v' + targetVersion + ' ready — tap to apply');
     }
     function showPendingUpdate() {
         if (!targetVersion || reloading) return false;
@@ -46,13 +47,18 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     function rememberTarget(value) {
         const candidate=normalize(value);
         if (!candidate || !newer(candidate,currentVersion())) return false;
-        if (!targetVersion || newer(candidate,targetVersion)) { targetVersion=candidate;lastShellProof=null; }
+        if (!targetVersion || newer(candidate,targetVersion)) { targetVersion=candidate;lastShellProof=null;applyMessage=''; }
         root.__gncShellUpdateReady=true;renderPill();return true;
     }
     function watchInstallation(reg) {
         const installing = reg.installing;
+        if (!installing || watchedInstallations.has(installing)) return;
+        watchedInstallations.add(installing);
         installing?.addEventListener?.('statechange', () => {
-            if (installing.state === 'installed') void askWorkerVersion(reg.waiting || installing);
+            if (installing.state !== 'installed') return;
+            void askWorkerVersion(reg.waiting || installing);
+            offerInstalledBannerWorker(reg);
+            void resumeReloadHandoff(reg);
         });
     }
     function watchRegistration(reg) {
@@ -61,7 +67,9 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             watchedRegistrations.add(reg);
             reg.addEventListener?.('updatefound', () => watchInstallation(reg));
         }
+        watchInstallation(reg);
         if (reg.waiting) void askWorkerVersion(reg.waiting);
+        void resumeReloadHandoff(reg);
         return reg;
     }
     function ensureRegistration(update=false) {
@@ -71,7 +79,9 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             const version = update && targetVersion ? targetVersion : currentVersion();
             if (!version) return null;
             const reuse = registeredVersion === version;
-            const reg = reuse ? registration : await deadline(serviceWorker.register('./sw.js?v='+encodeURIComponent(version),{scope:'./',updateViaCache:'none'}));
+            const pending = reuse ? Promise.resolve(registration) : Promise.resolve(serviceWorker.register('./sw.js?v='+encodeURIComponent(version),{scope:'./',updateViaCache:'none'}));
+            void pending.then(watchRegistration).catch(error=>reportUnexpected(error,'UPDATE_REGISTRATION_FAILED'));
+            const reg = await deadline(pending);
             if (!reg) return null;
             registeredVersion = version;
             watchRegistration(reg);
@@ -102,14 +112,15 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             if(proof)lastShellProof=proof;return !!proof;
         } catch (error) { reportUnexpected(error,'UPDATE_SHELL_RESPONSE_FAILED'); return false; } finally {controller.abort();}
     }
-    function snapshotIsCurrent(receipt,target) {
-        return visible() && !reloading && target===targetVersion && newer(target,currentVersion()) && !busy()
+    function snapshotIsCurrent(receipt,target,sameRelease=false) {
+        const validTarget = sameRelease ? target===currentVersion() : target===targetVersion && newer(target,currentVersion());
+        return visible() && !reloading && validTarget && !busy()
             && receipt?.ok===true && root.isAppUpdateSnapshotCurrent(receipt)===true;
     }
-    async function checkpoint(target) {
+    async function checkpoint(target,sameRelease=false) {
         if (!visible() || busy()) return null;
         let receipt;try { receipt=await root.saveWorkStateBeforeAppUpdate({targetVersion:target,deadlineMs:1500}); } catch (error) { reportUnexpected(error,'UPDATE_CHECKPOINT_FAILED'); return null; }
-        return snapshotIsCurrent(receipt,target) ? receipt : null;
+        return snapshotIsCurrent(receipt,target,sameRelease) ? receipt : null;
     }
     function navigate(target,receipt) {
         if(!snapshotIsCurrent(receipt,target))return false;
@@ -124,7 +135,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         try {
             if(root.commitAppUpdateSnapshotForReload(receipt)!==true)return false;
             if(!snapshotIsCurrent(receipt,target)){root.cancelAppUpdateSnapshotReload?.(receipt);return false;}
-            root.sessionStorage.setItem(key,JSON.stringify({target,from:currentVersion(),at:Date.now(),snapshotId:receipt.snapshotId}));
+            root.sessionStorage.setItem(key,JSON.stringify({target,from:currentVersion(),at:Date.now(),snapshotId:receipt.snapshotId,owner:receipt.owner,tabNonce:receipt.tabNonce}));
             reloading=true;root.__agdataVersionReloadPending=true;root.__agdataMarkBootComplete?.();
             root.suspendShellMaintenanceForNavigation?.();root.location.replace(next.href);return true;
         } catch(error) {
@@ -132,47 +143,125 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             try{root.sessionStorage.removeItem(key);}catch{}reportUnexpected(error,'UPDATE_NAVIGATION_FAILED');return false;
         }
     }
-    function activateWaitingWorker(worker, target, receipt) {
-        const build = 'AgData v' + target;
+    function readReloadHandoff() {
+        try {
+            if (root.sessionStorage.getItem('agdata_update_restore_commit_v1')) return null;
+            const marker=JSON.parse(root.sessionStorage.getItem('agdata_live_update_reload_v1') || 'null');
+            const age=Date.now()-Number(marker?.at);
+            return marker?.target===currentVersion() && newer(currentVersion(),marker.from) && age>=0 && age<120000
+                && typeof marker.snapshotId==='string' && marker.snapshotId && typeof marker.tabNonce==='string' && marker.tabNonce
+                && typeof marker.owner?.username==='string' && typeof marker.owner?.subject==='string' ? marker : null;
+        } catch (error) { reportUnexpected(error,'UPDATE_HANDOFF_MARKER_FAILED');return null; }
+    }
+    function handoffReceiptMatches(marker,receipt) {
+        return marker && snapshotIsCurrent(receipt,currentVersion(),true) && receipt.tabNonce===marker.tabNonce
+            && receipt.owner?.username===marker.owner.username && receipt.owner?.subject===marker.owner.subject;
+    }
+    function resumeReloadHandoff(reg=registration) {
+        const marker=readReloadHandoff(),worker=reg?.waiting;
+        if (!marker || !worker || handoffPostedWorker===worker || !visible() || busy()) return Promise.resolve(false);
+        if (handoffFlight) return handoffFlight;
+        handoffFlight=(async()=>{
+            if (await askWorkerVersion(worker)!==currentVersion() || reg.waiting!==worker) return false;
+            if (!readReloadHandoff()) return false;
+            const receipt=await checkpoint(currentVersion(),true);
+            if (!handoffReceiptMatches(readReloadHandoff(),receipt) || reg.waiting!==worker) return false;
+            const build='AgData v'+currentVersion();
+            worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:'update-banner',snapshotId:receipt.snapshotId,targetBuild:build,build,version:build});
+            handoffPostedWorker=worker;
+            return true;
+        })().catch(error=>{reportUnexpected(error,'UPDATE_HANDOFF_FAILED');return false;}).finally(()=>{handoffFlight=null;});
+        return handoffFlight;
+    }
+    function finishReloadHandoff(worker,version) {
+        if (!readReloadHandoff() || worker!==serviceWorker?.controller || version!==currentVersion()) return;
+        try { root.sessionStorage.removeItem('agdata_live_update_reload_v1'); }
+        catch (error) { reportUnexpected(error,'UPDATE_HANDOFF_MARKER_FAILED'); }
+    }
+    function finishActivation(tap, result) {
+        if (activation !== tap) return false;
+        activation = null;
+        userRequestedUpdateApply = false;
         root.clearTimeout(activationTimer);
-        activation = {worker, target, receipt};
+        activationTimer = null;
+        tap.resolve(result);
+        if (!reloading) renderPill();
+        return result;
+    }
+    async function fallbackBannerActivation(tap) {
+        if (activation !== tap) return false;
+        if (!snapshotIsCurrent(tap.receipt,tap.target)) return finishActivation(tap,false);
+        const verified = await verifyShell(tap.target);
+        if (activation !== tap) return false;
+        if (!verified) applyMessage='Update unavailable — tap to retry';
+        return finishActivation(tap,verified && navigate(tap.target,tap.receipt));
+    }
+    function beginBannerActivation(target, receipt) {
+        let resolve;
+        const completion = new Promise(done => { resolve=done; });
+        root.clearTimeout(activationTimer);
+        const tap = {worker:null, target, receipt, resolve, completion};
+        activation = tap;
         activationTimer = root.setTimeout(() => {
-            activation = null;
             activationTimer = null;
-            renderPill();
-        }, 5000);
-        worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:'update-banner',snapshotId:receipt.snapshotId,targetBuild:build,build,version:build});
+            void fallbackBannerActivation(tap).catch(error => {
+                reportUnexpected(error,'UPDATE_ACTIVATION_FALLBACK_FAILED');
+                finishActivation(tap,false);
+            });
+        }, 800);
+        return tap;
+    }
+    function activateWaitingWorker(tap, worker) {
+        const build = 'AgData v' + tap.target;
+        tap.worker = worker;
+        try { worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:'update-banner',snapshotId:tap.receipt.snapshotId,targetBuild:build,build,version:build}); }
+        catch (error) { reportUnexpected(error,'UPDATE_ACTIVATION_MESSAGE_FAILED'); }
+        return true;
+    }
+    function offerInstalledBannerWorker(reg) {
+        const tap=activation,worker=reg.waiting;
+        if (!tap?.shellVerified || !worker || tap.worker || !snapshotIsCurrent(tap.receipt,tap.target)) return;
+        activateWaitingWorker(tap,worker);
     }
     function finishBannerActivation(worker, version) {
         const tap = activation;
         if (!tap || tap.worker !== worker || worker !== serviceWorker?.controller || tap.target !== version) return false;
-        activation = null;
-        root.clearTimeout(activationTimer);
-        return navigate(tap.target, tap.receipt);
+        return finishActivation(tap,navigate(tap.target,tap.receipt));
+    }
+    async function prepareBannerActivation(tap) {
+        const [reg,verified] = await Promise.all([ensureRegistration(true),verifyShell(tap.target)]);
+        if (activation !== tap) return reloading;
+        if (!verified) {
+            applyMessage='Update unavailable — tap to retry';
+            return finishActivation(tap,false);
+        }
+        if (!snapshotIsCurrent(tap.receipt,tap.target)) return finishActivation(tap,false);
+        tap.shellVerified=true;
+        if (reg?.installing && !reg.waiting) return tap.completion;
+        if (!reg?.waiting) return finishActivation(tap,navigate(tap.target,tap.receipt));
+        return activateWaitingWorker(tap,reg.waiting);
     }
     async function applyTappedTarget(target) {
         prepareExplicitUpdate?.();
         const receipt = await checkpoint(target);
         if (!receipt) return false;
-        if (registrationFlight) await registrationFlight;
-        const reg = await ensureRegistration(true);
-        if (!snapshotIsCurrent(receipt,target) || (serviceWorker?.register && !reg) || (reg?.installing && !reg.waiting)) return false;
-        const worker = reg?.waiting || serviceWorker?.controller || reg?.active;
-        if (worker && await askWorkerVersion(worker) !== target) return false;
-        if (!await verifyShell(target) || !snapshotIsCurrent(receipt,target)) return false;
-        if (!reg?.waiting) return navigate(target, receipt);
-        if (reg.waiting !== worker) return false;
-        activateWaitingWorker(worker, target, receipt);
-        return true;
+        const tap = beginBannerActivation(target,receipt);
+        const preparing = prepareBannerActivation(tap).catch(error => {
+            reportUnexpected(error,'UPDATE_ACTIVATION_PREPARATION_FAILED');
+            return finishActivation(tap,false);
+        });
+        return Promise.race([preparing,tap.completion]);
     }
     function applyBannerTap() {
         if (reloading || !restoreReady || !visible() || !newer(targetVersion,currentVersion())) return false;
         if (applyFlight || activation) return false;
+        userRequestedUpdateApply = true;
+        applyMessage='Update paused — tap to retry';
         renderPill('Applying v' + targetVersion + '…');
         applyFlight = applyTappedTarget(targetVersion).catch(error => {
             reportUnexpected(error,'UPDATE_APPLY_FAILED');
             return false;
-        }).finally(() => { applyFlight = null; if (!reloading) renderPill(); });
+        }).finally(() => { applyFlight = null; if (!activation) userRequestedUpdateApply=false; if (!reloading) renderPill(); });
         return applyFlight;
     }
     function retryPendingRestore() {
@@ -197,6 +286,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         lastCheckAt=Date.now();
         inFlightCheck=(async()=>{
             void retryPendingRestore();
+            void resumeReloadHandoff();
             const controller=new root.AbortController();
             let manifest = null;
             try {
@@ -256,20 +346,23 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         workerVersions.set(worker,version);const waiter=workerWaiters.get(worker);
         if(waiter){root.clearTimeout(waiter.timer);workerWaiters.delete(worker);waiter.resolve(version);}
         if (worker === serviceWorker.controller && data.type === 'GNC_SHELL_ACTIVATED') announceCurrentShell(worker);
+        finishReloadHandoff(worker,version);
         rememberTarget(version);
     });
     serviceWorker?.addEventListener?.('controllerchange',()=>{
         const worker = serviceWorker.controller;
         void askWorkerVersion(worker).then(version=>{
             if (worker !== serviceWorker.controller) return;
+            finishReloadHandoff(worker,version);
             if (!finishBannerActivation(worker,version) && !rememberTarget(version)) announceCurrentShell(worker);
         });
     });
     const resumed=reason=>{if(visible())void checkForLiveAppUpdate(reason,{force:true});};
     doc.addEventListener('visibilitychange',()=>resumed('visible'),{passive:true});
     root.addEventListener('online',()=>resumed('online'));root.addEventListener('pageshow',()=>resumed('pageshow'));root.addEventListener('focus',()=>resumed('focus'));
+    root.addEventListener('agdata:update-work-settled',()=>{void resumeReloadHandoff();});
     root.checkForLiveAppUpdate=checkForLiveAppUpdate;root.requestLiveAppUpdate=requestLiveAppUpdate;
-    root.GncLiveAppUpdate=Object.freeze({start,runtimeReady(prepare){restoreReady=true;prepareExplicitUpdate=prepare;void retryPendingRestore();void askWorkerVersion(serviceWorker?.controller).then(()=>announceCurrentShell());},check:checkForLiveAppUpdate,request:requestLiveAppUpdate,requestApply:()=>applyFlight || Promise.resolve(false),scheduleApply:showPendingUpdate,ensureRegistration,
-        getState:()=>({targetVersion,currentVersion:currentVersion(),busy:busy(),checking:!!inFlightCheck,applying:!!applyFlight,reloading,lastShellProof})});
+    root.GncLiveAppUpdate=Object.freeze({start,runtimeReady(prepare){restoreReady=true;prepareExplicitUpdate=prepare;void retryPendingRestore();void resumeReloadHandoff();void askWorkerVersion(serviceWorker?.controller).then(()=>announceCurrentShell());},check:checkForLiveAppUpdate,request:requestLiveAppUpdate,requestApply:()=>applyFlight || Promise.resolve(false),scheduleApply:showPendingUpdate,ensureRegistration,
+        getState:()=>({targetVersion,currentVersion:currentVersion(),busy:busy(),checking:!!inFlightCheck,applying:userRequestedUpdateApply,userRequestedUpdateApply,reloading,lastShellProof})});
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
 }

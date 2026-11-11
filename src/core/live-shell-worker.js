@@ -182,6 +182,26 @@ function acceptsBannerCheckpoint(data) {
     && data.targetBuild === APP_SHELL_BUILD;
 }
 
+async function activateBannerCheckpoint(data, captureBlocked) {
+  if (!acceptsBannerCheckpoint(data) || captureBlocked()) return false;
+  if (!await hasCompleteShellInstall() || captureBlocked()) return false;
+  await self.skipWaiting();
+  return true;
+}
+
+async function prepareCurrentShellActivation() {
+  if (!await hasCompleteShellInstall()) return false;
+  // Older documents retain their versioned assets while the new worker serves them.
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true }).catch(() => null);
+  if (windows && !windows.some(client => isProductionShellUrl(client.url))) {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(isRetiredRootCacheName).map(key => caches.delete(key)));
+  }
+  const preload = self.registration.navigationPreload;
+  await Promise.resolve(preload?.disable?.()).catch(() => {});
+  return true;
+}
+
 self.GncLiveShellWorker = Object.freeze({ installCurrentShell, fetchWithTimeout, handleShellResourceRequest, acceptsBannerCheckpoint,
-  releaseDescriptorUrl, broadcastShellVersion, retireUnusedShellGenerations });
+  releaseDescriptorUrl, broadcastShellVersion, retireUnusedShellGenerations, activateBannerCheckpoint, prepareCurrentShellActivation });
 }
