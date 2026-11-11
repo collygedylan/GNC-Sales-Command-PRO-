@@ -4171,7 +4171,7 @@ test('Invariant 190 (Suspend lot fallback stays at the same physical location an
 test('Invariant 191 (Bloom opens project creation directly with all grading fields)', () => bloomProjectContract(runFunctions,read));
 
 test('Invariant 192 (Suspend AV has one action and no nested Reclass card)', () => {
-  const source=functionSource('assets/app-runtime.js','renderRequestMatchingInventoryOptions');
+  const source=['renderRequestMatchingInventoryOptions','renderLegacyRequestAvOptions','renderRequestAvOptionCard'].map(name=>functionSource('assets/app-runtime.js',name)).join('\n');
   assert.ok(source.includes('suspendFillTag ? `<div class="suspend-av-option-evidence">'));
   assert.ok(source.includes('+ ADD SELECTED LOCATION(S) TO TAG'));
   assert.ok(!source.includes('${suspendFillTag && addButtonHtml ? addButtonHtml'));
@@ -6007,20 +6007,7 @@ test('Invariant 456 (foreground revision budget, direct photos and pinned naviga
 });
 
 test('Invariant 457 (direct Request detail replaces its summary on each card)', () => {
-  const host = { innerHTML: '' };
-  const api = runFunctions('assets/app-runtime.js', ['renderRequestDetailInfo', 'buildRequestOpenInfoCardFromValues'], {
-    document: { getElementById(id) { assert.equal(id, 'request-detail-info'); return host; } },
-    isRequestDetailItem: () => true,
-    buildRequestOpenInfoHtml: item => item.name,
-    escapeShareHtml: value => String(value)
-  });
-  for (const name of ['First request', 'Next request']) {
-    api.renderRequestDetailInfo({ name }, 'request');
-    assert.equal(host.innerHTML, name);
-  }
-  api.renderRequestDetailInfo({ name: 'Drive row' }, 'drive');
-  assert.equal(host.innerHTML, '');
-  assert.match(api.buildRequestOpenInfoCardFromValues({ chips: [['Qty', 0]] }), /request-open-info-value">0<\/span>/);
+  assertDirectRequestSummaryReplacement(runFunctions);
 });
 
 test('Invariant 458 (AV keeps the View and Season filters on one accessible rail)', () => {
@@ -6864,3 +6851,7 @@ test('Invariant 620: the release bundler generates output with every native addo
 import { assertAssignedExportSnapshot } from './helpers/assigned-export-contract.mjs';
 
 test('Invariant 621: Assigned Items exports every filtered row and eight exact columns from memory while warehouse pages are pending',assertAssignedExportSnapshot);
+
+import { assertCompactRequestHeader, assertDirectRequestSummaryReplacement } from './helpers/request-detail-compact-contract.mjs';
+
+test('Invariant 622: Request and Suspend keep ordered compact identity and read-only Reserve without redundant banners',assertCompactRequestHeader);

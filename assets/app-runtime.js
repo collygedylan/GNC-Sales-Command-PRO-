@@ -106,7 +106,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.66';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.67';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24854,7 +24854,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.66';
+        const APP_VERSION = '3.0.67';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -96718,79 +96718,7 @@ function getDocksSuspendSyncAudit() {
             panel.classList.remove('hidden');
         }
 
-        function getRequestOpenInfoSnapshot(item = activeItem, detailSourceView = '') {
-            if (!item) return null;
-            const commonName = String(firstNonEmptyValue(item.COMMONNAME, item.commonname, item.COMMON_NAME, item.common_name, 'Unknown') || 'Unknown').trim();
-            const contSize = String(firstNonEmptyValue(item.CONTSIZE, item.contsize, item.CONTAINER_SIZE, item.container_size, '') || '').trim();
-            const itemCode = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, item.ITEM_CODE, item.item_code, '') || '').trim();
-            const locationCode = String(firstNonEmptyValue(item.LOCATIONCODE, item.locationcode, item.LOCATION_CODE, item.location_code, '') || '').trim();
-            const lotCode = String(firstNonEmptyValue(item.LOTCODE, item.lotcode, item.LOT_CODE, item.lot_code, '') || '').trim();
-            const sourceValue = String(firstNonEmptyValue(item.SOURCE, item.source, item.SOURCECODE, item.sourcecode, '') || '').trim();
-            const requestFolder = typeof getRequestFolderName === 'function' ? String(getRequestFolderName(item) || '').trim() : String(firstNonEmptyValue(item.REQUEST_FOLDER, item.request_folder, '') || '').trim();
-            const metrics = isDockSuspendDcRequestMirrorRow(item) ? buildQueueInventoryMetricsHtml(item,'request',{detailMetrics:true}) : item;
-            const desiredSpec = getRequestDesiredSpecValue(item);
-            const desiredCaliper = getRequestDesiredCaliperValue(item);
-            const requestNote = getRequestRowNoteValue(item);
-            const requestQty = String(resolveRequestCardQuantity(item) ?? '').trim();
-            const salesRepName = String(firstNonEmptyValue(item.REQUESTED_BY, item.requested_by, item.UPDATED_BY, item.updated_by, item.SALESREPNAME, item.SALESREP, item.SALESREPID, '') || '').trim();
-            const customerConsignee = typeof getRequestCustomerConsigneeLabelForItem === 'function'
-                ? getRequestCustomerConsigneeLabelForItem(item)
-                : String(firstNonEmptyValue(item.REQ_CUSTOMER, item.req_customer, item.CUSTOMERNAME, item.CONSIGNEENAME, '') || '').trim();
-            const topCode = [contSize, locationCode].filter(Boolean).join(' ') || itemCode || requestFolder || 'Request Row';
-            const extras = [
-                ['Item Code', itemCode],
-                ['Location / Lot', [locationCode, lotCode].filter(Boolean).join(' / ')],
-                ['Source', sourceValue],
-                ['Request Folder', requestFolder]
-            ];
-            return {
-                commonName,
-                topCode,
-                priorityValue: String(firstNonEmptyValue(item.PRIORITY, item.priority, '--') || '--').trim(),
-                ptrValue: getCardPtrOnHandValue(metrics),
-                ptrReviewedValue: getCardPtrReviewedValue(metrics),
-                ptrAvailableValue: getCardPtrAvailableValue(metrics),
-                sLtsValue: getCardOpenStockValue(metrics),
-                locOnHand: firstNonEmptyValue(metrics.LOC_ON_HAND,metrics.loc_on_hand,''),
-                locPhotoMatch: firstNonEmptyValue(metrics.LOC_PHOTO_MATCH,metrics.loc_photo_match,metrics.LOC_MATCH_QTY,''),
-                requestQty: requestQty || '0',
-                reserveValue: normalizeRequestReserveValue(firstNonEmptyValue(item.REQ_RESERVE, item.req_reserve, 'NO')),
-                salesRepName: salesRepName || 'Unknown Rep',
-                customerConsignee: customerConsignee || 'Unknown Customer',
-                requestNote: String(requestNote || '').trim(),
-                desiredSpec,
-                desiredCaliper,
-                extras
-            };
-        }
-
-        function buildRequestOpenInfoHtml(item = activeItem, detailSourceView = '') {
-            const snapshot = getRequestOpenInfoSnapshot(item, detailSourceView);
-            if (!snapshot) return '';
-            const rowNoteClass = snapshot.requestNote ? 'request-open-info-cell--wide request-open-info-cell--row-note-data' : 'request-open-info-cell--wide';
-            return buildRequestOpenInfoCardFromValues({
-                commonName: snapshot.commonName,
-                topCode: snapshot.topCode,
-                chips: [
-                    ['Pri', snapshot.priorityValue],
-                    ['On hand', snapshot.ptrValue],
-                    ['Review', snapshot.ptrReviewedValue],
-                    ['Available', snapshot.ptrAvailableValue],
-                    ['Open Stock', snapshot.sLtsValue],
-                    ...(isDockSuspendDcRequestMirrorRow(item) ? [['Loc On Hand',snapshot.locOnHand],['Loc Photo Match',snapshot.locPhotoMatch]] : []),
-                    ['Qty', snapshot.requestQty],
-                    ['Reserve', snapshot.reserveValue]
-                ],
-                cells: [
-                    ['Sales Rep', snapshot.salesRepName],
-                    ['Customer / Consignee', snapshot.customerConsignee],
-                    ['Row Note', snapshot.requestNote || 'N/A', rowNoteClass],
-                    ['Required Spec', snapshot.desiredSpec],
-                    ['Required Caliper', snapshot.desiredCaliper],
-                    ...snapshot.extras
-                ]
-            });
-        }
+        /* Request snapshot and header live in assets/request-detail-summary.js. */
 
         function buildRequestOpenInfoCardFromValues(config = {}) {
             const safeConfig = (config && typeof config === 'object') ? config : {};
@@ -97894,121 +97822,7 @@ function getDocksSuspendSyncAudit() {
             return false;
         }
 
-        function renderRequestMatchingInventoryOptions(item = activeItem, detailSourceView = '', options = {}) {
-            const sharedPanel = document.getElementById('detail-av-options-panel');
-            const legacyPanel = document.getElementById('req-matching-inventory-container');
-            const panel = sharedPanel || legacyPanel;
-            if (!panel) return;
-            const hidePanels = (panels) => {
-                panels.filter(Boolean).forEach((target) => {
-                    target.classList.add('hidden');
-                    target.innerHTML = '';
-                });
-            };
-            const safeSourceView = String(detailSourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
-            if (safeSourceView === 'crop-roll') {
-                hidePanels([panel, legacyPanel]);
-                requestAvOptionsDropdownOpen = false;
-                syncDetailSharedPanelsVisibility();
-                syncRequestDetailScrollMode();
-                return;
-            }
-            const canShowAvOptions = !!(item && getRequestItemCodeOptionItemCode(item));
-            const isRequestDetail = item && isRequestDetailItem(item, safeSourceView);
-            const canAddOptions = !!(isRequestDetail && canAddRequestItemCodeOptions());
-            if (!canShowAvOptions) {
-                hidePanels([panel, legacyPanel]);
-                syncDetailSharedPanelsVisibility();
-                syncRequestDetailScrollMode();
-                return;
-            }
-            const state = ensureRequestItemCodeOptionState(item);
-            if (!options || options.skipLoad !== true) loadRequestItemCodeOptions(item, state.key).catch(() => {});
-            const allRows = getRequestItemCodeOptionRows(item);
-            const rows = isDockSuspendDcRequestMirrorRow(item) ? allRows : filterDriveNegativeSltsAvOptionRows(allRows, safeSourceView);
-            const hiddenCurrentSeasonRows = Math.max(0, allRows.length - rows.length);
-            const itemCode = getRequestItemCodeOptionItemCode(item);
-            const isOpen = requestAvOptionsDropdownOpen === true;
-            const suspendFillTag = isDockSuspendDcRequestMirrorRow(item);
-            const visibleRows = isOpen ? rows.slice(0, suspendFillTag ? state.visiblePullLimit || 12 : 80) : [];
-            const existingKeysForRender = isOpen
-                ? getExistingRequestItemCodeOptionKeys(item)
-                : { masterIds: new Set(), exactKeys: new Set() };
-            const selectableRowCount = isOpen && !suspendFillTag
-                ? rows.filter((row) => getRequestItemCodeOptionCandidateState(row, item, existingKeysForRender).selectable).length
-                : 0;
-            const ptrValues = rows.map((row) => getRequestAvailableQty(row)).filter((value) => Number.isFinite(value));
-            const bestPtr = ptrValues.length ? Math.max(...ptrValues) : 0;
-            const totalPtr = ptrValues.reduce((sum, value) => sum + value, 0);
-            const formatPtr = (value) => Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US') : '0';
-            const loadingHtml = '';
-            const errorHtml = state.error ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800">${escapeShareHtml(state.error)}</div>` : '';
-            const hiddenCurrentSeasonHtml = hiddenCurrentSeasonRows
-                ? `<div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-amber-800">${escapeShareHtml(String(hiddenCurrentSeasonRows))} current season row${hiddenCurrentSeasonRows === 1 ? '' : 's'} hidden in Negative SLTS.</div>`
-                : '';
-            const emptyRowsMessage = hiddenCurrentSeasonRows
-                ? 'No AV options outside current season for this itemcode.'
-                : 'No AV options found for this itemcode.';
-            const rowsHtml = isOpen && visibleRows.length ? visibleRows.map((row, index) => {
-                const uid = getRequestItemCodeOptionMasterId(row);
-                const location = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No Loc') || 'No Loc');
-                const lot = String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '-') || '-');
-                const candidateState = getRequestItemCodeOptionCandidateState(row, item, existingKeysForRender);
-                const selectable = canAddOptions && candidateState.selectable;
-                const disabledAttr = selectable ? '' : ' disabled aria-disabled="true"';
-                const reasonText = canAddOptions && candidateState.reason ? String(candidateState.reason || '').trim() : '';
-                const optionRow = row && typeof row === 'object' ? row : {};
-                if (!optionRow.DOM_ID) optionRow.DOM_ID = `reqopt_${uid || index}`;
-                normalizeRowPhotoFields(optionRow);
-                const sendToEvalHtml = '';
-                const selectText = selectable ? 'Select Option' : (canAddOptions ? 'Unavailable Option' : 'AV Option');
-                const selectControlHtml = canAddOptions
-                    ? `<label class="request-av-option-selectbar" onclick="event.stopPropagation();">
-                        <span class="request-av-option-selectbar-main"><input type="checkbox" data-request-itemcode-option="true" value="${esc(uid)}"${disabledAttr}${suspendFillTag ? ' onchange="return syncSuspendAvOptionSelectionControls(this)"' : ''}><span>${escapeShareHtml(selectText)}</span></span>
-                        <span class="request-av-option-selectbar-meta">${escapeShareHtml(location)} | Lot ${escapeShareHtml(lot)}</span>
-                        ${reasonText ? `<span class="request-av-option-selectbar-reason">${escapeShareHtml(reasonText)}</span>` : ''}
-                    </label>`
-                    : `<div class="request-av-option-selectbar">
-                        <span class="request-av-option-selectbar-main"><span>${escapeShareHtml(selectText)}</span></span>
-                        <span class="request-av-option-selectbar-meta">${escapeShareHtml(location)} | Lot ${escapeShareHtml(lot)}</span>
-                    </div>`;
-                return `<div class="request-av-option-full-card ${selectable || !canAddOptions ? '' : 'is-disabled'}" data-request-itemcode-option-card="${esc(uid)}">
-                    ${selectControlHtml}
-                    ${sendToEvalHtml}
-                    <div class="mb-2 flex flex-wrap gap-1.5">${getRequestItemCodeOptionHoldBadgeHtml(optionRow)}${getRequestItemCodeOptionValidBadgeHtml(optionRow)}</div>
-                    ${suspendFillTag ? `<div class="suspend-av-option-evidence"><div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div></div>` : `<div class="request-av-option-card-shell">${generateCard(optionRow, 'drive')}</div>`}
-                    ${suspendFillTag && selectable ? buildSuspendLocationOptionActions(item, optionRow) : ''}
-                </div>`;
-            }).join('') : (isOpen ? `<div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-center text-[12px] font-bold text-slate-400">${state.loading ? 'Loading AV options...' : escapeShareHtml(emptyRowsMessage)}</div>` : '');
-            const moreCount = Math.max(0, rows.length - visibleRows.length);
-            const addOptionsLabel = suspendFillTag ? '+ Add Selected AV Option(s) / Fill Tag' : 'Add Selected Options';
-            const addButtonHtml = canAddOptions && (suspendFillTag || selectableRowCount) ? `<button type="button" data-suspend-av-add${suspendFillTag ? ' data-suspend-av-header-action="true"' : ''} class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"${suspendFillTag ? ' disabled' : ''} onclick="event.stopPropagation(); return addSelectedRequestItemCodeOptions()">${escapeShareHtml(addOptionsLabel)}</button>` : '';
-            panel.innerHTML = `<div class="flex flex-col">
-                <div class="request-av-options-header flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-left shadow-sm dark:bg-[var(--bg-surface)] dark:text-[var(--text-main)] dark:border-[var(--border-subtle)]">
-                    <button type="button" class="min-w-0 flex-1 bg-transparent p-0 text-left" onclick="return toggleRequestAvOptionsDropdown()" aria-expanded="${isOpen ? 'true' : 'false'}">
-                    <span class="min-w-0">
-                        <span class="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700"><i class="ph-bold ph-map-pin-line text-sm"></i><span>AV Options</span></span>
-                        <span class="mt-1 block truncate text-sm font-black text-slate-900">${escapeShareHtml(itemCode || 'Itemcode')} <span class="text-slate-400">|</span> ${escapeShareHtml(String(rows.length))} row${rows.length === 1 ? '' : 's'}</span>
-                        <span class="mt-2 flex flex-wrap gap-1.5 text-[9px] font-black uppercase tracking-[0.12em]">
-                            <span class="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800">Best PTR ${escapeShareHtml(formatPtr(bestPtr))}</span>
-                            <span class="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-600 dark:bg-[var(--bg-surface)] dark:text-[var(--text-main)] dark:border-[var(--border-subtle)]">Total PTR ${escapeShareHtml(formatPtr(totalPtr))}</span>
-                        </span>
-                    </span>
-                    <span class="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-800">${isOpen ? 'Hide' : 'Show'}<i class="ph-bold ${isOpen ? 'ph-caret-up' : 'ph-caret-down'} text-sm"></i></span>
-                    </button>
-
-                </div>
-                ${isOpen && suspendFillTag && canAddOptions ? buildSuspendManualPullSelector(item, rows) : ''}
-                    ${loadingHtml}${errorHtml}${hiddenCurrentSeasonHtml}
-                ${isOpen ? `${addButtonHtml && !suspendFillTag ? `<div class="mt-3 flex justify-end">${addButtonHtml}</div>` : ''}<div class="mt-3 space-y-2">${rowsHtml}</div>${moreCount ? `<div class="mt-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">${suspendFillTag ? '<button type="button" onclick="return showMoreSuspendPullLocations()">Show more pull locations (' + moreCount + ')</button>' : escapeShareHtml(String(moreCount)) + ' more not shown'}</div>` : ''}${suspendFillTag && addButtonHtml ? `<div data-suspend-av-sticky class="sticky bottom-2 z-30 mt-3 hidden rounded-2xl border border-emerald-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-emerald-800 dark:bg-slate-900/95"><div class="flex items-center justify-between gap-3"><span data-suspend-av-selection-count class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600 dark:text-slate-200">0 selected</span><button type="button" data-suspend-av-add class="rounded-xl bg-[#007a4d] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-white shadow-sm active:scale-95 disabled:cursor-not-allowed disabled:opacity-50" disabled onclick="event.stopPropagation(); return addSelectedRequestItemCodeOptions()">+ ADD SELECTED LOCATION(S) TO TAG</button></div></div>` : ''}` : ''}
-            </div>`;
-            panel.classList.remove('hidden');
-            if (sharedPanel && legacyPanel && legacyPanel !== sharedPanel) {
-                hidePanels([legacyPanel]);
-            }
-            syncDetailSharedPanelsVisibility();
-            syncRequestDetailScrollMode();
-        }
+        /* @runtime-fragment assets/request-detail-av-options.js */
 
         function syncSuspendAvOptionSelectionControls(input = null) {
             const panel = input?.closest?.('#detail-av-options-panel') || document.getElementById('detail-av-options-panel');
@@ -129897,20 +129711,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             } catch (_) { showToast('Copy unavailable','Please try copying the request again.',true); }
         }
 
-        function syncInlineItemDetailShare(root) {
-            if (!root || root.querySelector('[data-inline-detail-share]')) return;
-            const button = document.createElement('button');
-            button.type = 'button'; button.dataset.inlineDetailShare = 'true';
-            button.className = 'rounded-xl bg-[#113221] text-white px-4 py-3 font-bold';
-            button.textContent = '📋 Share / Copy';
-            button.onclick = async () => {
-                if (!activeItem) return;
-                const request = isRequestOwnedPhotoRow(activeItem);
-                await copyTextWithFallback(request ? formatRequestItemsText([activeItem]) : formatInventoryItemsText([activeItem]), request ? formatRequestItemsHtml([activeItem]) : formatInventoryItemsHtml([activeItem]));
-                showToast('Copied', 'Card and all photos copied.');
-            };
-            root.prepend(button);
-        }
+        /* @runtime-fragment assets/detail-item-share.js */
 
         function isPublicPhotoShareRoute() {
             const params = new URLSearchParams(window.location.search);

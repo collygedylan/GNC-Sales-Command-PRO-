@@ -24,9 +24,7 @@ test('candidate commands use the authenticated atomic Suspend endpoint', () => {
 
 test('Suspend Fill Tag adds AV selections without manual row entry or Request folder gating', () => {
   const source = readComposedAppSource();
-  const detailStart = source.indexOf('function renderRequestMatchingInventoryOptions(');
-  const detailEnd = source.indexOf('function syncSuspendAvOptionSelectionControls(', detailStart);
-  const detail = source.slice(detailStart, detailEnd);
+  const detail = readFileSync(new URL('../assets/request-detail-av-options.js', import.meta.url), 'utf8');
   const addSelected = extractFunction(source, 'addSelectedRequestItemCodeOptions');
   assert.doesNotMatch(detail, /ADD ANY NURSERY ROW|suspend-fill-tag-location|suspend-fill-tag-lot/);
   assert.match(detail, /data-request-itemcode-option="true"/);
