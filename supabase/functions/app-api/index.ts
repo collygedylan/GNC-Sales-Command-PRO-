@@ -1,5 +1,6 @@
 import { executeReclassInquiryAction } from "./reclass-inquiry-handler.ts";
 import { startBrowserErpSyncCommand, withErpStageCheckRecording, createErpStageCheckRecorder, deferredErpRetry } from "../_shared/erp-browser-start.ts";
+import { recoverErpCloudSliceFailure } from "../../../src/services/erp-cloud-slice-recovery.ts";
 import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint, mintCloudDriveAccessToken } from "../_shared/erp-scan-recovery.mjs";
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { createHistoricalSnapshotFetch, fetchHistoricalSnapshot } from "../_shared/historical-snapshot-transport.mjs";
@@ -7,8 +8,8 @@ import { executeManagerTableManagement } from "../../../src/core/erp-action-disc
 import { handleScopedPhotoUpload } from "../../../src/services/photo-upload-handler.ts";
 import { authorizePhotoUpload, type PhotoAuthorizationDependencies } from "../../../src/services/photo-upload-authorization.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.76";
-const APP_RUNTIME_RELEASE = "AgData v3.0.76";
+const APP_RUNTIME_VERSION = "3.0.77";
+const APP_RUNTIME_RELEASE = "AgData v3.0.77";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_EDITABLE_FIELDS_POLICY } from "../../../services/reclassEditableFields.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
@@ -6931,26 +6932,10 @@ async function advanceCloudErpSyncStep(writer: CloudErpWriter, cursor: Record<st
 }
 
 async function recoverCloudErpSliceFailure(runId: string, workerId: string, current: Record<string, unknown>, maxRowsPerSlice: number | undefined, error: unknown): Promise<never> {
-    const message = String((error as { message?: unknown })?.message || "ERP_SYNC_WORKER_FAILED").slice(0, 200);
-    // An expired worker must not mark its replacement's active run failed.
-    const lease = await supabase.rpc("assert_erp_sync_worker_v1" as never, {
-      p_run_id: runId, p_worker_id: workerId,
-    } as never);
-    if (!lease.error) {
-      const failures = Number(current.sliceFailures || 0) + 1;
-      const finalizeRetry = jsonObject(jsonObject(jsonObject(current.continuationCursor || {}).fileContinuation || {}).state || {}).phase === "finalize"
-          && /55P03|57014|40P01|40001|timeout|timed out|fetch|network|502|503|504|546/i.test(`${String((error as { code?: unknown })?.code || "")} ${message}`);
-      if (failures <= 6) {
-        const priorCap = Number(maxRowsPerSlice || current.maxRowsPerSlice) || 2500;
-        await supabase.rpc("update_erp_sync_job_v1" as never, { p_run_id: runId, p_status: {
-          ...current, _workerLeaseId: workerId, active: true, status: "CONTINUE", sliceFailures: failures,
-          retryNotBefore: Date.now() + Math.min(60000, 5000 * 2 ** (failures - 1)),
-          maxRowsPerSlice: priorCap >= 2500 ? 1250 : 600,
-          error: finalizeRetry ? "" : message, errorCode: finalizeRetry ? "" : "ERP_SYNC_SLICE_RETRY", message: finalizeRetry ? "Retrying saved publication." : "Retrying the current import slice with a smaller batch.",
-        } } as never);
-      } else await failCloudErpSync(runId, workerId, error, message);
-    }
-    throw error;
+  return recoverErpCloudSliceFailure({
+    rpc: async (name, args) => supabase.rpc(name as never, args as never),
+    object: jsonObject, fail: failCloudErpSync,
+  }, runId, workerId, current, maxRowsPerSlice, error);
 }
 
 async function releaseCloudErpSyncStep(runId: string, workerId: string, step: number) {

@@ -2798,19 +2798,9 @@ test('Invariant 138: streamed XLSX callbacks retain at most one bounded raw batc
   assert.deepEqual(plain(result), { rowCount: 10001 });
 });
 
-test('Invariant 139: compact ERP batches preserve explicit null-clearing columns and typed values', async () => {
-  const { compactErpRowsPreservingNullColumnUnion } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const original = [{ unique_id:'a', itemcode:'001', note:null, quantity:'3' },
-    { unique_id:'b', itemcode:'002', note:null, quantity:null },
-    { unique_id:'c', itemcode:'003', note:'new', quantity:null, later_column:null }];
-  const rows = original.map(row => ({ ...row }));
-  compactErpRowsPreservingNullColumnUnion(rows);
-  const columns = list => [...new Set(list.flatMap(Object.keys))].sort();
-  assert.deepEqual(columns(rows), columns(original));
-  const expand = list => list.map(row => Object.fromEntries(columns(original).map(key => [key, row[key] ?? null])));
-  assert.deepEqual(expand(rows), expand(original));
-  assert.ok(JSON.stringify(rows).length < JSON.stringify(original).length);
-});
+import {assertCompactErpBatchContract} from './helpers/erp-compact-batch-contract.mjs';
+
+test('Invariant 139: compact ERP batches preserve explicit null-clearing columns and typed values', assertCompactErpBatchContract);
 
 test('Invariant 140: SOC cell selection decodes only exact requested columns including sparse shared values', () => {
   const context = runFunctions('supabase/functions/_shared/erp-sync.mjs',
@@ -6800,3 +6790,10 @@ test('Invariant 634: exact-row drafts publish before photo completion and surviv
 test('Invariant 635: photo, evaluation and completion entrypoints require verified table grants and exact ownership without named-user exceptions',assertTableDrivenRowAuthorization);
 test('Invariant 636: a populated Que dropdown passes Watchdog and review reads preserve open incidents under the same native session',reviewedQueueWatchdogContract);
 test('Invariant 637: Season Y moves bind preview and receipt to the physical source sales year', async () => (await import('./helpers/reclass-season-y-receipt.mjs')).reclassSeasonYReceiptContract());
+
+import {assertErpPublicationRecovery} from './helpers/erp-publication-recovery-contract.mjs';
+
+test('Invariant 638: unchanged ERP publication resumes its exact saved stage once after ninety seconds and requires a durable receipt', assertErpPublicationRecovery);
+
+import {assertErpPublicationCheckpoint} from './helpers/erp-publication-checkpoint-contract.mjs';
+test('Invariant 639: sealed ERP publication drops parser-only state while parsing and durable receipt identity remain intact', assertErpPublicationCheckpoint);

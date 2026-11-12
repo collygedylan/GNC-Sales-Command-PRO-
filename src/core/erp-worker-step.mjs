@@ -1,3 +1,5 @@
+import { compactErpFileContinuation } from '../../supabase/functions/_shared/erp-publication-checkpoint.mjs';
+
 function folderFor(context, stage) {
   return String(context.folders[stage.key] || context.api.sourceFolders[stage.key]?.[0] || '').trim();
 }
@@ -115,11 +117,13 @@ export async function runPendingErpWorkerStep(args, api) {
 
 async function executeOneStage(context, stage, resume) {
   if (!stage) throw new Error('ERP_CONTINUATION_INVALID');
+  resume = compactErpFileContinuation(resume);
+  const publishing = resume?.state?.phase === 'finalize';
   await context.status({ status: 'CONTINUE', stageIndex: context.stageIndex, currentStage: stage.key,
     currentStageLabel: stage.key.toUpperCase(), continuationCursor: cursorFor(context,
       resume ? { fileContinuation: resume } : {}),
-    sourceProgressDelta: { key: stage.key, stage: resume ? 'staging' : 'checking',
-      percent: resume ? 70 : 10, updatedAt: new Date().toISOString(), error: '' } });
+    sourceProgressDelta: { key: stage.key, stage: publishing ? 'publishing' : resume ? 'staging' : 'checking',
+      percent: publishing ? 95 : resume ? 70 : 10, updatedAt: new Date().toISOString(), error: '' } });
   const cursor = await runStage(context, stage, resume);
   await context.status({ status: 'CONTINUE', stageIndex: cursor.stageIndex,
     currentStage: context.api.stages[cursor.stageIndex]?.key || 'hl_po_parsed',

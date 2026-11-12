@@ -1,3 +1,6 @@
+import { readErpStagePublication } from './erp-publication-recovery.mjs';
+import { compactErpPublicationState } from './erp-publication-checkpoint.mjs';
+
 export function isRetryableErpFinalizeError(error) {
   return ['55P03', '57014', '40P01', '40001'].includes(String(error?.code || ''))
     || /AbortError|TimeoutError/.test(String(error?.name || ''))
@@ -55,7 +58,9 @@ async function yieldPreparedPublication(data, finalized, stageKey, fileName, sta
   const retryNotBefore = Date.now() + Math.max(2500, Math.min(15000, Number(data.retryAfterMs) || 0));
   await status({ retryNotBefore, sourceProgressDelta: {
     ...publicationProgress(stageKey, fileName, finalized.expectedRows, false),
-    rowsPrepared: Math.max(0, Math.min(finalized.expectedRows, Number(data.preparedRows) || 0))
+    rowsPrepared: Math.max(0, Math.min(finalized.expectedRows, Number(data.preparedRows) || 0)),
+    publicationProgressAt: finalized.publicationProgressAt,
+    publicationRecoveryAt: finalized.publicationRecoveryAt
   } });
   return { done: false, state: { ...finalized, phase: 'finalize', retryNotBefore } };
 }
@@ -77,7 +82,7 @@ async function retryPublication(error, state, status) {
 export async function finishStageContinuation({
   supabase, fetcher, token, file, dataset, stageKey, parentId, processedId, next, status, moveProcessed, maxRows, requireReceipt = false
 }) {
-  let finalized = next;
+  let finalized = compactErpPublicationState(next);
   let receipt;
   if (Number(finalized.retryNotBefore || 0) > Date.now()) return { done: false, state: finalized };
   try {
@@ -86,9 +91,10 @@ export async function finishStageContinuation({
       await status({ sourceProgressDelta: publicationProgress(stageKey, file.name, finalized.expectedRows, false) });
     }
     if (finalized.processedRows !== finalized.expectedRows) throw new Error('ERP_STAGE_ROW_COUNT_MISMATCH');
-    const { data, error } = await boundedErpPublicationRpc(supabase, 'fast_commit_erp_stage_swap_v1', {
-      p_stage_id: finalized.stageId, p_async: true
-    });
+    finalized = compactErpPublicationState({ ...finalized, phase: 'finalize' });
+    const publication = await readErpStagePublication(supabase, finalized, boundedErpPublicationRpc);
+    finalized = publication.state;
+    const { data, error } = publication;
     if (!error && data?.busy === true) return await yieldPreparedPublication(data, finalized, stageKey, file.name, status);
     if (error || data?.ok !== true || data?.skip === true || Number(data?.source_rows ?? 1) < 1 || finalized.expectedRows < 1) {
       throw error || new Error('ERP_STAGE_COMMIT_UNCONFIRMED');
