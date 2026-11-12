@@ -1917,32 +1917,9 @@ test('Invariant 103 (Compressed XLSX Bytes Stream in Bounded, Cancellable Chunks
   assert.ok(pullCount < largeInput.length / (16 * 1024), 'the rest of the source remains unread');
 });
 
-test('Invariant 104 (Resumed ERP File Offset Is Persisted Before Resumed I/O)', async () => {
-  const { runErpSyncWorkerStep } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const statuses = [];
-  const folderSnapshot = Object.fromEntries(['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed']
-    .map(key => [key, { files: [], listDurationMs: 0 }]));
-  const file = { id: 'resume-file-104', name: 'Resume.xlsx', modifiedTime: '2026-10-28T12:00:00Z', parents: ['drive-folder'] };
-  const cursor = { stageIndex: 0, stageResults: [], attemptedByStage: {}, folderSnapshot,
-    fileContinuation: { stageIndex: 0, file, state: { stageId: 'stage-resume-104', expectedRows: 50000,
-      expectedRowsPending: true, nextOffset: 12000, processedRows: 8000, identityCounts: {},
-      headerRowIndex: 1, header: ['itemcode'] } } };
-  const folders = { drive: 'drive-folder', cav: 'cav-folder', reserves: 'reserves-folder',
-    soc: 'soc-folder', hl_po_parsed: 'hl-folder' };
-  const env = key => key === 'ERP_SYNC_DROP_FOLDERS_JSON' ? JSON.stringify(folders) : '';
-  const supabase = { rpc: async name => name === 'check_erp_file_sync_needed_v1' ? { data: { skip: false } } : { data: null } };
-  await assert.rejects(runErpSyncWorkerStep({ supabase,
-    fetcher: async () => { throw new Error('fixture resumed download fault'); },
-    status: async patch => statuses.push(patch), env, accessToken: 'fixture-token', cursor
-  }), /fixture resumed download fault/);
-  const firstPersistedCursor = statuses[0].continuationCursor;
-  assert.equal(firstPersistedCursor.stageIndex, 0);
-  assert.equal(firstPersistedCursor.fileContinuation.file.id, file.id);
-  assert.equal(firstPersistedCursor.fileContinuation.state.nextOffset, 12000);
-  assert.equal(firstPersistedCursor.fileContinuation.state.processedRows, 8000);
-  assert.equal(statuses.length, 2, 'the durable cursor precedes the resumed phase announcement and download');
-  assert.equal(statuses[1].sourceProgressDelta.stage,'staging');
-});
+import {assertErpResumedOffset} from './helpers/erp-resume-offset-contract.mjs';
+
+test('Invariant 104 (Resumed ERP File Offset Is Persisted Before Resumed I/O)', assertErpResumedOffset);
 
 test('Invariant 105 (Both Reclass Send Paths Close Before a Delayed Database Receipt)', async () => {
   for (const review of [false, true]) {
@@ -6797,3 +6774,26 @@ test('Invariant 638: unchanged ERP publication resumes its exact saved stage onc
 
 import {assertErpPublicationCheckpoint} from './helpers/erp-publication-checkpoint-contract.mjs';
 test('Invariant 639: sealed ERP publication drops parser-only state while parsing and durable receipt identity remain intact', assertErpPublicationCheckpoint);
+
+import {assertErpTypedPreparationProgress} from './helpers/erp-typed-progress-contract.mjs';
+test('Invariant 640: bounded typed ERP preparation advances its durable stall clock without publishing or archiving before a receipt', assertErpTypedPreparationProgress);
+
+test('Invariant 641: operational ERP completion requires DRIVE, CAV, RESERVES, SOC and HL PO', async () => (await import('./helpers/erp-cron-release-contract.mjs')).assertErpStageSequence());
+
+test('Invariant 642: 250-row DRIVE preparation and its sealed digest require a later matching publication receipt', async () =>
+  (await import('./helpers/erp-incremental-drive-preparation.mjs')).assertIncrementalDrivePublication());
+
+test('Invariant 643: bounded compiled DRIVE progress preserves the same fully typed stage without premature recovery', async () =>
+  (await import('./helpers/erp-compiled-drive-work.mjs')).assertCompiledDrivePublicationClock());
+
+test('Invariant 644: the release gate accepts removal of planner maintenance and rejects changes to compiled DRIVE readiness witnesses', async () =>
+  (await import('./helpers/erp-readiness-maintenance-contract.mjs')).assertIndependentDriveReadiness());
+
+test('Invariant 645: final certificate release rejects removal of input invalidation, stage locks, or either proof phase', async () =>
+  (await import('./helpers/erp-certified-input-release.mjs')).assertCertifiedDriveRelease());
+
+test('Invariant 646: a prior DRIVE alias requires unique matching lineage and retains staged exact-row ownership', async () =>
+  (await import('./helpers/erp-prior-drive-alias-release.mjs')).assertPriorDriveAliasRelease());
+
+test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
+  (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());

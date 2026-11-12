@@ -1,7 +1,12 @@
 import { erpDeferredDriveArchiveContract, erpPackedDriveArchiveContract } from './erp-drive-archive-migration-contracts.mjs';
+import { erpDriveDeadlineContracts } from './erp-publication-deadline-contract.mjs';
+import { erpIncrementalDrivePreparationContracts } from './erp-incremental-drive-preparation-contract.mjs';
 import { erpManualPublicationContracts } from './erp-manual-publication-contracts.mjs';
 import { erpPendingDropContracts } from './erp-pending-drop-migration-contracts.mjs';
 import { erpRecoveryPublicationContracts } from './erp-publication-recovery-contract.mjs';
+import { erpPublicationSingleFlightContracts } from './erp-publication-single-flight-contract.mjs';
+import { erpCompactDrivePublicationContracts } from './erp-compact-drive-publication-contract.mjs';
+import { erpCanonicalPreparationRoutePredicate, erpTypedPrepareContracts } from './erp-typed-prepare-contract.mjs';
 import { erpDeferredOrderHistoryContract, erpReserveHandoverGuardContract, erpSocHandoverGuardContract,
   erpOrderHistoryWholeRowContract } from './erp-order-publication-migration-contracts.mjs';
 
@@ -40,7 +45,8 @@ export const erpPackedDriveArchiveMigration = '20261110012000_agdata3048_pack_fr
 export const erpReserveHandoverGuardMigration = '20261110013000_agdata3048_skip_blank_reserve_handover.sql';
 export const erpSocHandoverGuardMigration = '20261110014000_agdata3048_skip_blank_soc_handover.sql';
 export const erpOrderHistoryWholeRowMigration = '20261110015000_agdata3048_freeze_whole_order_history_rows.sql';
-const scopedContracts = [...erpManualPublicationContracts, ...erpPendingDropContracts, ...erpRecoveryPublicationContracts];
+const scopedContracts = [...erpManualPublicationContracts, ...erpPendingDropContracts, ...erpRecoveryPublicationContracts, ...erpTypedPrepareContracts,
+  ...erpPublicationSingleFlightContracts, ...erpCompactDrivePublicationContracts, ...erpDriveDeadlineContracts, ...erpIncrementalDrivePreparationContracts];
 export const erpPublicationMigrationNames = [...scopedContracts.map(([name]) => name), erpPublicationLivenessMigration, erpPublicationQueueMigration,
   erpPayloadEfficiencyMigration, erpDrivePrepareBatchesMigration, erpDriveTransactionInputMigration, erpScanRecoveryMigration,
   erpDeltaPublicationMigration, erpDeferredOrderHistoryMigration, erpDriveTuplePlanMigration, erpDriveSemanticDeltaMigration,
@@ -72,8 +78,7 @@ function erpDriveTuplePlanContract() {
   return `select
     to_regprocedure('private.prepare_master_bulk_stage_v3046(jsonb)') is not null
     and not has_function_privilege('service_role',to_regprocedure('private.prepare_master_bulk_stage_v3046(jsonb)'),'EXECUTE')
-    and position('prepare_master_bulk_stage_v3046' in pg_get_functiondef(to_regprocedure(
-      'private.load_drive_erp_publication_input_v3042(uuid)')))>0
+    and ${erpCanonicalPreparationRoutePredicate()}
     and position('input.payload=p_rows' in pg_get_functiondef(to_regprocedure(
       'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0
     and position('from pg_temp.ph_master_bulk_tuples_v3046' in pg_get_functiondef(to_regprocedure(
@@ -94,8 +99,13 @@ function erpDriveSemanticDeltaContract() {
 
 function erpDriveOverlayOrdinalsContract() {
   return `select
-    position('ph_master_bulk_stage_v1_ordinal_uidx' in pg_get_functiondef(to_regprocedure(
+    coalesce((position('ph_master_bulk_stage_v1_ordinal_uidx' in pg_get_functiondef(to_regprocedure(
       'private.prepare_master_bulk_stage_v3046(jsonb)')))>0
+      or (position('perform private.compile_master_bulk_stage_v3077()' in pg_get_functiondef(to_regprocedure(
+        'private.prepare_master_bulk_stage_v3046(jsonb)')))>0
+        and position('ph_master_bulk_stage_v1_ordinal_uidx' in pg_get_functiondef(to_regprocedure(
+          'private.compile_master_bulk_stage_v3077()')))>0
+        and not has_function_privilege('service_role',to_regprocedure('private.compile_master_bulk_stage_v3077()'),'EXECUTE'))),false)
     and position('analyze pg_temp.ph_master_bulk_map_v1 (canonical_unique_id,row_number)' in pg_get_functiondef(to_regprocedure(
       'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')))>0
     and position('to_jsonb(m) old_row' in pg_get_functiondef(to_regprocedure(

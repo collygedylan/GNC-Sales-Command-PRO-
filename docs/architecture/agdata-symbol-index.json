@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "release": "AgData v3.0.77",
+  "release": "AgData v3.0.78",
   "sourceLayers": [
     "assets/app-runtime.js", "assets/inventory-hydration-recovery.js", "assets/manager-table-management.js", "assets/runtime-watchdog.js", "supabase/functions/app-api/index.ts",
     "supabase/functions/_shared/table-management.ts", "supabase/functions/_shared/erp-sync.mjs", "scripts/local-erp-sync-worker.mjs", "supabase/functions/_shared/production-workflow.ts", "Code.gs", "supabase/functions/_shared/erp-secondary-sync.mjs", "assets/agdata-kernel.js", "assets/bloom-runtime-functions.js", "assets/smart-hold-intelligence.js", "assets/smart-hold-runtime-functions.js",
@@ -1883,14 +1883,9 @@
         "processRequestDeliveryOutbox_",
         "getManualSyncStageOrder_",
         "queueManualSyncRequest_",
-        "runQueuedManualSyncStage_",
-        "getFastLiveIngestDatasetKey_",
-        "getFastLiveFileMeta_",
-        "cleanupCompletedImportExtraction_",
-        "cleanupTempGoogleSheet_",
-        "extractDataFromFile",
-        "scheduleSocOrderHistoryTrigger_",
-        "runSocOrderHistoryBackfillChunk_"
+        "runQueuedManualSyncStage_", "getFastLiveIngestDatasetKey_", "getFastLiveFileMeta_",
+        "cleanupCompletedImportExtraction_", "cleanupTempGoogleSheet_", "extractDataFromFile",
+        "scheduleSocOrderHistoryTrigger_", "runSocOrderHistoryBackfillChunk_"
       ],
       "supportingFiles": {
         "supabase/functions/_shared/erp-browser-start.ts": ["startBrowserErpSyncCommand"],
@@ -1901,6 +1896,11 @@
         "supabase/migrations/20261112011000_agdata3077_bounded_publication_recovery.sql": ["prepare_erp_publication_v3077", "run_erp_stage_publication_v3042", "schedule_erp_stage_publication_v3057", "resume_erp_stage_publication_v3077", "resume_failed_erp_sync_run_v3077"],
         "supabase/migrations/20261112011500_agdata3077_publication_load_pause.sql": ["pause_erp_publication_v3077"],
         "supabase/migrations/20261112012000_agdata3077_drive_stage_planner_statistics.sql": ["prepare_master_bulk_stage_v3046", "refresh_drive_stage_cohort_statistics_v3077"],
+        "supabase/migrations/20261112020000_agdata3077_typed_prepare_checkpoints.sql": ["prepare_drive_typed_part_v3077", "assert_drive_typed_checkpoint_v3077", "load_drive_typed_checkpoint_v3077"],
+        "supabase/migrations/20261112021631_agdata3078_publication_single_flight.sql": ["run_erp_stage_publication_v3042"],
+        "supabase/migrations/20261112022023_agdata3078_delivery_cron_single_flight.sql": ["dispatch_request_delivery_worker_cron"],
+        "supabase/migrations/20261112022300_agdata3078_publication_idle_cleanup.sql": ["run_erp_stage_publication_v3042"],
+        "supabase/migrations/20261112022500_agdata3078_compact_drive_publication_input.sql": ["drive_parts_fit_one_attempt_v3078", "load_drive_fast_parts_v3078", "build_drive_publication_input_v3078", "load_drive_erp_publication_input_v3042"],
         "src/core/erp-foreground-recovery.js": ["refreshManualErpHomeRevisionMetadata","loadLegacyErpHomeMetadata","readLegacyErpHomeSource","confirmedErpRunTime","latestErpHomeTimestamp","updateDashboardSyncSummary"],
         "supabase/migrations/20261110223000_agdata3064_manual_scan_restart.sql": ["erp_manual_scan_restartable_v3064","claim_erp_sync_job_v2"],
         "supabase/migrations/20261110224000_agdata3064_batched_publication_worker.sql": ["prepare_erp_publication_part_v3064","run_erp_stage_publication_v3042","fast_commit_erp_stage_swap_v1"],

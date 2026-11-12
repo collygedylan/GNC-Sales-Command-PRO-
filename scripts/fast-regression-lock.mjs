@@ -11,6 +11,7 @@ import { program } from './fast-feature-lock.mjs';
 import { engineeringProofFailures } from './engineering-proof.mjs';
 import { monolithFailures } from './monolith-growth-lock.mjs';
 import {frontendOnlyReleaseFailures} from './frontend-only-release.mjs';
+import {verifyErpCronRelease} from '../tests/helpers/erp-cron-release-contract.mjs';
 
 if (process.argv.includes('--artifact-root')) clearForeignGitEnvironment(process.env);
 const started = performance.now();
@@ -125,6 +126,7 @@ async function artifactContracts(artifact, expected) {
 }
 
 try {
+  await verifyErpCronRelease(read);
   const syntax = checkSyntax(syntaxFiles[0]);
   const monolith = monolithFailures(root);
   const frontendOnly = frontendOnlyReleaseFailures(root,read).catch(error => [error.message]);
