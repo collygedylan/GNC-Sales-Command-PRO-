@@ -4599,27 +4599,24 @@ function isBloomEmailPurposeReasonRequired(purpose = bloomEmailPurposeAction) {
             const subject = buildBloomPurposeEmailSubject(purpose, items);
             const safeRecipients = dedupeRequestEmailRecipients(recipientEmails);
             if (isBloomEmailPurposeRecipientRequired(purpose)) {
-                return sendBloomPurposeReportEmail(items, selectionKind, purpose, reason, safeRecipients);
+                const owner = getSupabaseReadIdentityScope();
+                const receipt = await sendBloomPurposeReportEmail(items, selectionKind, purpose, reason, safeRecipients);
+                confirmBloomCartClearAfterEmail(owner, items);
+                return receipt;
             }
             const text = buildBloomPurposeEmailText(items, selectionKind, purpose, reason, safeRecipients);
             try {
                 await copyTextWithFallback(text);
-            } catch (copyErr) { globalThis.reportHandledRuntimeIssue?.("shareBloomPurposeEmail", 'HANDLED_OPERATION_FAILURE'); }
+            } catch { globalThis.reportHandledRuntimeIssue?.("shareBloomPurposeEmail", 'HANDLED_OPERATION_FAILURE'); }
             const mailtoHref = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
             try {
                 const shared = await handleMobileShare('email', subject, text);
                 if (!shared) window.location.href = mailtoHref;
-                clearSelection();
-                toggleCartPanel(false);
-                showToast('Email Ready', 'The selected card details are ready to send.');
-                return true;
-            } catch (error) {
+            } catch {
                 window.location.href = mailtoHref;
-                clearSelection();
-                toggleCartPanel(false);
-                showToast('Email Ready', 'The selected card details are ready to send.');
-                return true;
             }
+            showToast('Email Ready', 'The selected card details are ready to send.');
+            return true;
         }
 
         function buildShearListAddedReportRows(payloads = [], itemsByUniqueId = new Map()) {

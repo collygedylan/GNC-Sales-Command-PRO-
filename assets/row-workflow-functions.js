@@ -33,36 +33,6 @@ function openInlineAvNoteList(prefix, options = {}) {
     return false;
 }
 
-function captureEvaluationDetailReturn(item) {
-    const editor = activeItem;
-    const text=(row,key)=>String(row?.[key] || row?.[key.toLowerCase()] || '').trim().toUpperCase();
-    const sameTuple=!!text(editor,'ITEMCODE') && ['ITEMCODE','LOCATIONCODE','LOTCODE'].every(key=>text(editor,key)===text(item,key));
-    const ownsEditor=!!editor && (editor===item || String(editor.UNIQUE_ID || editor.unique_id || '')===String(item.UNIQUE_ID || item.unique_id || '') || sameTuple);
-    const viewId=String(detailReturnState?.viewId || lastView || activeDetailSourceView || '').trim();
-    return { ownsEditor, editor, token:detailHydrationToken, scope:getSupabaseReadIdentityScope(), viewId:viewId==='detail'?'':viewId,
-        scrollTop:Math.max(0,Number(detailReturnState?.scrollTop)||0) };
-}
-
-function returnFromConfirmedEvaluationDetail(snapshot) {
-    const nav=snapshot?.detailNavigation;
-    if (!nav?.ownsEditor || nav.scope!==getSupabaseReadIdentityScope() || !isViewVisible('detail')) return false;
-    // A hydration may replace the display UID with the exact master UID. The captured
-    // editor generation owns Back; the persistence target's UID never owns navigation.
-    if (activeItem!==nav.editor && detailHydrationToken!==nav.token) return false;
-    const parent=nav.viewId && getViewElementById(nav.viewId) ? nav.viewId : String(lastView || '').trim();
-    if (!parent || parent==='detail') return false;
-    lastView=parent;detailReturnState={viewId:parent,scrollTop:nav.scrollTop};
-    goBackFromDetail();
-    if (isViewVisible('detail')) {
-        // Shared overlays can consume Back; completion still owns exactly one parent return.
-        teardownDetailPresentation('confirmed-evaluation-return',{preserveDraft:true});
-        clearPendingDetailHydration();detailHydrationToken+=1;setDetailEditingChromeState(false);
-        activeItem=null;activeDetailSourceView='';activeDetailTab='overview';
-        fastBackToView(parent,{targetScrollTop:nav.scrollTop,skipFilterPersist:true,renderDelay:0});
-    }
-    return !isViewVisible('detail');
-}
-
 function applyExplicitAvNotePayload(payload,row,options = {}) {
     const captured=options.markDoneSnapshot?.payload;
     if (captured?.explicit_av_note === true) {
@@ -206,15 +176,8 @@ function ensurePhotoTakenDateBadges(root = document) {
 
 function getEditorLocMatchQtyValue(item = null, matchValue = '') {
     if (!item) return null;
-    const exact = (typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null)
-        || (typeof getQueueCardInventoryRow === 'function' && typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(item) ? getQueueCardInventoryRow(item,'request') : null);
-    const row = exact || item;
-    const rawPct = String(matchValue ?? '').trim();
-    const pct = Number(rawPct.replace(/%$/, ''));
-    if (!/^(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(rawPct) || pct > 100) return null;
-    if (pct === 0) return 0;
-    const onHand = parseAppNumber(firstNonEmptyValue(row.PTRONHAND,row.ptronhand,row.ON_HAND,row.on_hand,row.onhand,row.ONHAND,''));
-    return onHand == null ? null : Math.round(Math.max(0,onHand)*pct/100);
+    const exact = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+    return calculateCanonicalLocPhotoMatch(exact || item, matchValue);
 }
 
 async function postPhotoUploadWithTransientRetry(formData, options = {}) {
@@ -310,12 +273,8 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
         const target = findLinkedMasterRow(item) || getQueueCardInventoryRow(item,'request')
             || await resolveSuspendTagInventoryRow(item,source,identity);
         if (!target) throw new Error('Exact inventory row is required.');
-        let inventoryIdentity = identity;
-        if (!matchesSuspendTagInventoryIdentity(target,identity)) {
-            const display = getQueueDisplayEvidenceRow(item);
-            if (!display || String(display.UNIQUE_ID || display.unique_id) !== String(target.UNIQUE_ID || target.unique_id)) throw new Error('Exact inventory row is required.');
-            inventoryIdentity = {...window.AgMetricQueueInventory.identity(target),masterUid:String(target.UNIQUE_ID || target.unique_id)};
-        }
+        const inventoryIdentity = resolveSuspendEvaluationInventoryIdentity(item, target, identity);
+        patch = withCanonicalEvaluationMatchQuantity(target, patch);
         const rollback = options?.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,completionScope);
         try {
             const result = await runSuspendTagRowCommand('save',item,patch,options?.photoProof ? getDockSuspendCompletionRevision(options.photoProof.row) : getDockSuspendCompletionRevision(item),{
@@ -332,11 +291,12 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
     const uid = String(target.UNIQUE_ID || target.unique_id || '').trim();
     if (!uid || !['','ph_master_inventory'].includes(String(target.SOURCE_TABLE || target.source_table || ''))) throw new Error('Exact inventory row is required.');
     if (options.receipt?.row && String(options.receipt.row.UNIQUE_ID || options.receipt.row.unique_id || '') !== uid) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
+    if (!options.receipt) patch = withCanonicalEvaluationMatchQuantity(target, patch);
     const baseline = options.receipt ? null : options.baseline ?? buildSecureDriveEvidenceBaseline(target);
     const rollback = !options.receipt && options.photoOnly !== true ? options.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
     try {
         const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, baseline);
-        confirmEvaluationProjection(result,uid,rollback,options.onConfirmed,scope);
+        confirmEvaluationProjection(result,target,rollback,options.onConfirmed,scope);
         if (options.isCurrent && !options.isCurrent()) return {result,applied:null};
         if (options.photoOnly === true) {
             const canonical = getCommittedDriveEvidenceReceipt(result,target).row;
@@ -418,10 +378,12 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
                 : options.commandId && ['close','save','complete','replace_location','split_location','remove_location','add_candidates','dock_review'].includes(operation) ? [300, 800, 1600] : ['rows','inbox','approval'].includes(operation) ? [350] : [];
             const result = await retrySuspendTagTransport(operation, payload, options, { owner, startedView, delays });
             if (!suspendTagReceiptMatchesSource(operation, payload, result.data)) throw new Error('The server did not confirm the saved row. Retry safely.');
+            if (options.validateReceipt && !options.validateReceipt(result.data)) throw new Error('The server did not confirm this pull location.');
             if (owner === getSupabaseReadIdentityScope() && suspendSourceSnapshotChanged(sourceSnapshot)) throw new Error('The source changed while saving. Refresh before retrying.');
             if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
-                applySuspendCandidateRows(result.data.rows, {close:operation === 'close'});
+                if (operation !== 'close') applySuspendCandidateRows(result.data.rows, {close:result.data.finalPull === true});
                 if (['add_candidates','replace_location','split_location'].includes(operation)) applySuspendTagInventoryReceipt(result.data, owner);
+                if (result.data.finalPull === true) refreshConfirmedSuspendQueueBadges();
             }
             return result.data;
         }
@@ -1460,110 +1422,6 @@ function confirmSuspendLocationChange(source, locations) {
     return showAppConfirm(message, {title:'Confirm Final Pull Location', tone:'suspend-location', confirmLabel:'✓ Confirm & Update Docks', cancelLabel:'Cancel'});
 }
 
-function previewSuspendPullAllocation(target, source, masterUid) {
-    const location = target.LOCATIONCODE || target.locationcode;
-    const lot = target.LOTCODE || target.lotcode || '';
-    const quantity = Math.abs(parseAppNumber(getDockOrderedQtyDisplay(source)) || 0);
-    const changes = [];
-    if (masterUid && quantity && (location !== (source.LOCATIONCODE || source.locationcode) || lot !== (source.LOTCODE || source.lotcode || ''))) {
-        const rows = new Set([masterInventoryById.get(masterUid), ...avOpenInventory.filter(row => getRequestItemCodeOptionMasterId(row) === masterUid)]);
-        for (const row of rows) {
-            if (!row) continue;
-            const before = [row.PTRREVIEWED, row.ptrreviewed];
-            const next = String((parseAppNumber(before[0] ?? before[1]) || 0) + quantity);
-            row.PTRREVIEWED = row.ptrreviewed = next;
-            changes.push({row,before,next});
-        }
-        markViewDirty('drive'); markViewDirty('av');
-    }
-    return () => {
-        for (const {row,before,next} of changes) if (row.PTRREVIEWED === next && row.ptrreviewed === next) [row.PTRREVIEWED,row.ptrreviewed] = before;
-        markViewDirty('drive'); markViewDirty('av');
-    };
-}
-
-async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null, customRow = null) {
-    const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
-    if (!source || !resolveCanonicalRowAccess(currentUser, source).canManageLocations || !['replace_location','split_location','remove_location'].includes(operation)) return false;
-    if (operation === 'split_location' && (!Number.isFinite(Number(splitQuantity)) || Number(splitQuantity) <= 0)) {
-        showToast('Split Quantity','Enter the quantity to pull from this location.',true);
-        return false;
-    }
-    const target = customRow || (masterUid && getRequestItemCodeOptionRows(source).find(row => getRequestItemCodeOptionMasterId(row) === masterUid));
-    if (operation !== 'remove_location' && (!target || isFalseBlockLocation(target.LOCATIONCODE || target.locationcode))) return false;
-    const scope = getSupabaseReadIdentityScope();
-    const next = target && (target.LOCATIONCODE || target.locationcode);
-    const old = source.LOCATIONCODE || source.locationcode;
-    const reviewed = getSuspendTagStableSourceIdentity(source);
-    if (next && operation === 'replace_location' && !await confirmSuspendLocationChange(source, [next])) return false;
-    if (scope !== getSupabaseReadIdentityScope()) return false;
-    const sourceUid = getDockSuspendDcRequestSourceUid(source);
-    const key = JSON.stringify([operation,sourceUid,masterUid,customRow,splitQuantity,reviewed]);
-    return serializeSuspendTagRowWrite(source, async () => {
-        const original = findDockSuspendDcRequestSourceRow(source) || source;
-        if (scope !== getSupabaseReadIdentityScope() || JSON.stringify(getSuspendTagStableSourceIdentity(original)) !== JSON.stringify(reviewed)
-            || !resolveCanonicalRowAccess(currentUser, original).canManageLocations) return false;
-        const state = getDockSuspendCompletionState();
-        const snapshot = Object.fromEntries(Object.entries(original).map(([key,value])=>[key.toLowerCase(),value]));
-        snapshot.unique_id = sourceUid;
-        const pending = state.pending[key] || {requestId:crypto.randomUUID(),savedAt:Date.now()};
-        const payload = {sourceUid,...(operation==='replace_location' ? {finalPull:true} : {}),sourceIdentity:reviewed,expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],
-            ...(customRow ? {customRows:[customRow]} : {}), ...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})};
-        // An uncertain retry must replay exactly the original command, including its version.
-        pending.payload ||= payload;
-        if (!Object.hasOwn(pending,'version')) pending.version = getSuspendTagWriteVersion(source);
-        state.pending[key]=pending; persistDockSuspendCompletionState(state);
-        let preview = false, rollbackAllocation;
-        try {
-            if (operation === 'replace_location') {
-                rollbackAllocation = previewSuspendPullAllocation(target, original, masterUid);
-                const entry = buildDockSuspendDcOptionSocEntry(target, source);
-                if (entry) {
-                    applySuspendCandidateRows([{...snapshot, ...entry.payload, unique_id:sourceUid}], {preview:true});
-                    preview = true;
-                }
-            } else if (operation === 'remove_location') {
-                applySuspendCandidateRows([{...snapshot,suspend_candidate_state:'replaced',suspend:null,suspend_to:null,quantityordered:'0'}]);
-                preview = true;
-            }
-            const readCommitted = async () => {
-                if (operation !== 'replace_location' || scope !== getSupabaseReadIdentityScope()) return null;
-                const page = query => fetchAuthenticatedSupabaseReadPage('ph_soc_master', 'select=*&' + query);
-                const origin = original.SUSPEND_ORIGIN_UID || original.suspend_origin_uid || sourceUid;
-                const prior = (await page('unique_id=eq.' + encodeURIComponent(origin) + '&limit=1')).rows?.[0];
-                if (!prior || prior.unique_id !== origin || scope !== getSupabaseReadIdentityScope() || prior.suspend || !prior.date_completed ||
-                    prior.suspend_candidate_state !== 'approved' || prior.locationcode !== next || String(prior.lotcode || '') !== String(target.LOTCODE || target.lotcode || '')) return null;
-                const rows = (await page('suspend_origin_uid=eq.' + encodeURIComponent(origin) + '&limit=1000')).rows || [];
-                if (rows.some(row => row.suspend || !row.date_completed)) return null;
-                const inventory = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory','select=*&unique_id=eq.' + encodeURIComponent(masterUid) + '&limit=1');
-                return inventory.rows?.length === 1 ? {ok:true,finalPull:true,originUid:origin,rows:[prior,...rows.filter(row => row.unique_id !== origin)],inventoryRows:inventory.rows} : null;
-            };
-            const result = await suspendTagApi(operation,pending.payload,{commandId:pending.requestId,expectedVersion:pending.version,readCommitted});
-            if (scope !== getSupabaseReadIdentityScope()) return false;
-            if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The order line was not confirmed. Retry safely.');
-            const order = getDockSuspendDcRequestGroupParts(original);
-            if (operation === 'replace_location' && (!result.finalPull || !result.rows.some(row =>
-                (row.unique_id === sourceUid || row.suspend_origin_uid === (original.SUSPEND_ORIGIN_UID || original.suspend_origin_uid || sourceUid))
-                && row.locationcode === next && String(row.lotcode || '') === String(target.LOTCODE || target.lotcode || '')
-                && String(row.dock_num || row.dock) === String(order.dock) && String(row.stopnumber) === String(order.drop)
-                && row.date_completed && !row.suspend && !['denied','replaced','canceled'].includes(row.suspend_candidate_state)))) throw new Error('The server did not confirm this pull location.');
-            delete state.pending[key]; persistDockSuspendCompletionState(state);
-            requestAvOptionsDropdownOpen=false;
-            if (isViewVisible('detail')) {lastView='request';goBackFromDetail();}
-            scheduleRequestRender(0,16,true);
-            if (operation === 'replace_location') showToast('Location Changed', 'Updated ' + old + ' → ' + next + ' across Suspend Tag, Drive Mode, and Dock ' + order.dock + ' · Drop ' + order.drop + '.');
-            else showToast('Location Saved','The exact Dock and Drop now use the confirmed pull locations.');
-        } catch (error) {
-            if (scope === getSupabaseReadIdentityScope()) {
-                rollbackAllocation?.();
-                if (preview) applySuspendCandidateRows([snapshot]);
-                showToast('Location Not Saved',suspendTagErrorMessage(error),true);
-            }
-        }
-        return false;
-    }, key);
-}
-
 function toggleArgosReclassRowCard(button = null) {
             const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
             if (!card) return false;
@@ -1577,6 +1435,8 @@ function toggleArgosReclassRowCard(button = null) {
             if (!getArgosReclassRowEditorEntry(uid)) return false;
             return focusArgosReclassRow(uid);
         }
+
+window.toggleArgosReclassRowCard = toggleArgosReclassRowCard;
 
 function focusArgosReclassRow(uid = '') {
             const state = argosInventoryTransactionState;
@@ -2581,37 +2441,6 @@ function syncInventoryExcelBars() {
 }
 
 
-function getBloomProjectParameters() {
-    return { priority:'Priority',spec:'Target Spec / Caliper',dates:'Start Date & Finish By Date',assignee:'Who Needs to Grade / Complete (QC / Eval / User)',goal:'Target Goal / Destination Lot',count:'Require How Many Graded Out Count',marking:'What They Are Marked With',notes:'Target Spec / Notes',photo:'Photo Proof',sales:'Sales Rep / Customer / Consignee' };
-}
-function setBloomProjectMode(mode) {
-    const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;
-    draft.mode=mode;
-    if(mode==='qc'){draft.parameters.sales=false;draft.parameters.assignee=true;draft.parameters.count=true;document.querySelectorAll('#bloom-inventory-project-modal [name^="grader-"]').forEach(input=>{input.value='QC';});}
-    if(mode==='sales')draft.parameters.sales=true;else draft.parameters.sales=false;
-    syncBloomProjectParameters();return false;
-}
-function toggleBloomProjectParameter(key) {
-    const draft=bloomInventoryProjectDraft;if(!draft||draft.busy||!Object.hasOwn(draft.parameters,key))return false;
-    draft.parameters[key]=!draft.parameters[key];syncBloomProjectParameters();return false;
-}
-function syncBloomProjectParameters() {
-    const modal=document.getElementById('bloom-inventory-project-modal'),draft=bloomInventoryProjectDraft;if(!modal||!draft)return;
-    modal.querySelectorAll('[data-project-question]').forEach(card=>{const key=card.dataset.projectQuestion,enabled=Object.hasOwn(draft.taskTypes,key)?draft.taskTypes[key]:draft.parameters[key];const toggle=card.querySelector('[data-question-toggle]'),body=card.querySelector('[data-question-body]');toggle.checked=!!enabled;body.hidden=!enabled;body.querySelectorAll('input,select,textarea,button').forEach(c=>c.disabled=!enabled);});
-}
-function renderBloomProjectQuestionCard(key,label,body) {
-    const draft=bloomInventoryProjectDraft,enabled=Object.hasOwn(draft.taskTypes,key)?draft.taskTypes[key]:draft.parameters[key];
-    return '<section class="project-question-card" data-project-question="'+key+'"><label class="project-question-heading"><input type="checkbox" data-question-toggle '+(enabled?'checked':'')+' onchange="toggleBloomProjectQuestion(this)"><strong>'+label+'</strong></label><div class="project-question-body" data-question-body '+(enabled?'':'hidden')+'>'+body+'</div></section>';
-}
-function toggleBloomProjectQuestion(input) {
-    const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;const key=input.closest('[data-project-question]').dataset.projectQuestion;
-    if(Object.hasOwn(draft.taskTypes,key))draft.taskTypes[key]=input.checked;else draft.parameters[key]=input.checked;draft.parameters.count=!!draft.taskTypes.grading;draft.parameters.spec=!!draft.taskTypes.grading;syncBloomProjectParameters();return false;
-}
-function applyBloomProjectTemplate(title) {
-    if(!title||!bloomInventoryProjectDraft)return;const draft=bloomInventoryProjectDraft,row=draft.rows[0];document.querySelector('#bloom-inventory-project-modal [name=projectName]').value=title+' — '+(row.COMMONNAME||row.ITEMCODE)+' '+(row.CONTSIZE||'')+' ('+(row.LOCATIONCODE||'')+')';
-    const task=title==='Cull & Clean Block'?'discard':title==='Haul / Consolidate'?'hauling':title==='Space / Shear Maintenance'?'maintenance':'grading';Object.keys(draft.taskTypes).forEach(k=>draft.taskTypes[k]=k===task);draft.parameters.sales=title==='Sales Rep Customer Pull';draft.parameters.count=task==='grading';draft.parameters.spec=task==='grading';syncBloomProjectParameters();
-}
-
 function addBloomProjectCustomVariable(definition=null) {
     const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;if(draft.customVariables.length>=32){showToast('Custom questions','Use up to 32 questions per project.',true);return false;}
     const def=definition||{},id=def.id||'field_'+crypto.randomUUID().replaceAll('-','');if(draft.customVariables.includes(id))return false;draft.customVariables.push(id);
@@ -2754,20 +2583,6 @@ function restoreEditableDetailControls(prefix, item = activeItem) {
 // Composable project questionnaire; canonical creation/completion retain their receipt and actor checks.
 let queueInventoryProjectsPriority='all',inventoryProjectActivePanel='request-content';
 const inventoryProjectTaskTypes={grading:'📏 Grading / Open Stock',discard:'🗑️ Discard / Cull',hauling:'🚜 Hauling / Moving',maintenance:'🌱 Ad-Hoc TLC / Maintenance'};
-function renderBloomProjectTaskConfigurator(rows) {
-    const input=(label,name,value='',type='text')=>'<label class="project-work-field">'+label+'<input name="'+name+'" type="'+type+'" value="'+esc(value)+'" '+(type==='number'?'min="1" step="1" required':'')+'></label>';
-    const select=(label,name,values)=>'<label class="project-work-field">'+label+'<select name="'+name+'">'+values.map(([value,text])=>'<option value="'+esc(value)+'">'+esc(text)+'</option>').join('')+'</select></label>';
-    const checks=(name,values)=>'<div class="project-checks">'+values.map(v=>'<label class="project-check"><input type="checkbox" name="'+name+'" value="'+esc(v)+'">'+esc(v)+'</label>').join('')+'</div>';
-    const total=rows.reduce((n,r)=>n+(Number(String(r.PTRONHAND??0).replaceAll(',',''))||0),0),destinations=[...new Set((fullInventory?.length?fullInventory:masterInventory||[]).map(r=>r.LOCATIONCODE||r.locationcode).filter(Boolean))].sort();
-    return renderBloomProjectQuestionCard('grading','Grade for Open Stock · How Many Graded Out?',input('Qty to Inspect / Target Count','task-grade-count',total||rows.length,'number')+select('Destination Open Stock Lot','task-target-lot',[['27.F1','27.F1'],['27.S1','27.S1'],['','Keep Current Lot / Count Only']])+input('Target Spec to Grade For','task-spec',rows[0].SPEC||'')+input('Target Caliper (optional)','task-caliper',rows[0].CALIPER||'')+'<p>Worker enters How Many Graded Out on completion.</p>')+
-    renderBloomProjectQuestionCard('marking','What They Are Marked With · Ribbon / Tag / Stake','<div class="project-marking-choices">'+['N/A','Red Ribbon','Blue Ribbon','White Ribbon','Yellow Ribbon','Pink Ribbon','Orange Ribbon','Tag / Stake'].map(v=>'<button type="button" data-marking="'+esc(v)+'" onclick="this.form.elements[\'task-ribbon\'].value=this.dataset.marking">'+esc(v)+'</button>').join('')+'</div>'+input('Selected marking or custom text','task-ribbon','N/A'))+
-    renderBloomProjectQuestionCard('discard','Discard / Cull Tracking · How Many Thrown Away?',checks('task-rejection',['Under-Spec / Small','Rootbound','Leaf Quality / Blight','Winter Damage','Dead / Cull'])+select('Disposal Method','task-disposal',['Dump Pile','Row End','Compost'].map(v=>[v,v]))+'<p>Worker enters How Many Discarded on completion.</p>')+
-    renderBloomProjectQuestionCard('hauling','Hauling / Location Move · Where Are They Moving To?',input('From Location','task-from-location',[...new Set(rows.map(r=>r.LOCATIONCODE))].join(', '))+'<label class="project-work-field">To Destination Location<input name="destinationZone" list="project-destinations" placeholder="Search location" required><datalist id="project-destinations">'+destinations.map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist></label>'+checks('task-equipment',['Wingding','Forklift','Trailer'])+'<p>Worker enters How Many Hauled on completion.</p>')+
-    renderBloomProjectQuestionCard('maintenance','Maintenance / TLC Checklist',checks('task-maintenance',['Space Cans','Shear / Trim','Fertilize','Weed / Clean Bed','Stake / Tie','Re-Tag','Water'])+'<label>Instructions / Notes<textarea name="task-maintenance-notes" maxlength="4000"></textarea></label>')+
-    renderBloomProjectQuestionCard('photo','Include Photo Proof on Completion','<p>Worker may upload a photo when completing.</p>');
-}
-
-function toggleBloomProjectTask(type){const draft=bloomInventoryProjectDraft;if(!draft||draft.busy)return false;draft.taskTypes[type]=!draft.taskTypes[type];draft.parameters.count=!!draft.taskTypes.grading;const modal=document.getElementById('bloom-inventory-project-modal');modal.querySelectorAll('[data-task-type]').forEach(b=>b.setAttribute('aria-pressed',String(!!draft.taskTypes[b.dataset.taskType])));modal.querySelectorAll('[data-task-block]').forEach(b=>{b.hidden=!draft.taskTypes[b.dataset.taskBlock];b.querySelectorAll('input,select,textarea').forEach(c=>c.disabled=b.hidden);});syncBloomProjectParameters();return false;}
 function collectBloomProjectTasks(form) {
     const value=n=>String(form.elements.namedItem(n)?.value||'').trim(),checked=n=>Array.from(form.querySelectorAll('[name="'+n+'"]:checked')).map(c=>c.value),draft=bloomInventoryProjectDraft;
     return Object.keys(inventoryProjectTaskTypes).filter(k=>draft.taskTypes[k]).map(type=>({type,label:inventoryProjectTaskTypes[type],...(type==='grading'?{target_qty:Number(value('task-grade-count')),marked_with:draft.parameters.marking?value('task-ribbon'):'',target_spec:value('task-spec'),target_caliper:value('task-caliper'),target_lot:value('task-target-lot')}:type==='discard'?{reasons:checked('task-rejection'),disposal:value('task-disposal')}:type==='hauling'?{from_location:value('task-from-location'),destinationZone:value('destinationZone'),equipment:checked('task-equipment')}:{checklist:checked('task-maintenance'),instructions:value('task-maintenance-notes')})}));
@@ -2851,13 +2666,13 @@ function fieldAuditYear(saleyear, lotcode) {
     for (const value of [saleyear,lotcode]) { const match=String(value || '').trim().match(/^(?:20)?(\d{2})(?:\D|$)/); if(match)return 2000+Number(match[1]); }
     return null;
 }
-function fieldAuditNormalizeRow(raw) {
+function fieldAuditNormalizeRow(raw, includeRaw = true) {
     const value=(...keys)=>{for(const key of keys){const v=raw[key]??raw[key.toUpperCase()];if(v!==undefined&&v!==null&&v!=='')return v;}return '';};
     const row={id:String(value('unique_id')),itemcode:String(value('itemcode')).trim(),commonname:String(value('commonname')),contsize:String(value('contsize')),locationcode:String(value('locationcode')).trim().toUpperCase(),lotcode:String(value('lotcode')).trim().toUpperCase(),season:String(value('season')).trim().toUpperCase(),saleyear:fieldAuditYear(value('saleyear','sale_year'),value('lotcode')),on_hand:fieldAuditNumber(value('ptronhand','on_hand')),available:fieldAuditNumber(value('ptravailable','available')),list_price:fieldAuditNumber(value('listprice','list_price'))};
     row.blockalpha=String(value('blockalpha')||row.locationcode.split('.')[0]||'Unassigned').trim().toUpperCase();
     row.row_uid=[row.itemcode,row.locationcode,row.lotcode].map(v=>v.toUpperCase()).join('|');
     row.extended_value=row.on_hand*row.list_price;
-    row.raw={...raw,...Object.fromEntries(Object.entries(raw).map(([k,v])=>[k.toUpperCase(),v])),UNIQUE_ID:row.id,SOURCE_TABLE:'ph_master_inventory'};
+    if (includeRaw !== false) row.raw={...raw,...Object.fromEntries(Object.entries(raw).map(([k,v])=>[k.toUpperCase(),v])),UNIQUE_ID:row.id,SOURCE_TABLE:'ph_master_inventory'};
     return row;
 }
 function fieldAuditMatchingRows(rows, state, audits={}) {
@@ -2914,237 +2729,17 @@ function fieldAuditSetAnswer(id, field, value, repaint=true) {
 }
 function fieldAuditMarkLocation(location) { const rows=fieldAuditRows().filter(r=>r.locationcode===location);rows.forEach(r=>fieldAuditSetAnswer(r.id,'is_product_there','YES',false));paintFieldAuditReport();return false; }
 function fieldAuditFilter(name,value) { const s=fieldAuditState();if(['season','year','status','search'].includes(name))s[name]=value;s.page=0;paintFieldAuditReport(); }
-function fieldAuditDrill(block='',location='') { const s=fieldAuditState();s.block=block;s.location=location;s.page=0;paintFieldAuditReport();return false; }
+function fieldAuditDrill(block = '', location = '', blockRows = false) {
+    const audit = fieldAuditState();
+    Object.assign(audit, { block, location, blockRows, page: 0 });
+    paintFieldAuditReport();
+    return false;
+}
 function fieldAuditBack() {const s=fieldAuditState();return s.location?fieldAuditDrill(s.block):fieldAuditDrill();}
 function fieldAuditSort(key) { const s=fieldAuditState();s.direction=s.sort===key?-s.direction:1;s.sort=key;s.page=0;paintFieldAuditReport();return false; }
 function fieldAuditMode(flat) {fieldAuditState().flat=flat;fieldAuditState().page=0;paintFieldAuditReport();return false;}
 function fieldAuditSwitch(surface, mode) {fieldAuditState().modes[surface]=mode;if(surface==='drive')renderDrive();else renderManagers();return false;}
 function fieldAuditSwitcher(surface) {const mode=fieldAuditState().modes[surface];return '<div class="field-audit-switcher" role="group" aria-label="Reports"><button type="button" aria-pressed="'+(mode==='audit')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'audit\')">'+(surface==='drive'?'S Y ≤ 26':'Season Y ≤ 2026 Field Audit')+'</button><button type="button" aria-pressed="'+(mode==='legacy')+'" onclick="return fieldAuditSwitch(\''+surface+'\',\'legacy\')">All Existing Reports · Low Stock · Not in F1</button></div>';}
-// The caller owns complete master hydration, account/permission/epoch fencing,
-// and cache publication. Classification always receives the original master
-// cohort; display notes never create stock rows or change report membership.
-async function buildEvalAggregateDashboardModel(inventoryRows, assignmentRows, options = {}) {
-    const api = getManagerEvalReports2Api();
-    if (!api) throw new Error('Eval report engine is not ready.');
-    const yieldTask = options.yieldTask || (() => new Promise(resolve => setTimeout(resolve, 0)));
-    const current = () => options.isCurrent?.() !== false;
-    const checkpoint = async () => {
-        if (!current()) throw Object.assign(new Error('Report snapshot changed.'), { code:'DATASET_READ_SCOPE_CHANGED' });
-        await yieldTask();
-        if (!current()) throw Object.assign(new Error('Report snapshot changed.'), { code:'DATASET_READ_SCOPE_CHANGED' });
-    };
-    const source = Array.isArray(inventoryRows) ? inventoryRows : [];
-    const model = await api.buildAuthoritativeAssignmentModelAsync(source, assignmentRows, checkpoint, { assignmentContract:'inventory-row-assignments-v1' });
-    const index = await api.classifyScriptCompatibleRowsAsync(model.rows, options.classifierOptions, checkpoint);
-    const byItem = new Map(), sourceKeys=new Map();
-    for (let i=0;i<model.rows.length;i++) {
-        if (i%128===0) await checkpoint();
-        const row=model.rows[i], code=getManagerEvalReport2ItemCode(row);
-        sourceKeys.set(row,getManagerEvalReport2RowKey(row,i));
-        if (!byItem.has(code)) byItem.set(code,[]);
-        byItem.get(code).push(row);
-    }
-    const suppressed = new Set();
-    let groupIndex=0;
-    for (const [code,rows] of byItem) {
-        if(groupIndex++%128===0) await checkpoint();
-        if (api.isSuppressedEvalReportCardRows(rows)) suppressed.add(code);
-    }
-    const normalized = new Map(), auditRows = [];
-    const priceValue = row => {
-        for (const key of ['listprice','list_price']) {
-            const value=row?.[key] ?? row?.[key.toUpperCase()];
-            if (value!==undefined && value!==null && value!=='') return value;
-        }
-        return null;
-    };
-    for (let i=0;i<model.rows.length;i++) {
-        if (i%64===0) await checkpoint();
-        const row=model.rows[i], key=getManagerEvalReport2RowKey(row,i);
-        if (normalized.has(key)) continue;
-        const canonical=resolveCanonicalInventoryRow(row) || row;
-        const audit=fieldAuditNormalizeRow(canonical), price=priceValue(canonical);
-        normalized.set(key,{audit,missingPrice:price===null || String(price).trim()==='' || !Number.isFinite(Number(String(price).replace(/[$,\s]/g,'')))});
-        auditRows.push(audit);
-    }
-    const summarize = async (reportId,rows,label,description) => {
-        const result={id:reportId,label,description,lots:0,units:0,value:0,missingPrices:0};
-        const seen=new Set();
-        for (let i=0;i<rows.length;i++) {
-            if (i%256===0) await checkpoint();
-            const row=rows[i], key=sourceKeys.get(row) || getManagerEvalReport2RowKey(row,i);
-            if (seen.has(key) || suppressed.has(getManagerEvalReport2ItemCode(row))) continue;
-            seen.add(key);
-            const value=normalized.get(key);
-            if (!value) continue;
-            result.lots++; result.units+=value.audit.on_hand; result.value+=value.audit.extended_value;
-            if (value.missingPrice) result.missingPrices++;
-        }
-        if (options.includeCohortKeys) result.cohortKeys=[...seen];
-        return result;
-    };
-    const reports=[];
-    for (const id of api.REPORT_IDS) reports.push(await summarize(id,index.reports[id] || [],api.REPORT_META[id]?.label || id,api.REPORT_META[id]?.description || ''));
-    const auditCohort=[];
-    for(let i=0;i<auditRows.length;i+=128){
-        await checkpoint();
-        auditCohort.push(...fieldAuditMatchingRows(auditRows.slice(i,i+128),{season:'Y',year:'2026max',status:'all',search:'',block:'',location:'',sort:'locationcode',direction:1},{}));
-    }
-    const auditMetrics=fieldAuditMetrics(auditCohort,{});
-    const auditIds=new Set(auditCohort);
-    const audit={id:'field-audit',label:'Season Y ≤ 2026 Field Audit',description:'Season Y inventory through 2026.',lots:auditCohort.length,units:auditMetrics.units,value:auditMetrics.value,missingPrices:0};
-    for (const entry of normalized.values()) if (auditIds.has(entry.audit) && entry.missingPrice) audit.missingPrices++;
-    if (options.includeCohortKeys) audit.cohortKeys=[...normalized].filter(([,entry])=>auditIds.has(entry.audit)).map(([key])=>key);
-    await checkpoint();
-    return {reports:[audit,...reports],auditRows,sourceRowCount:normalized.size};
-}
-
-
-// Eval Reports landing is presentation state, separate from the existing report drills.
-function evalAggregateDashboardState() {
-    const owner = getSupabaseReadIdentityScope();
-    const permission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
-    if (window.__evalAggregateDashboard?.owner === owner && window.__evalAggregateDashboard.permission === permission) return window.__evalAggregateDashboard;
-    return window.__evalAggregateDashboard = { owner, permission, selected:'', model:null, source:null, pending:null, loading:false, error:'', attempted:false };
-}
-function isEvalAggregateDashboardVisible() { return !evalAggregateDashboardState().selected; }
-function enterEvalAggregateDashboard() {
-    const state = evalAggregateDashboardState();
-    state.selected = 'reports';
-    state.entry = (state.entry || 0) + 1;
-    fieldAuditState().modes.eval = 'legacy';
-}
-function showEvalAggregateDashboard() {
-    if (!canViewManagerEvalReports2()) return false;
-    const state = evalAggregateDashboardState();
-    state.selected = '';
-    state.entry = (state.entry || 0) + 1;
-    renderManagers();
-    queueScrollMainAreaToTop('eval-aggregate-dashboard');
-    updateGlobalBackButton();
-    return false;
-}
-function backEvalAggregateDashboard() {
-    const state = evalAggregateDashboardState();
-    if (!state.selected || state.selected === 'reports') return false;
-    if (state.selected === 'field-audit') {
-        const audit = fieldAuditState();
-        if (audit.block || audit.location) fieldAuditBack();
-        else showEvalAggregateDashboard();
-        return true;
-    }
-    if (managerEvalReport2DetailItemKey || managerEvalReport2BrowseMode === 'location' && managerEvalReport2DrillLevel > 0) return false;
-    showEvalAggregateDashboard();
-    return true;
-}
-function openEvalAggregateReport(reportId) {
-    if (!canViewManagerEvalReports2()) return false;
-    const state = evalAggregateDashboardState();
-    const api = getManagerEvalReports2Api();
-    if (reportId !== 'field-audit' && !api?.REPORT_IDS.includes(reportId)) return false;
-    if (reportId === 'field-audit') {
-        if (!state.model || !sameEvalAggregateDashboardSource(state.source, evalAggregateDashboardSource())) {
-            const entry = state.entry || 0;
-            queueEvalAggregateDashboardRefresh();
-            state.pending?.then(() => {
-                if (evalAggregateDashboardState() === state && (state.entry || 0) === entry && !state.selected && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW && state.model && sameEvalAggregateDashboardSource(state.source, evalAggregateDashboardSource())) openEvalAggregateReport(reportId);
-            });
-            return false;
-        }
-        const audit = fieldAuditState();
-        Object.assign(audit, { season:'Y', year:'2026max', status:'all', search:'', block:'', location:'', flat:false, page:0 });
-        if (state.model?.auditRows) { audit.rows = state.model.auditRows; audit.inventoryReady = true; }
-        audit.modes.eval = 'audit';
-    } else {
-        // The existing selection owner keeps draft-discard confirmation and permission checks.
-        if (!setManagerEvalReport2Reports([reportId])) return false;
-        clearManagerEvalReport2Filters();
-        setManagerEvalReport2BrowseMode('location');
-        fieldAuditState().modes.eval = 'legacy';
-    }
-    state.selected = reportId;
-    renderManagers();
-    queueScrollMainAreaToTop('eval-aggregate-report:' + reportId);
-    updateGlobalBackButton();
-    return false;
-}
-function renderEvalAggregateDashboard() {
-    const state = evalAggregateDashboardState();
-    queueEvalAggregateDashboardRefresh();
-    const api = getManagerEvalReports2Api();
-    const descriptors = [{ id:'field-audit', label:'Season Y ≤ 2026 Field Audit', description:'Season Y inventory through 2026. Review blocks, locations and field answers.' }, ...(api?.REPORT_IDS || []).map(id => ({ id, ...api.REPORT_META[id] }))];
-    const reports = new Map((state.model?.reports || []).map(report => [report.id, report]));
-    const status = state.error ? state.error : state.model ? state.loading ? 'Refreshing live inventory. Current complete totals remain visible.' : 'Live inventory totals · Choose a report to browse Block Alpha → LocationCode.' : 'Loading complete inventory totals…';
-    return '<section class="eval-aggregate-dashboard" aria-labelledby="eval-aggregate-title" data-eval-aggregate-dashboard>'
-        + '<header class="eval-aggregate-heading"><div><span class="eval-aggregate-eyebrow">Inventory overview</span><h2 id="eval-aggregate-title">Eval Reports</h2><p role="status">' + escapeHtml(status) + '</p></div>'
-        + (state.error ? '<button type="button" class="eval-aggregate-retry" onclick="return retryEvalAggregateDashboard()">Retry totals</button>' : '') + '</header>'
-        + '<div class="eval-aggregate-grid">' + descriptors.map(report => {
-            const metrics = reports.get(report.id);
-            return '<article class="eval-aggregate-card" data-eval-aggregate-report="' + escapeHtml(report.id) + '"><div class="eval-aggregate-card-copy"><h3>' + escapeHtml(report.label) + '</h3><p>' + escapeHtml(report.description || '') + '</p></div>'
-                + '<dl class="eval-aggregate-metrics"><div><dt>Total On-Hand</dt><dd data-eval-aggregate-units>' + (metrics ? Number(metrics.units).toLocaleString('en-US') : '—') + '</dd></div><div><dt>Extended Value</dt><dd data-eval-aggregate-value>' + (metrics ? fieldAuditMoney(metrics.value) : '—') + '</dd></div></dl>'
-                + '<p class="eval-aggregate-coverage">' + (metrics ? Number(metrics.lots).toLocaleString('en-US') + ' inventory row' + (metrics.lots === 1 ? '' : 's') + (metrics.missingPrices ? ' · ' + metrics.missingPrices + ' without a list price' : '') : 'Complete totals pending') + '</p>'
-                + '<button type="button" class="eval-aggregate-go" onclick="return openEvalAggregateReport(\'' + escJsAttrValue(report.id) + '\')" aria-label="View report: ' + escapeHtml(report.label) + '">View Report <span aria-hidden="true">→</span></button></article>';
-        }).join('') + '</div></section>';
-}
-function retryEvalAggregateDashboard() {
-    const state = evalAggregateDashboardState();
-    state.attempted = false;
-    state.error = '';
-    queueEvalAggregateDashboardRefresh(true);
-    renderManagers();
-    return false;
-}
-function evalAggregateDashboardSource() {
-    const receipt = productionDisplayMasterReceipt, master = getDatasetState('master');
-    const owner = getSupabaseReadIdentityScope(), permission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
-    const notes = getManagerAssignedColumnState();
-    const ready = Array.isArray(fullInventory) && (receipt?.rows === fullInventory && receipt.readScope === owner && receipt.permission === permission
-        || master.rowCompleteness === 'complete' && master.liveVerifiedScope === getProductionLiveSyncContext().scope && master.liveVerifiedPermission === permission);
-    return { ready, owner, permission, rows:fullInventory, assignments:isDatasetLoaded('warehouseAssignedItems','full') ? warehouseAssignedItemsInventory : null,
-        notes:notes.locationSalesNotes, noteScope:notes.noteScope, photoGeneration:notes.photoGeneration,
-        epoch:resolvedViewStateEpoch, key:getManagerEvalReport2CacheKeyValue() };
-}
-function sameEvalAggregateDashboardSource(left, right) {
-    return !!left && !!right && ['ready','owner','permission','rows','assignments','notes','noteScope','photoGeneration','epoch','key'].every(key => left[key] === right[key]);
-}
-function queueEvalAggregateDashboardRefresh(force = false) {
-    if (!canViewManagerEvalReports2()) return;
-    const state = evalAggregateDashboardState(), initial = evalAggregateDashboardSource();
-    if (state.pending || !force && (initial.ready && sameEvalAggregateDashboardSource(state.source, initial) || !initial.ready && state.attempted || state.error && sameEvalAggregateDashboardSource(state.failedSource, initial))) return;
-    state.loading = true;
-    state.error = '';
-    const ownsState = () => evalAggregateDashboardState() === state && canViewManagerEvalReports2();
-    // Defer work until the dashboard is painted; the canonical engine yields between batches.
-    state.pending = new Promise(resolve => setTimeout(resolve, 0)).then(async () => {
-        if (!ownsState()) return;
-        if (!initial.ready || force) {
-            state.attempted = true;
-            await ensureDatasetLoaded('master', 'full', { force });
-        }
-        if (!ownsState()) return;
-        const source = evalAggregateDashboardSource();
-        if (!source.ready) throw new Error('Complete inventory totals are not available yet. Retry totals to refresh.');
-        const next = getConfiguredNextSaleSeasonTarget();
-        const model = await buildEvalAggregateDashboardModel(source.rows, source.assignments || [], {
-            classifierOptions:{ currentSeason:getConfiguredCurrentSeasonCode(), currentSalesYear:getConfiguredCurrentSalesYearCode(), nextSeason:next.season, nextSalesYear:next.salesYear, settings:managerEvalReportSettings, now:new Date() },
-            isCurrent:() => ownsState() && sameEvalAggregateDashboardSource(source, evalAggregateDashboardSource())
-        });
-        if (!ownsState() || !sameEvalAggregateDashboardSource(source, evalAggregateDashboardSource())) return;
-        state.model = model;
-        state.source = source;
-        state.attempted = false;
-    }).catch(error => {
-        if (ownsState() && error?.code !== 'DATASET_READ_SCOPE_CHANGED') {
-            state.error = 'Complete inventory totals could not refresh. Please retry.';
-            state.failedSource = evalAggregateDashboardSource();
-        }
-    }).finally(() => {
-        state.pending = null;
-        state.loading = false;
-        if (ownsState() && isEvalAggregateDashboardVisible() && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) scheduleManagersRender(true);
-    });
-}
-
 function renderDriveHoldStopCodeView(container,crumb,label='',state=null) {
     if(fieldAuditState().modes.drive==='audit'){applyDriveRenderMarkup(container,crumb,'Drive Mode > Executive Inventory & Field Audit',fieldAuditSwitcher('drive')+renderFieldAuditReport('drive'),'field-audit:'+Date.now());return;}
     renderDriveHoldStopCodeLegacyView(container,crumb,label,state);container.querySelectorAll('.field-audit-switcher').forEach(node=>node.remove());container.insertAdjacentHTML('afterbegin',fieldAuditSwitcher('drive'));
@@ -3159,11 +2754,10 @@ function paintFieldAuditReport() {fieldAuditDriveRefreshOwners();if(document.act
 // Manager Field Audit shares the existing Low Stock drill card, with audit-only presentation.
 function renderFieldAuditReportDrillGroup(key, group, metrics, state) {
     const isLocation = !!state.block;
-    const args = isLocation ? [state.block, key] : [key];
     const label = isLocation ? getDriveBlockNumberLabel(key) : getDriveBlockAlphaLabel(key);
     const card = renderManagerEvalReport2DrillGroupCard({ kind:isLocation ? 'locationcode' : 'blockalpha', value:key, label,
         rowCount:group.length, locationCount:metrics.locations.size, itemCount:new Set(group.map(row => row.itemcode)).size }, {
-        openAttrs:buildFastInvokeAttrs('fieldAuditDrill', args, isLocation ? 'Open block number ' + label : 'Open ' + label)
+        audit:true
     });
     return '<article class="field-audit-location-group field-audit-report-group">' + card
         + (isLocation ? '<button type="button" class="field-audit-present" data-location="' + escapeHtml(key) + '" onclick="return fieldAuditMarkLocation(this.dataset.location)">✅ All Present at Loc</button>' : '') + '</article>';
@@ -3174,8 +2768,9 @@ function fieldAuditBody() {
     let html='<p class="field-audit-sync" role="status">'+e(s.error||(s.loading?'Refreshing complete inventory and saved audits…':Object.keys(s.pending).length?Object.keys(s.pending).length+' answers saved locally · syncing…':s.inventoryReady?'Complete inventory · answers synced':'Cached inventory · background refresh available'))+'</p><div class="field-audit-kpis"><article><span>Matching Lots</span><strong>'+number(m.lots)+'</strong></article><article><span>Total On-Hand</span><strong>'+number(m.units)+'</strong></article><article><span>Extended Value</span><strong>'+fieldAuditMoney(m.value)+'</strong></article><article><span>Audit Progress · Is Product There?</span>'+fieldAuditProgress(m)+'</article></div>';
     const varieties=new Map();rows.forEach(r=>{const group=varieties.get(r.commonname)||[];group.push(r);varieties.set(r.commonname,group);});const ranked=[...varieties].map(([name,group])=>({name,m:fieldAuditMetrics(group,s.audits)})).sort((a,b)=>b.m.units-a.m.units);
     html+='<details class="field-audit-varieties" '+(s.varietiesOpen?'open':'')+' ontoggle="fieldAuditState().varietiesOpen=this.open"><summary>Top Varieties Breakdown · '+ranked.length+' varieties</summary><div class="field-audit-scroll"><table><thead><tr><th>Variety</th><th>Lots</th><th>Total On-Hand</th><th>Total Value</th><th>% Share</th></tr></thead><tbody>'+ranked.slice(0,s.allVarieties?ranked.length:10).map(v=>{const share=m.units?v.m.units/m.units*100:0;return '<tr><td>'+e(v.name)+'</td><td>'+number(v.m.lots)+'</td><td>'+number(v.m.units)+'</td><td>'+fieldAuditMoney(v.m.value)+'</td><td>'+share.toFixed(1)+'%<progress max="100" value="'+Math.max(0,share)+'"></progress></td></tr>';}).join('')+'</tbody></table></div><button type="button" onclick="fieldAuditState().allVarieties=!fieldAuditState().allVarieties;paintFieldAuditReport()">'+(s.allVarieties?'Show top 10':'Show all varieties')+'</button></details>';
-    html+='<div class="field-audit-toolbar" role="group" aria-label="Field audit display"><span>'+e(s.block?'Block '+s.block+(s.location?' · Location '+s.location:''):'All Blocks (A–L)')+'</span><button type="button" aria-pressed="'+!s.flat+'" onclick="return fieldAuditMode(false)">🗂️ Block → Location Drill-Down</button><button type="button" aria-pressed="'+s.flat+'" onclick="return fieldAuditMode(true)">Flat A–Z View</button></div>';
-    if (!s.flat && !s.location) {
+    html+='<div class="field-audit-toolbar" role="group" aria-label="Field audit display"><span>'+e(s.block?'Block '+s.block+(s.location?' · Location '+s.location:''):'All Blocks (A–Z)')+'</span><button type="button" aria-pressed="'+!s.flat+'" onclick="return fieldAuditMode(false)">🗂️ Block → Location Drill-Down</button><button type="button" aria-pressed="'+s.flat+'" onclick="return fieldAuditMode(true)">Flat A–Z View</button></div>';
+    if (!s.flat && !s.location && !s.blockRows) {
+        if (s.block && rows.length) html += renderEvalReport2BlockRowsButton(s.block, true);
         const groups=new Map();for(const row of rows){const key=s.block?row.locationcode:row.blockalpha;const group=groups.get(key)||[];group.push(row);groups.set(key,group);}
         html+='<div class="field-audit-tiles field-audit-standard-list">'+[...groups].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([key,group])=>{
             const metrics=fieldAuditMetrics(group,s.audits);

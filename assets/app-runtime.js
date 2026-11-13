@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.79';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.80';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -20956,6 +20956,10 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/av-filter-rail.js */
         /* @runtime-fragment assets/av-filter-markup.js */
         /* @runtime-fragment assets/eval-report2-controls.js */
+        /* @runtime-fragment assets/eval-report2-overview.js */
+        /* @runtime-fragment assets/bloom-cart-persistence.js */
+        /* @runtime-fragment assets/bloom-cart-actions.js */
+        /* @runtime-fragment assets/bloom-inventory-project.js */
         /* @runtime-fragment assets/app-update-state.js */
         /* @runtime-fragment assets/app-update-restore.js */
         /* @runtime-fragment assets/inventory-photo-domain.js */
@@ -24699,7 +24703,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.79';
+        const APP_VERSION = '3.0.80';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -32780,6 +32784,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 return false;
             }
             if (viewId === 'av' || viewId === 'drive') return showAvReadUnavailableState(error || new Error(message), hasProgressiveViewData(), viewId);
+            if (retainPendingRequestDisplayOnReadFailure(viewId)) return false;
             const ui = VIEW_LOAD_UI[viewId];
             if (!ui) return;
             const container = document.getElementById(ui.container);
@@ -32926,129 +32931,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     showAvReadUnavailableState(error, hasProgressiveViewData(getProductionLiveSyncContext()), viewId);
                 }
             } finally { scope.dispose(); }
-        }
-
-        function ensureViewDataForRender(viewId) {
-            const pagedSurface = getActiveManagerReportPageSurface(viewId);
-            if (viewId === 'sales-inventory' || pagedSurface && useManagerReportPages(pagedSurface)) return false;
-            // Eval Reports #2 owns its inventory/assignment load and keeps its
-            // last-good index. Generic Manager verification must not replace
-            // the report panel with the shared view error screen.
-            if (shouldLetManagerEvalReport2OwnLoadState(viewId)) return false;
-            const config = getViewLoadingConfig(viewId);
-            if (!config) return false;
-            if (canUseProductionLiveSync()) {
-                const context = getProductionLiveSyncContext();
-                if (!context.adapters.length) return false;
-                const optionalBunchView = viewId === 'bunch-note'
-                    || viewId === 'request' && ['bunch-notes', 'bunch-count-review'].includes(String(activeReqTab || '').trim().toLowerCase());
-                if (optionalBunchView || viewId === 'docks') {
-                    void getProductionLiveSyncCoordinator().check('visible-view').catch(() => false);
-                    return false;
-                }
-                if (getCurrentVisibleViewId() !== viewId) return true;
-                const key = productionVerifiedViewKey(context);
-                if (productionLiveSyncVerifiedView === key
-                    || hasCurrentProductionReadStatus(productionLiveSyncCoordinator?.getStatus(), context)) return false;
-                // Navigation changes verification identity, not the ownership of
-                // this account's already-rendered snapshot. Retain its display
-                // before a loading state can replace it; revalidation still runs.
-                if (!hasProgressiveViewData(context)) getProductionLiveSyncCoordinator().retainDisplay();
-                const canDisplay = hasProgressiveViewData(context);
-                if (productionLiveSyncViewLoad?.key === key && productionLiveSyncViewLoad.failed) {
-                    if (canDisplay) return false;
-                    if (viewId === 'av') {
-                        showAvReadUnavailableState(productionLiveSyncViewLoad.error || new Error(productionLiveSyncCoordinator.getStatus().message || 'Available inventory could not be verified.'), false, viewId);
-                        return true;
-                    }
-                    showViewErrorState(viewId, productionLiveSyncCoordinator.getStatus().message || 'Current data could not be verified. Please retry.', true, productionLiveSyncViewLoad.error);
-                    return true;
-                }
-                if (!canDisplay) showViewLoadingState(viewId, 'Loading data...', true);
-                if (productionLiveSyncViewLoad?.key !== key || !productionLiveSyncViewLoad.pending) {
-                    const load = { key, pending: true, failed: false };
-                    productionLiveSyncViewLoad = load;
-                    if (!canDisplay && (viewId === 'drive' || viewId === 'av')) {
-                        const recoveryScope = window.AgMetricLifecycle.createScope({ lifetime: 'view', foreground: true });
-                        recoveryScope.timeout(() => {
-                            recoveryScope.dispose();
-                            void recoverColdInventoryView(viewId, load);
-                        }, 1000);
-                    }
-                    getProductionLiveSyncCoordinator().check('visible-view').then(() => {
-                        const status = productionLiveSyncCoordinator.getStatus();
-                        load.failed = productionLiveSyncVerifiedView !== key
-                            && ['Needs attention', 'Importing', 'Offline'].includes(status.state);
-                        if (load.failed && status.message) load.error = Object.assign(new Error(status.message), {
-                            status: Number(status.status || 0), code: String(status.code || '').trim().toUpperCase()
-                        });
-                    }).catch((error) => { load.failed = true; load.error = error; }).finally(() => {
-                        load.pending = false;
-                        if (!load.failed || productionLiveSyncViewLoad !== load || !isViewVisible(viewId) || productionVerifiedViewKey() !== key) return;
-                        if (viewId === 'drive' || viewId === 'av') void recoverColdInventoryView(viewId, load);
-                        const currentHasDisplay = hasProgressiveViewData(getProductionLiveSyncContext());
-                        if (load.failed && !currentHasDisplay) {
-                            if (viewId === 'av' || viewId === 'drive') showAvReadUnavailableState(load.error || new Error(productionLiveSyncCoordinator.getStatus().message || 'Available inventory could not be verified.'), false, viewId);
-                            else showViewErrorState(viewId, productionLiveSyncCoordinator.getStatus().message || 'Current data could not be verified. Please retry.', true, load.error);
-                        } else if (load.failed && (viewId === 'av' || viewId === 'drive')) {
-                            showAvReadUnavailableState(load.error || new Error(productionLiveSyncCoordinator.getStatus().message || 'Available inventory refresh failed.'), true, viewId);
-                        }
-                        // Successful publication is rendered once by onStatus.
-                    });
-                }
-                return !canDisplay;
-            }
-            const blockedByManualSync = hasActiveManualSync() && config.required.some((item) => isDatasetFrozenDuringManualSync(item.key, item.mode) && !isDatasetLoaded(item.key, item.mode));
-            if (blockedByManualSync) {
-                showViewLoadingState(viewId, 'Manual sync running...');
-                updateSyncDiagnostics('manual-sync');
-                return true;
-            }
-            const pending = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
-            const blockingPending = pending.filter((item) => !canUseDatasetForImmediateRender(item));
-            if (!blockingPending.length) {
-                if (pending.length) {
-                    const concurrency = getDatasetTargetLoadConcurrency(pending, { allowWhileInteractive: true });
-                    loadDatasetTargetsWithLimit(pending, {
-                        preserveRequestedMode: true,
-                        allowWhileInteractive: true,
-                        retryReason: 'view-immediate-background'
-                    }, concurrency).then(() => {
-                        markViewDirty(viewId);
-                        if (isViewVisible(viewId)) queueInteractiveViewRender(viewId, false, true, 0, 120);
-                    }).catch(() => {});
-                }
-                const backgroundDelay = getViewBackgroundLoadDelayMs();
-                (config.background || []).forEach((item) => {
-                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
-                });
-                return false;
-            }
-            showViewLoadingState(viewId, config.label);
-            const viewDataStartedAt = beginInternalPerfMeasure();
-            loadDatasetTargetsWithLimit(blockingPending).then(() => {
-                resetViewLoadRetry(viewId);
-                reportPerformanceHealthEvent('view_data_ready', 'rendering', getAdaptivePerfElapsedMs(viewDataStartedAt), {
-                    reason: viewId,
-                    affected_count: blockingPending.length
-                });
-                const backgroundDelay = getViewBackgroundLoadDelayMs();
-                (config.background || []).forEach((item) => {
-                    if (!isDatasetFrozenDuringManualSync(item.key, item.mode)) queueDatasetLoad(item.key, item.mode, backgroundDelay);
-                });
-                markViewDirty(viewId);
-                if (isViewVisible(viewId)) {
-                    prepareLatestViewRender(viewId);
-                    renderViewContent(viewId, false, true);
-                }
-            }).catch((error) => {
-                if (isViewVisible(viewId)) {
-                    if (viewId === 'av') showAvReadUnavailableState(error, hasProgressiveViewData());
-                    else showViewErrorState(viewId, error && error.message ? error.message : 'Could not load data.', false, error);
-                    scheduleViewLoadRetry(viewId, error);
-                }
-            });
-            return true;
         }
 
         async function refreshLoadedDatasets(force = true, options = {}) {
@@ -44305,8 +44187,8 @@ let avTopControlsRenderToken = 0;
                     </div>
                     <div id="mark-done-confirm-body" class="max-h-[62vh] overflow-y-auto p-5 text-slate-800"></div>
                     <div class="grid grid-cols-2 gap-3 border-t border-slate-100 bg-slate-50 p-4">
-                        <button type="button" class="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-slate-600 shadow-sm active:scale-[0.98]" onpointerdown="event.preventDefault();closeMarkDoneConfirmModal('cancel')" onclick="closeMarkDoneConfirmModal('cancel')">Cancel</button>
-                        <button type="button" class="rounded-2xl bg-emerald-700 px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-[0.98]" onpointerdown="event.preventDefault();closeMarkDoneConfirmModal('ok')" onclick="closeMarkDoneConfirmModal('ok')">OK</button>
+                        <button type="button" class="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="closeMarkDoneConfirmModal('cancel')">Cancel</button>
+                        <button type="button" class="rounded-2xl bg-emerald-700 px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-[0.98]" onclick="closeMarkDoneConfirmModal('ok')">OK</button>
                     </div>
                 </div>`;
             document.body.appendChild(modal);
@@ -46256,7 +46138,6 @@ function renderDriveQuickRequestBar(rows = null) {
         bar.innerHTML = '';
         return;
     }
-    const selectAction = stats.allSelected ? 'clearDriveReturnedRowsSelection' : 'selectDriveReturnedRows';
     const selectLabel = stats.allSelected ? 'Clear Returned' : 'Select All Returned';
     const selectIcon = stats.allSelected ? 'ph-x-circle' : 'ph-check-square';
     const sendDisabled = stats.selected ? '' : ' disabled';
@@ -46272,10 +46153,23 @@ function renderDriveQuickRequestBar(rows = null) {
                 <button type="button" class="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600" onclick="return clearBloomPickerSelection()">Clear Bloom Picker</button>
             </div>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button type="button" class="min-h-[46px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-[.99]" onclick="return ${selectAction}()"><i class="ph-bold ${selectIcon} mr-2"></i>${escapeHtml(selectLabel)}</button>
+                <button type="button" data-bloom-returned-selection class="min-h-[46px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-[.99]"><i class="ph-bold ${selectIcon} mr-2"></i>${escapeHtml(selectLabel)}</button>
                 <button type="button"${sendDisabled} class="min-h-[46px] rounded-xl px-4 text-[11px] font-black uppercase tracking-[0.12em] ${sendDisabledClass}" onclick="return sendSelectedDriveRowsAsShift()"><i class="ph-bold ph-arrows-left-right mr-2"></i>Send As Shift</button>
             </div>
         </div>`;
+    bar.querySelector('[data-bloom-returned-selection]')?.addEventListener('click', toggleDriveReturnedBloomSelection);
+}
+
+function toggleDriveReturnedBloomSelection() {
+    const stats = getDriveReturnedSelectionStats();
+    const ids = stats.selectableRows.map(row => row.DOM_ID).filter(Boolean);
+    if (stats.allSelected) {
+        persistBloomCartSelection(ids, true);
+        return clearDriveReturnedRowsSelection();
+    }
+    const result = selectDriveReturnedRows();
+    persistBloomCartSelection(ids);
+    return result;
 }
 
 function selectDriveReturnedRows(silent = false) {
@@ -69578,20 +69472,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         async function removeInventoryProjectRow(rowId){const projectId=activeInventoryProjectId;await inventoryProjectApi('project_update_row',{rowId,remove:true});await refreshInventoryProjectsData();return openInventoryProject(projectId);}
         function openReclassFromInventoryProject(itemcode,locationcode,lotcode){const row=(masterInventory||[]).find(item=>String(item.ITEMCODE||item.itemcode)===itemcode&&String(item.LOCATIONCODE||item.locationcode)===locationcode&&String(item.LOTCODE||item.lotcode)===lotcode);if(row)openReclassItemInquiry(row);}
         let bloomInventoryProjectDraft = null;
-        async function addInventoryRowsToProject(items) {
-            const rows=(items||[]).filter(Boolean);if(!rows.length||isRepReadOnlyUser())return false;
-            ensureQueueInventoryProjectsScope();
-            bloomInventoryProjectDraft={id:crypto.randomUUID(),owner:getSupabaseReadIdentityScope(),rows,pairs:[],busy:false,displayId:'PRJ-'+Date.now().toString().slice(-6),taskTypes:{grading:true,discard:false,hauling:false,maintenance:false},mode:'qc',parameters:{priority:true,spec:true,dates:true,assignee:true,goal:false,count:true,marking:true,notes:true,photo:false,sales:false},customVariables:[]};
-            let modal=document.getElementById('bloom-inventory-project-modal');if(!modal){modal=document.createElement('dialog');modal.id='bloom-inventory-project-modal';document.body.appendChild(modal);}
-            const field=(label,input)=>'<label class="bloom-project-field"><span>'+label+'</span>'+input+'</label>';
-            const picker=(name,label,initial='')=>'<input name="'+name+'" value="'+esc(initial)+'" readonly required autocomplete="off" '+(name==='salesrep'?'onchange="return updateBloomProjectCustomers(this.value)"':name==='customername'?'onchange="return updateBloomProjectConsignees(this.value)"':'')+'><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">'+esc(label)+' ▾</button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search people or teams" oninput="return filterBloomProjectPicker(this)" onkeydown="handleBloomProjectPickerKey(event,this)"><div class="bloom-project-picker-options" data-picker="'+name+'"></div></div>';
-            const today=new Date(),tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);const date=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-            const title='Open Stock QC Grade — '+(rows[0].COMMONNAME||rows[0].ITEMCODE||'Inventory')+' '+(rows[0].CONTSIZE||'')+' ('+(rows[0].LOCATIONCODE||'')+')';
-            modal.innerHTML='<form onsubmit="event.preventDefault();return submitBloomInventoryProject(this)"><header class="project-builder-header"><div><h2>Create Inventory Project</h2>'+buildBloomProjectSummary(rows)+'</div><button type="button" aria-label="Close" onclick="this.closest(\'dialog\').close()">×</button></header><div class="project-builder-body"><section class="project-builder-section"><h3>1. Who, what &amp; when</h3><div class="project-builder-grid">'+field('Project Title / Goal','<input name="projectName" required maxlength="160" value="'+esc(title)+'"><select aria-label="Quick project templates" onchange="applyBloomProjectTemplate(this.value)"><option value="">Quick templates…</option>'+['Open Stock QC Grade','Cull & Clean Block','Haul / Consolidate','Space / Shear Maintenance','Sales Rep Customer Pull'].map(t=>'<option>'+esc(t)+'</option>').join('')+'</select>')+field('Assign To · Who completes this project?',picker('assignedTo','QC Team','QC Team'))+'<div class="project-builder-dates">'+field('Start Date','<input name="startDate" type="date" required value="'+date(today)+'">')+field('Finish By Date','<input name="finishByDate" type="date" required value="'+date(tomorrow)+'">')+'</div><div><span>Priority</span><div class="project-priority">'+['Normal','High','Critical'].map((p,i)=>'<label><input type="radio" name="priority" value="'+p+'" '+(!i?'checked':'')+'><span>'+p+'</span></label>').join('')+'</div></div></div></section><section class="project-builder-section"><h3>2. Check which fields &amp; questions to include</h3><p>Check a card to include it and show its settings.</p>'+renderBloomProjectTaskConfigurator(rows)+renderBloomProjectQuestionCard('sales','For a Sales Rep / Customer / Consignee',field('Sales Rep Name',picker('salesrep','Choose Sales Rep'))+field('Customer Name',picker('customername','Choose Customer','N/A'))+field('Consignee Name',picker('consigneename','Choose Consignee','N/A')))+renderBloomProjectQuestionCard('notes','Project Instructions / Notes for Worker','<label>Instructions / Notes<textarea name="targetNotes" maxlength="2000" placeholder="Special instructions for the worker"></textarea></label>')+'</section><section class="project-builder-section"><h3>3. Custom questions &amp; variables</h3><div data-project-saved-fields></div><div data-project-custom-fields></div><button type="button" class="project-add-question" onclick="return addBloomProjectCustomVariable()">➕ Add Custom Question / Variable</button></section></div><footer class="project-builder-footer"><p role="status" data-project-status></p><div><button type="button" onclick="this.closest(\'dialog\').close()">Cancel</button><button type="submit" class="bloom-project-submit">✅ Create Inventory Project</button></div></footer></form>';
-            syncBloomProjectParameters();modal.showModal();renderBloomProjectSavedVariables();
-            const draft=bloomInventoryProjectDraft;
-            const fillDirectories=()=>{if(draft!==bloomInventoryProjectDraft||draft.owner!==getSupabaseReadIdentityScope())return;setBloomProjectPickerOptions('salesrep',getAllRequestModalRepOptions().map(rep=>normalizeRepDisplayOrder(rep.label)));setBloomProjectPickerOptions('customername',['N/A']);setBloomProjectPickerOptions('consigneename',['N/A']);setBloomProjectPickerOptions('assignedTo',['QC Team','Eval Team','Production Team',...getAssignableAppUserOptions().map(user=>user.username)]);};
-            fillDirectories();void Promise.all([ensureRequestRepUserOptionsReady(),ensureAssignableAppUsers()]).then(fillDirectories).catch(()=>{});ensureQueueInventoryProjectsData();void queueInventoryProjectsLoad?.then(()=>{if(draft===bloomInventoryProjectDraft&&draft.owner===getSupabaseReadIdentityScope())renderBloomProjectSavedVariables();});return false;
+        function addInventoryRowsToProject(items) {
+            return openBloomInventoryProject(items, dispatchBloomProjectPartyChange);
+        }
+
+        function dispatchBloomProjectPartyChange(event) {
+            const { name, value } = event.target;
+            if (name === 'salesrep') void updateBloomProjectCustomers(value);
+            if (name === 'customername') updateBloomProjectConsignees(value);
         }
 
         async function updateBloomProjectCustomers(repName) {
@@ -75162,32 +75050,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     refreshViewDatasetsOnEnter(targetViewId, { backgroundDelay });
                 }, delay);
             });
-        }
-
-        function shouldRenderViewSynchronouslyOnSwitch(viewId = '', state = null) {
-            const targetViewId = String(viewId || '').trim();
-            if (!targetViewId) return false;
-            if (targetViewId === 'av' && typeof fullInventory !== 'undefined' && fullInventory.length > 0 && isDatasetLoaded('master', 'full')) return true;
-            if (targetViewId === 'request') {
-                const requestState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
-                return !requestState.initialized || !!requestState.dirty;
-            }
-            if (targetViewId === 'managers' && activeHomeTab === 'dashboard') {
-                const managerState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
-                if (managerState.initialized && !managerState.dirty) return false;
-                const managerConfig = getViewLoadingConfig(targetViewId);
-                // The module picker is a small navigation shell with no required
-                // dataset cohort. Render it in the click turn so touch devices
-                // don't pay an extra timer and animation-frame hop.
-                return !(managerConfig && Array.isArray(managerConfig.required) && managerConfig.required.length);
-            }
-            if (isTouchConstrainedDevice() || isIOSDevice()) return false;
-            const lightViewIds = ['home', 'sales', 'qc', 'communication', 'production', 'sales-inventory', 'disease-pest', 'office', 'po-management'];
-            if (!lightViewIds.includes(targetViewId)) return false;
-            const safeState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
-            if (safeState.initialized && !safeState.dirty) return false;
-            const config = getViewLoadingConfig(targetViewId);
-            return !(config && Array.isArray(config.required) && config.required.length);
         }
 
         /* @runtime-fragment assets/navigation-routing.js */
@@ -83775,109 +83637,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return `${normalizeRenderSignature(prefix)}:${safeRows.length}:${(hash >>> 0).toString(16)}`;
         }
 
-        function renderAV() {
-            syncAvKioskMode();
-            const host = document.getElementById('av-content');
-            const prior = host?.__avPendingChunk;
-            if (prior) prior.retained = false;
-            else cancelChunkRenderWorkForView('av');
-            try {
-                if (ensureViewDataForRender('av')) return;
-                applyRepScopedAvState();
-                syncAvSecondaryTabs();
-                ensureAvDefaultSeasonSelection();
-                if (activeAVTab === 'open') {
-                    const openStockDatasetKey = shouldUseRepAvOpenDataset() ? 'avOpen' : 'master';
-                    if (!isDatasetLoaded(openStockDatasetKey, 'initial')) {
-                        queueDatasetLoad(openStockDatasetKey, 'initial', isTouchConstrainedDevice() ? 2200 : 900);
-                    }
-                }
-                if (activeAVTab === 'reserves' && !isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
-                if (shouldPrepareAvRepCustomerFilterData()) {
-                    if (!isDatasetLoaded('reserves', 'full')) queueDatasetLoad('reserves', 'full', isTouchConstrainedDevice() ? 2200 : 900);
-                    if (!isDatasetLoaded('customerRepMap', 'full')) queueDatasetLoad('customerRepMap', 'full', isTouchConstrainedDevice() ? 2200 : 900);
-                }
-                const container = document.getElementById('av-content');
-                const crumb = document.getElementById('av-crumb');
-                const avState = getCurrentAVBaseItems({ usePreparedSalesRows: activeAVTab === 'open' });
-                renderAvTopControls(avState.filterBaseItems || []);
-                const term = avState.term;
-                let items = avState.items;
-                const exportCount = getAVVisibleExportCount(items);
-                const reserveRepFilterSourceItems = activeAVTab === 'reserves' && activeAvReserveMode === 'cards'
-                    ? (getCurrentAVBaseItems({ ignoreCardsRepFilter: true }).items || [])
-                    : [];
-
-                if (items.length === 0) {
-                    if (avState.isPartial) {
-                        updateAVExportButton(0);
-                        renderAvPhotoOutreachPanel([]);
-                        setContainerHtmlWithSignature(container,
-                            '<div class="p-8 text-center text-gray-400" role="status">Loading latest AV rows…</div>',
-                            `av-preparing|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}`);
-                        crumb.innerText = 'Loading AV inventory';
-                        return;
-                    }
-                    const bucketOption = getAvSalesBucketOption();
-                    const bucketLabel = bucketOption.emptyLabel || String(bucketOption.label || 'AV rows').toLowerCase();
-                    const emptyLabel = getAvPhotoMode() === 'photos' ? `${bucketLabel} with photos` : bucketLabel;
-                    updateAVExportButton(0);
-                    renderAvPhotoOutreachPanel([]);
-                    const emptySignature = buildRowsRenderSignature(`av-empty|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${emptyLabel}`, []);
-                    setContainerHtmlWithSignature(container, `<div class="p-8 text-center text-gray-400">${['valid_photos','photos'].includes(getAvPhotoMode()) ? 'No rows with valid photos match your search.' : `No ${esc(emptyLabel)} found.`}</div>`, emptySignature);
-                    crumb.innerText = term.length > 0 ? 'Search Results (0)' : `No ${getAvSalesBucketLabel()} rows`;
-                    return;
-                }
-
-                updateAVExportButton(avState.isPartial ? 0 : exportCount);
-
-                if (activeAVTab === 'open') {
-                    const sourceView = getAvPhotoMode() === 'photos' ? 'av-photo' : 'av';
-                    const openExportContext = buildAVExportContext(items, term);
-                    const openRows = openExportContext.rows;
-                    const bucketLabel = getAvSalesBucketLabel();
-                    const crumbText = formatAvReadySummary(bucketLabel, openRows.length);
-                    renderAvPhotoOutreachPanel(avState.isPartial ? [] : openRows);
-                    const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
-                    const browsePage = getClientBrowsePage('av', pageKey, openRows);
-                    const pageFooter = renderClientBrowsePageFooter('av', browsePage.key, openRows.length, browsePage);
-                    if (getAvPhotoMode() !== 'valid_photos' && shouldUseChunkedAVOpenRender(browsePage.rows)) {
-                        renderAVOpenCardsChunked(container, crumb, browsePage.rows, sourceView, crumbText, pageFooter, {
-                            firstPreviewCardSync: avState.isPartial === true
-                        });
-                        return;
-                    }
-                    crumb.innerText = crumbText;
-                    const renderSignature = buildRowsRenderSignature(pageKey, browsePage.rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_QTY_TOTAL']);
-                    setContainerHtmlWithSignature(container, `${browsePage.rows.map((i, rowIndex) => generateCard(i, sourceView, 'status-teal', { rowIndex })).join('')}${pageFooter}`, `${renderSignature}:page:${browsePage.pageIndex}`);
-                    scheduleDeferredCardPhotoHydration(container);
-                    return;
-                }
-                const reserveRows = buildAVExportContext(items, term).rows;
-                const crumbText = activeAvReserveMode === 'photos'
-                    ? (term.length > 0 ? `Search Results (${reserveRows.length})` : `Reserve Location Photos (${reserveRows.length} items)`)
-                    : (term.length > 0 ? `Search Results (${reserveRows.length})` : `All Reserve Locations (${reserveRows.length} items)`);
-                const reserveSourceView = 'av';
-                const pageKey = buildAVBrowsePageKey(`av-reserves|${reserveSourceView}|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows);
-                const reserveBrowsePage = getClientBrowsePage('av', pageKey, reserveRows);
-                const reservePageFooter = renderClientBrowsePageFooter('av', reserveBrowsePage.key, reserveRows.length, reserveBrowsePage);
-                renderAvPhotoOutreachPanel([]);
-                if (shouldUseChunkedAVOpenRender(reserveBrowsePage.rows)) {
-                    renderAVOpenCardsChunked(container, crumb, reserveBrowsePage.rows, reserveSourceView, crumbText, reservePageFooter);
-                    return;
-                }
-                crumb.innerText = crumbText;
-                const renderSignature = buildRowsRenderSignature(pageKey, reserveBrowsePage.rows, ['ITEMCODE','LOTCODE','LOCATIONCODE','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT']);
-                setContainerHtmlWithSignature(container, `${reserveBrowsePage.rows.map((item, rowIndex) => generateCard(item, reserveSourceView, 'status-teal', { rowIndex })).join('')}${reservePageFooter}`, `${renderSignature}:page:${reserveBrowsePage.pageIndex}`);
-                scheduleDeferredCardPhotoHydration(container);
-                return;
-            } finally {
-                if (prior && host.__avPendingChunk === prior && !prior.retained) {
-                    if (prior.token === avRenderChunkToken) cancelChunkRenderWorkForView('av');
-                    delete host.__avPendingChunk;
-                }
-            }
-        }
         function clearDocksSearch(){
             const input = document.getElementById('docks-search');
             if (input) input.value = '';
@@ -85838,27 +85597,6 @@ function getDocksSuspendSyncAudit() {
                 verifyRowSelector: '[data-docks-stop-card]',
                 reserveSpace: true
             });
-        }
-
-        function calculateMatchQty(prefix) {
-            if(!activeItem)return;
-            let matchEl=document.getElementById(prefix+'match');
-            let displayEl=document.getElementById(prefix+'match-display');
-            let valEl=document.getElementById(prefix+'match-qty-val');
-            if (matchEl) markLocMatchInputValidity(matchEl);
-            if(matchEl&&matchEl.value!==""){
-                if (parseLocMatchPercent(matchEl.value) == null) {
-                    if(displayEl)displayEl.classList.add('hidden');
-                    return;
-                }
-                const qty = prefix === 'req-' && isDockSuspendDcRequestMirrorRow(activeItem)
-                    ? calculateDockSuspendDcRequestLocMatchQty(buildQueueInventoryMetricsHtml(activeItem,'request',{detailMetrics:true}),matchEl.value)
-                    : getEditorLocMatchQtyValue(activeItem, matchEl.value);
-                if(valEl)valEl.innerText=qty == null ? 'Not verified' : qty;
-                if(displayEl)displayEl.classList.remove('hidden');
-            }else{
-                if(displayEl)displayEl.classList.add('hidden');
-            }
         }
 
         // HL selections mirror into the isolated server-backed HL Cart only,
@@ -91375,42 +91113,6 @@ function getDocksSuspendSyncAudit() {
             });
         }
 
-        function initializeCartUi() {
-            if (cartUiObserver) {
-                cartUiObserver.disconnect();
-                cartUiObserver = null;
-            }
-            scheduleCartUiRefresh();
-        }
-
-        function startDriveModeBloomOrder(event, domId) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-            }
-            if (!isExactDylanCollygeUser()) {
-                showToast('Restricted', 'Bloom Picker Order submission is available only to Dylan.', true);
-                return false;
-            }
-            const item = findItemByDomId(domId);
-            if (!item || !canSubmitBloomPickerOrder([item])) {
-                showToast('Open Stock Only', 'Bloom Picker orders can only be created from Drive Mode open stock rows.', true);
-                return false;
-            }
-            isMultiSelectMode=false;
-            document.body.classList.remove('multi-select-mode');
-            selectedItems.clear();
-            selectedItemSources.clear();
-            selectedItems.add(domId);
-            selectedItemSources.set(domId, 'drive');
-            cartPanelOpen=false;
-            bloomPickerActionsOpen=false;
-            updateGlobalActionBar();
-            refreshCartButtons();
-            openBloomPickerModal();
-            return false;
-        }
 
         async function openAuraBloomPickerDraft(draft, options = {}) {
             const identity = getSupabaseReadIdentityScope();
@@ -91557,8 +91259,14 @@ function getDocksSuspendSyncAudit() {
 
         function toggleCartPanel(forceOpen = null) {
             if (forceOpen !== false && !canAccessView('bloom')) { showToast('Access unavailable','You do not have permission to open Bloom Picker.',true); return false; }
-            if (!selectedItems.size && forceOpen !== false) {
+            if (forceOpen !== false) restoreBloomCartSelection();
+            if (!selectedItems.size && forceOpen !== false && !hasSavedBloomCartRows()) {
                 restoreBloomPickerOrderDraftSelection(true);
+            }
+            if (!selectedItems.size && forceOpen !== false && hasSavedBloomCartRows()) {
+                cartPanelOpen = true;
+                showToast('Bloom Picker', 'Saved rows will appear as inventory becomes available.');
+                return false;
             }
             if (!selectedItems.size) {
                 cartPanelOpen = false;
@@ -92825,73 +92533,9 @@ function getDocksSuspendSyncAudit() {
             return false;
         }
 
-        function clearSelection() {
-            isMultiSelectMode=false;
-            document.body.classList.remove('multi-select-mode');
-            selectedItems.forEach(domId => requestSelectionTokens.delete(domId));
-            selectedItems.clear();
-            selectedItemSources.clear();
-            cartPanelOpen=false;
-            bloomPickerActionsOpen=false;
-            bloomShareMenuOpen=false;
-            updateGlobalActionBar();
-            refreshCartButtons();
-            syncDriveReturnedSelectionToolbar();
-        }
-        function clearBloomPickerSelection() {
-            clearSelection();
-            return false;
-        }
-        function toggleGlobalItem(domId,isChecked=null,sourceView='') {
-            const safeDomId = String(domId || '').trim();
-            const safeSourceView = String(sourceView || '').trim().toLowerCase();
-            if (!safeDomId) return;
-            if (safeDomId.startsWith('hl-order:')) {
-                if (isChecked !== true) void removeHlDraftRow(safeDomId.slice(9));
-                return;
-            }
-            const hadItem = selectedItems.has(safeDomId);
-            const wantsAdd = isChecked === null ? !hadItem : !!isChecked;
-            const isDriveBloomPickerSelection = safeSourceView === 'drive-bloom';
-            if (wantsAdd && (isDriveBloomPickerSelection || isCurrentDriveCardOptionsContext(safeSourceView))) {
-                const item = findItemByDomId(safeDomId);
-                const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow(item, 'drive');
-                const canSelectDriveBloomPicker = isDriveBloomPickerSelection && canAddItemToBloomPicker(item, 'drive-bloom');
-                if (!canSelectDriveWorkflow && !canSelectDriveBloomPicker) {
-                    showToast('View Only', 'This Drive Mode row is not available for your workflows.', true);
-                    return;
-                }
-            }
-            if (wantsAdd && getRoleAccessState().isForeman) {
-                const item = findItemByDomId(safeDomId);
-                if (!canAddItemToBloomPicker(item, safeSourceView)) {
-                    showToast('Restricted', 'Foreman users can add priority Drive Mode rows to Take Back.', true);
-                    return;
-                }
-            }
-            if(isChecked===null){
-                if(hadItem){selectedItems.delete(safeDomId);selectedItemSources.delete(safeDomId);}
-                else{selectedItems.add(safeDomId);selectedItemSources.set(safeDomId, safeSourceView);}
-            } else if(isChecked){selectedItems.add(safeDomId);selectedItemSources.set(safeDomId, safeSourceView);}
-            else{selectedItems.delete(safeDomId);selectedItemSources.delete(safeDomId);}
-            const hasItemNow = selectedItems.has(safeDomId);
-            if (hadItem === hasItemNow) return;
-            if (hasItemNow) requestSelectionTokens.set(safeDomId, createStableClientBatchId());
-            else requestSelectionTokens.delete(safeDomId);
-            if(!selectedItems.size){
-                cartPanelOpen=false;
-                bloomPickerActionsOpen=false;
-                bloomShareMenuOpen=false;
-            }
-            updateGlobalActionBar();
-            refreshCartButtons(safeDomId);
-            syncDriveReturnedSelectionToolbar();
-            if(!hadItem && hasItemNow){
-                showToast('Added To Bloom Picker', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in Bloom Picker.`);
-            } else if(hadItem && !hasItemNow){
-                showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in Bloom Picker.`);
-            }
-        }
+
+
+
         function getTaskDetailTabForItem(item = activeItem, taskTab = activeTaskTab) {
             const safeTaskView = normalizeTaskViewValue(taskTab);
             if (isEvalNcrOrMoveUpDetailTask(item)) return 'ncr';
@@ -94886,55 +94530,6 @@ function getDocksSuspendSyncAudit() {
                 scheduleTasksRender(0, 0, true);
             }
             return false;
-        }
-
-        function resolveDetailItemBySource(uid, sourceView = '', options = {}) {
-            const normalizedSourceView = String(sourceView || '').trim();
-            const normalizedUid = String(uid || '').trim();
-            if (!normalizedUid) return null;
-            const exactMasterDetailRow = options && options.__masterDetailRow;
-            if (exactMasterDetailRow && String(firstNonEmptyValue(exactMasterDetailRow.UNIQUE_ID, exactMasterDetailRow.unique_id, '') || '').trim() === normalizedUid) {
-                const sourceRow = resolveDetailItemBySource(normalizedUid, normalizedSourceView, { ...options, __masterDetailRow: null });
-                return mergeExactMasterDetailRow(sourceRow, exactMasterDetailRow);
-            }
-            if (normalizedSourceView === 'tasks') {
-                const sourceDomId = String((options && options.sourceDomId) || '').trim();
-                const taskRow = sourceDomId ? getRememberedTaskRenderedRow(sourceDomId, normalizedUid) : null;
-                if (taskRow) return taskRow;
-            }
-            if (normalizedSourceView === 'request') {
-                const sourceDomId = String((options && options.sourceDomId) || '').trim();
-                const domMatchedRequestItem = sourceDomId
-                    ? findItemByDomId(sourceDomId)
-                    : null;
-                const requestItem = domMatchedRequestItem
-                    || findRequestRowByUniqueId(normalizedUid)
-                    || (sourceDomId ? (requestsInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === sourceDomId) || null) : null)
-                    || (sourceDomId ? (requestHistoryInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === sourceDomId) || null) : null)
-                    || requestsInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === normalizedUid)
-                    || requestHistoryInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === normalizedUid)
-                    || null;
-                if (requestItem && hasEvalTaskRequestMeta(requestItem)) hydrateEvalTaskRequestRowFromMeta(requestItem);
-                return requestItem || findItemByUniqueId(normalizedUid);
-            }
-            if (normalizedSourceView === 'sales-office') {
-                return salesOfficeInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
-            }
-            if (normalizedSourceView === 'docks') {
-                return dockDisplayInventoryById.get(normalizedUid) || socInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
-            }
-            return findItemByUniqueId(normalizedUid);
-        }
-
-        function mergeExactMasterDetailRow(sourceRow, exactRow) {
-            if (!sourceRow) return exactRow;
-            const merged = { ...sourceRow, ...exactRow };
-            const masterFields = exactRow.__masterDetailColumns;
-            if (!(masterFields instanceof Set)) return merged;
-            for (const key of Object.keys(sourceRow)) {
-                if (!masterFields.has(String(key || "").toLowerCase())) merged[key] = sourceRow[key];
-            }
-            return merged;
         }
 
         function clearPendingDetailHydration() {
@@ -112150,20 +111745,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
-        function openManagerEvalReport2DrillValue(kind = '', encodedValue = '') {
-            const safeKind = String(kind || '').trim().toLowerCase();
-            let value = '';
-            try { value = decodeURIComponent(String(encodedValue || '')); } catch (error) { value = String(encodedValue || ''); }
-            rememberManagerEvalReport2DrillScroll();
-            if (safeKind === 'commonname') { managerEvalReport2SelectedCommonName = value; managerEvalReport2SelectedContSize = ''; managerEvalReport2DrillLevel = 1; }
-            else if (safeKind === 'contsize') { managerEvalReport2SelectedContSize = value; managerEvalReport2DrillLevel = 2; }
-            else if (safeKind === 'blockalpha') { managerEvalReport2SelectedBlockAlpha = value; managerEvalReport2SelectedBlockNumber = ''; managerEvalReport2SelectedLocationCode = ''; managerEvalReport2DrillLevel = 1; }
-            else if (safeKind === 'locationcode') { managerEvalReport2SelectedLocationCode = value; managerEvalReport2DrillLevel = 2; }
-            refreshManagerEvalReport2BrowseRegion({ fallbackToFullRender: true });
-            queueScrollMainAreaToTop(`manager-eval2:${safeKind}:${value}`);
-            return false;
-        }
-
         function backManagerEvalReport2Drill() {
             if (managerEvalReport2DetailItemKey) {
                 closeManagerEvalReport2ItemDetail();
@@ -113483,6 +113064,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function renderManagerEvalReport2BrowseRegionHtml() {
             const itemcodeLevel = isManagerEvalReport2ItemcodeBrowseLevel();
+            const blockRows = !itemcodeLevel && managerEvalReport2DrillLevel === 1
+                ? renderEvalReport2BlockRowsButton(managerEvalReport2SelectedBlockAlpha) : '';
             const visibleSelection = itemcodeLevel ? getManagerEvalReport2VisibleSelectionState() : { visibleKeys:[], allVisibleSelected:false };
             const selectShown = itemcodeLevel
                 ? `<button id="manager-eval-report-2-select-shown" type="button" class="min-h-[40px] rounded-full border border-emerald-300 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${visibleSelection.visibleKeys.length ? '' : 'pointer-events-none opacity-50'}" onclick="return toggleAllShownManagerEvalReport2Items()" ${visibleSelection.visibleKeys.length ? '' : 'disabled'}><i class="ph-bold ph-checks mr-1"></i><span data-role="label">${visibleSelection.allVisibleSelected ? 'Deselect Shown' : 'Select All Shown'}</span></button>`
@@ -113494,7 +113077,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 : (managerEvalReport2DrillLevel <= 0
                     ? 'Choose a Block Alpha. Your selected reports, users, search, and optional filters stay applied.'
                     : 'Choose a LocationCode in this block. Queue selection and Item Inquiry behavior stay the same at the ITEMCODE level.');
-            return `${renderManagerEvalReport2BrowseModeSwitch()}${selectShown ? `<div class="mt-3 flex flex-wrap gap-2">${selectShown}</div>` : ''}<div class="mt-2 text-[10px] font-bold text-slate-500">${escapeHtml(helperText)}</div><div id="manager-eval-report-2-records" class="manager-eval2-drive-list"></div>`;
+            return `${renderManagerEvalReport2BrowseModeSwitch()}${blockRows}${selectShown ? `<div class="mt-3 flex flex-wrap gap-2">${selectShown}</div>` : ''}<div class="mt-2 text-[10px] font-bold text-slate-500">${escapeHtml(helperText)}</div><div id="manager-eval-report-2-records" class="manager-eval2-drive-list"></div>`;
         }
 
         function refreshManagerEvalReport2BrowseRegion(options = {}) {
@@ -113528,20 +113111,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             else requestAnimationFrame(publishRecords);
             return true;
         }
-
-        function renderManagerEvalReport2DrillGroupCard(group = null, presentation = null) {
-            const safeGroup = group && typeof group === 'object' ? group : { kind:'', value:'', label:'Unknown', itemCount:0, rowCount:0, locationCount:0 };
-            const encodedValue = encodeURIComponent(String(safeGroup.value || ''));
-            const isBlock = safeGroup.kind === 'blockalpha';
-            const eyebrow = isBlock ? 'Block Alpha' : 'LocationCode';
-            const detail = isBlock
-                ? `${safeGroup.locationCount} LocationCode${safeGroup.locationCount === 1 ? '' : 's'}`
-                : `${safeGroup.itemCount} ITEMCODE${safeGroup.itemCount === 1 ? '' : 's'}`;
-            const label = isBlock && /^[A-L]$/i.test(String(safeGroup.value || '').trim()) ? String(safeGroup.value).trim().toUpperCase() : safeGroup.label || 'Unknown';
-            const openAttrs = presentation?.openAttrs || `data-manager-eval2-drill-kind="${escapeHtml(safeGroup.kind)}" data-manager-eval2-drill-value="${escapeHtml(encodedValue)}" onclick="return openManagerEvalReport2DrillValue('${escJsAttrValue(safeGroup.kind)}','${escJsAttrValue(encodedValue)}')"`;
-            return `<button type="button" class="manager-eval2-drill-card flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(label)}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span></span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
-        }
-
 
 
         function renderManagerEvalReports2LegacyPanel() {
@@ -121278,39 +120847,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function openRequestSwipeRowDetail(row = null, event = null) {
-            if (!row || row.classList.contains('swipe-open')) return true;
-            if (typeof shouldSuppressFastPressSessionClick === 'function' && shouldSuppressFastPressSessionClick(event)) {
-                if (event) {
-                    if (typeof event.preventDefault === 'function') event.preventDefault();
-                    if (typeof event.stopPropagation === 'function') event.stopPropagation();
-                    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-                }
-                return false;
-            }
-            const target = event && event.target ? event.target : null;
-            if (target && target.closest('input, textarea, select, button, label, a, .card-checkbox-container, .app-card-bottom-rail, [data-fast-press-ignore]')) return true;
-            const requestUid = resolveRequestSwipeUidFromRow(row);
-            const domId = String(row.dataset && row.dataset.domId || '').trim();
-            if (!requestUid) {
-                showToast('Open Failed', 'That request row could not be found. Refreshing Que now.', true);
-                triggerRequestRealtimeUiRefresh(0);
-                return false;
-            }
+            if (!row || row.classList.contains('swipe-open') || getCurrentVisibleViewId() !== 'request') return true;
+            const encoded = row.dataset.cardDetail;
+            if (!encoded) return true;
+            const target = event?.target;
+            if (target?.closest('input, textarea, select, button, label, a, [data-fast-press-ignore]')) return true;
             closeAllRequestSwipes(row);
-            if (event) {
-                if (typeof event.preventDefault === 'function') event.preventDefault();
-                if (typeof event.stopPropagation === 'function') event.stopPropagation();
-                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-            }
-            if (isIosPhoneRequestFlowView('request')) clearIosPhoneRequestFlowState('request-swipe-open-before-detail', { resetScroll: false });
-            openDetail(requestUid, 'request', { preferredTab: 'request', sourceDomId: domId, requestSummaryIntent: captureRequestSummaryIntent(requestUid) });
-            if (isIosPhoneRequestFlowView('detail')) clearIosPhoneRequestFlowState('request-swipe-open-after-detail', { resetScroll: true });
-            scheduleRequestDetailEntryVisible('request-swipe-open', { skipOptionLoad: true });
-            if (!activeItem || String(activeDetailSourceView || '').trim().toLowerCase() !== 'request') {
-                showToast('Open Failed', 'That request row could not be opened. Refreshing Que now.', true);
-                triggerRequestRealtimeUiRefresh(0);
-            }
-            return false;
+            return activateExactInventoryCard(event, encoded);
         }
 
         function decorateIosPhoneRequestRemoveButtons(container = null) {
@@ -121394,7 +120937,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const pendingRow = requestSwipeDesktopClickRow;
                 requestSwipeDesktopClickTimer = null;
                 requestSwipeDesktopClickRow = null;
-                if (pendingRow && pendingRow.isConnected) openRequestSwipeRowDetail(pendingRow, null);
+                if (pendingRow?.isConnected) openRequestSwipeRowDetail(pendingRow, null);
             }, 210);
             if (event) {
                 if (typeof event.preventDefault === 'function') event.preventDefault();
@@ -145107,183 +144650,6 @@ ${folderNote ? `Folder Note: ${folderNote}
                 target.REQ_PHOTO_NAME = saved.dock_photo_name; target.REQUEST_PHOTO_NAME = saved.dock_photo_name;
             }
             normalizeRowPhotoFields(target); buildSearchIndex(target);
-        }
-
-        async function runSuspendTagRowCommand(operation, mirror, patch = {}, expectedRevision = getDockSuspendCompletionRevision(mirror), options = {}) {
-            if (options.completionScope && options.completionScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
-            if (['save', 'complete', 'close', 'send', 'retry'].includes(operation) && !options.serialized) {
-                const navigationSignal = options.completionScope ? null : canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null;
-                const completion = ['complete', 'close'].includes(operation) && !options.keepVisible ? getQueueCompletionState() : null;
-                const completionKey = completion ? getQueueCompletionKey(mirror) : '';
-                if (completion && !completion.begin(completionKey, getQueueCompletionVersion(mirror))) return false;
-                const closingUid = operation === 'close' ? getDockSuspendDcRequestSourceUid(mirror) : '';
-                let committedClose = false;
-                const closingScope = getSupabaseReadIdentityScope(), removedSuspendRows = [];
-                if (closingUid) for (const rows of [suspendTagInventory,suspendTagRawSourceRows]) {
-                    for (let index=rows.length-1;index>=0;index--) if (getDockSuspendDcRequestSourceUid(rows[index]) === closingUid) {
-                        removedSuspendRows.push({rows,index,row:rows[index]}); rows.splice(index,1);
-                    }
-                }
-                if (closingUid) completion?.completedSuspendTagKeys?.add(closingUid);
-                try {
-                    if (completion) {
-                        paintOptimisticSuspendTagRemoval(mirror);
-                        markViewDirty('request'); markViewDirty('reports'); markViewDirty('docks');
-                    }
-                    if (options.prepareClose && !await options.prepareClose()) return false;
-                    if (completion) {
-                        // Paint the pending removal before proof preparation can scan other rows.
-                        await yieldToUiFrame();
-                        invalidateResolvedViewStateCaches();
-                    }
-                    const result = await serializeSuspendTagRowWrite(mirror, () => {
-                    if (navigationSignal && (navigationSignal.aborted || navigationSignal !== productionLiveSyncNavigation.signal)) throw staleSupabaseReadScopeError();
-                    return runSuspendTagRowCommand(operation, mirror, patch, closingUid ? getDockSuspendCompletionRevision(mirror) : expectedRevision, { ...options, serialized: true });
-                    }, JSON.stringify([operation, expectedRevision, patch, !!options.keepVisible]));
-                    committedClose = !!closingUid && result === true;
-                    return result;
-                } finally {
-                    if (!committedClose && closingScope === getSupabaseReadIdentityScope()) for (const entry of removedSuspendRows) {
-                        if (!entry.rows.some(row=>getDockSuspendDcRequestSourceUid(row)===closingUid)) entry.rows.splice(Math.min(entry.index,entry.rows.length),0,entry.row);
-                    }
-                    if (closingUid) completion?.completedSuspendTagKeys?.delete(closingUid);
-                    completion?.rollback(completionKey);
-                    if (completion && !committedClose) refreshLocalDockSuspendDcRequestState('suspend-tag-completion-settled', mirror);
-                }
-            }
-            const photoOnly = operation === 'save' && Object.keys(patch).length === 2
-                && Object.keys(patch).every(key => ['dock_photo_link', 'dock_photo_name'].includes(key))
-                && isCurrentSuspendTagPhotoProof(options.photoProof, mirror)
-                && expectedRevision === getDockSuspendCompletionRevision(options.photoProof.row);
-            const sourceUid = getDockSuspendDcRequestSourceUid(mirror);
-            const state = getDockSuspendCompletionState();
-            const localSource = findDockSuspendDcRequestSourceRow(mirror) || mirror;
-            if (patch.force_clear_photos !== true && !photoOnly && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
-                patch = { ...patch,
-                    dock_photo_link: mergePhotoCsvList([patch.dock_photo_link, localSource.DOCK_PHOTO_LINK, localSource.dock_photo_link]) || null,
-                    dock_photo_name: mergePhotoCsvList([patch.dock_photo_name, localSource.DOCK_PHOTO_NAME, localSource.dock_photo_name]) || null };
-            }
-            const retryKey = JSON.stringify([operation, sourceUid, expectedRevision, getSuspendTagWriteVersion(mirror), patch]);
-            const retryCommand = state.pending[retryKey] ? { ...state.pending[retryKey], key: retryKey } : null;
-            // Verify this exact row and its permissions independently of the
-            // broader view, including the second command after completion.
-            const writeProof = !photoOnly && operation !== 'close' && ['send', 'retry'].includes(operation) && canUseProductionLiveSync()
-                ? await loadCurrentSuspendTagWriteRow(mirror, operation, retryCommand) : null;
-            if (writeProof && !isCurrentSuspendTagWriteRowProof(writeProof, mirror, operation)) throw new Error('SUSPEND_TAG_FORBIDDEN');
-            if ((!photoOnly && !['save', 'complete', 'close'].includes(operation) && !writeProof && !requireCurrentSuspendTagWriteProof(operation, mirror)) || !canCurrentUserViewDockSuspendDcRequests(mirror)) throw new Error('SUSPEND_TAG_FORBIDDEN');
-            const source = photoOnly ? options.photoProof.row : writeProof?.row || findDockSuspendDcRequestSourceRow(mirror) || mirror;
-            if (patch.force_clear_photos !== true && !photoOnly && !writeProof?.retry && ['save', 'complete'].includes(operation) && Object.prototype.hasOwnProperty.call(patch, 'dock_photo_link')) {
-                patch = { ...patch,
-                    dock_photo_link: mergePhotoCsvList([patch.dock_photo_link, source.DOCK_PHOTO_LINK, source.dock_photo_link]) || null,
-                    dock_photo_name: mergePhotoCsvList([patch.dock_photo_name, source.DOCK_PHOTO_NAME, source.dock_photo_name]) || null };
-            }
-            const receiptScope = getSupabaseReadIdentityScope();
-            const version = operation === 'close' ? null : writeProof?.retry ? writeProof.version : photoOnly || writeProof ? source.suspend_tag_version : Number(firstNonEmptyValue(mirror.suspend_tag_version,mirror.SUSPEND_TAG_VERSION,source.suspend_tag_version,source.SUSPEND_TAG_VERSION,0));
-            const key = JSON.stringify([operation,sourceUid,expectedRevision,version,patch]);
-            const flightKey = state.scope + '|' + sourceUid;
-            if (dockSuspendCompletionInFlight.has(flightKey)) return false;
-            if (photoOnly) suspendTagPhotoProofs.delete(options.photoProof);
-            if (writeProof) suspendTagWriteProofs.delete(writeProof);
-            const pending = state.pending[key] || { requestId: crypto.randomUUID(), savedAt: Date.now() };
-            state.pending[key] = pending; persistDockSuspendCompletionState(state);
-            dockSuspendCompletionInFlight.add(flightKey);
-            try {
-                const commandPayload = ['save', 'complete', 'close'].includes(operation)
-                    ? { sourceUid, sourceIdentity: { ...getSuspendTagStableSourceIdentity(mirror), ...(options.inventoryMasterUid ? {masterUid:options.inventoryMasterUid} : {}) }, expectedLastUpdated: expectedRevision, patch }
-                    : { sourceUid, expectedLastUpdated: expectedRevision, patch };
-                const readCommitted = async () => {
-                    if (receiptScope !== getSupabaseReadIdentityScope()) return null;
-                    const receipt = state.receipts[JSON.stringify([sourceUid,expectedRevision])];
-                    if (receipt?.commandId === pending.requestId) return {ok:true,row:receipt.row};
-                    if (operation === 'close') {
-                        const id = encodeURIComponent(sourceUid);
-                        const [source,history] = await Promise.all([
-                            fetchAuthenticatedSupabaseReadPage('ph_soc_master','select=*&unique_id=eq.' + id + '&limit=1'),
-                            fetchAuthenticatedSupabaseReadPage('ph_productivity_history','select=source_unique_id,completed_at&event_key=eq.suspend-tag-complete:' + id + '&limit=1')
-                        ]);
-                        const row = source.rows?.[0], event = history.rows?.[0];
-                        if (row?.unique_id !== sourceUid || row.suspend !== null || row.suspend_to !== null
-                            || event?.source_unique_id !== sourceUid || !Number.isFinite(Date.parse(row.date_completed))
-                            || Date.parse(row.date_completed) !== Date.parse(event.completed_at)) return null;
-                        return {ok:true,closedByReadback:true,row,rows:[row]};
-                    }
-                    if (operation !== 'complete' && operation !== 'save') return null;
-                    const response = await suspendTagApi('rows', {ids:[sourceUid]});
-                    const row = response?.rows?.find(value => value.unique_id === sourceUid);
-                    if (!row || !Number.isSafeInteger(row.suspend_tag_version) || row.suspend_tag_version <= Number(version)
-                        || operation === 'complete' && !['completed','awaiting_rep'].includes(row.suspend_tag_status)
-                        || !Object.entries(patch).filter(([field]) => !['force_clear_photos','explicit_av_note'].includes(field)).every(([field,value]) => Object.hasOwn(row,field) && String(row[field] ?? '') === String(value ?? ''))) return null;
-                    return {ok:true,row,rows:[row]};
-                };
-                const result = await suspendTagApi(operation, commandPayload, { commandId: pending.requestId, expectedVersion: version, readCommitted });
-                if (options.requireInventoryReceipt) {
-                    const identity = options.inventoryIdentity || getSuspendTagInventoryIdentity(mirror, source);
-                    const receipts = result?.inventoryRows || (result?.inventoryRow ? [result.inventoryRow] : []);
-                    if (receipts.length !== 1 || !receipts[0]?.unique_id || !matchesSuspendTagInventoryIdentity(receipts[0], identity)) {
-                        throw new Error('Inventory did not confirm the evaluation for this item, location and lot. Your entries are retained.');
-                    }
-                }
-                if (operation === 'close' && result?.closedByReadback && receiptScope === getSupabaseReadIdentityScope()) {
-                    delete state.pending[key]; persistDockSuspendCompletionState(state);
-                    getQueueCompletionState()?.confirm(getQueueCompletionKey(mirror), getQueueCompletionVersion(mirror));
-                    updateFooterRequestBadge();
-                    return true;
-                }
-                const editableOperation = ['save', 'complete', 'close'].includes(operation);
-                if (!result || result.ok !== true || !result.row || (!editableOperation && result.row.unique_id !== sourceUid) || !Number.isSafeInteger(result.row.suspend_tag_version)
-                    || (!editableOperation && getDockSuspendCompletionRevision(result.row) !== expectedRevision)
-                    || (photoOnly && String(patch.dock_photo_link || '').split(',').filter(Boolean).some(link => !String(result.row.dock_photo_link || '').split(',').includes(link)))
-                    || !['pending','completed','awaiting_rep','approved','denied'].includes(result.row.suspend_tag_status)
-                    || (['send', 'retry'].includes(operation) && result.row.suspend_tag_status !== 'awaiting_rep')
-                    || (operation === 'complete' && !['completed', 'awaiting_rep'].includes(result.row.suspend_tag_status))
-                    || (operation === 'close' && !Number.isFinite(Date.parse(result.row.date_completed)))
-                    || (operation === 'close' && (result.row.suspend !== null || result.row.suspend_to !== null))) throw new Error('The server did not confirm the saved row. Retry safely.');
-                options.onConfirmed?.();
-                const receiptRow = photoOnly ? Object.fromEntries(['unique_id', 'last_updated', 'date_completed', 'suspend_tag_status',
-                    'suspend_tag_version', 'dock_photo_link', 'dock_photo_name'].map(key => [key, result.row[key]])) : result.row;
-                state.receipts[JSON.stringify([sourceUid,expectedRevision])] = { row:receiptRow,commandId:pending.requestId,completedAt:result.row.date_completed,savedAt:Date.now() };
-                delete state.pending[key]; persistDockSuspendCompletionState(state);
-                if (['complete', 'close'].includes(operation) && !options.keepVisible && receiptScope === getSupabaseReadIdentityScope()) {
-                    getQueueCompletionState()?.confirm(getQueueCompletionKey(mirror), result.row.suspend_tag_version);
-                }
-                if (writeProof && (writeProof.owner !== getSupabaseReadIdentityScope()
-                    || writeProof.navigationSignal.aborted || writeProof.navigationSignal !== productionLiveSyncNavigation.signal
-                    || writeProof.view !== getCurrentVisibleViewId()
-                    || writeProof.permissionVersion !== getProductionLiveSyncContext().dataPermissionVersion)) return false;
-                if (photoOnly && (options.photoProof.owner !== getSupabaseReadIdentityScope()
-                    || options.photoProof.signal.aborted
-                    || !canCurrentUserWorkRequestItem(mirror))) return { acknowledged: true, applied: false };
-                if (getDockSuspendCompletionState().scope !== state.scope || receiptScope !== getSupabaseReadIdentityScope()) return photoOnly ? { acknowledged: true, applied: false } : false;
-                const current = findDockSuspendDcRequestSourceRow(mirror);
-                if (current && !editableOperation && getDockSuspendCompletionRevision(current) !== expectedRevision) return photoOnly ? { acknowledged: true, applied: false } : false;
-                const rows = new Set([source,mirror,current,...(Array.isArray(requestsInventory) ? requestsInventory : []),
-                    ...(typeof suspendTagRawSourceRows !== 'undefined' && Array.isArray(suspendTagRawSourceRows) ? suspendTagRawSourceRows : []), ...socInventory, ...socRawSourceRows, ...suspendTagInventory]);
-                rows.forEach(row => {
-                    if (row && getDockSuspendDcRequestSourceUid(row) === sourceUid
-                        && (editableOperation || getDockSuspendCompletionRevision(row) === expectedRevision)) {
-                        const draftKey = getSuspendTagFormDraftKey(row);
-                        if (photoOnly) applySuspendTagServerPhoto(row,result.row,isDockSuspendDcRequestMirrorRow(row));
-                        else applySuspendTagServerRow(row,result.row,isDockSuspendDcRequestMirrorRow(row));
-                        const nextDraftKey = getSuspendTagFormDraftKey(row);
-                        if (draftKey && draftKey !== nextDraftKey && suspendTagFormDrafts.has(draftKey)) {
-                            suspendTagFormDrafts.set(nextDraftKey, { ...suspendTagFormDrafts.get(draftKey), ...suspendTagFormDrafts.get(nextDraftKey) });
-                            suspendTagFormDrafts.delete(draftKey);
-                        }
-                    }
-                });
-                invalidateDockSuspendDcSourceRowLookup(current || source); requestScopedItemsCacheKey = '';
-                if (['save', 'complete', 'close'].includes(operation)) invalidateSuspendTagInventoryRows(current || source);
-                if (operation === 'close') {
-                    applySuspendCandidateRows(result.rows || [result.row], {close:true});
-                    updateFooterRequestBadge(); persistCurrentCache(false,'suspend-tag-close');
-                } else refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
-                if (['save', 'complete', 'close'].includes(operation)) {
-                    const applied = applySuspendTagInventoryReceipt(result, receiptScope, options.inventoryIdentity || getSuspendTagInventoryIdentity(mirror, source));
-                    if (!applied && operation === 'save') applySavedSuspendDisplay(mirror,result.row,patch);
-                    if (!applied && operation !== 'close') void queueSuspendTagInventoryReconciliation(mirror, result.row);
-                }
-                return photoOnly ? { acknowledged: true, applied: true } : true;
-            } finally { dockSuspendCompletionInFlight.delete(flightKey); }
         }
 
         async function emailSuspendTagFromCard(uniqueId, button = null) {

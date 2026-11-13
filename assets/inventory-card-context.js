@@ -1,3 +1,145 @@
+
+function inventoryCardDetailIdentity(row, suspendTagId = '') {
+    const part = key => String(row?.[key] ?? row?.[key.toLowerCase()] ?? '').trim().toUpperCase();
+    return [canonicalInventoryRowUid(row), part('ITEMCODE'), part('LOCATIONCODE'), canonicalInventoryLot(row), suspendTagId];
+}
+
+function matchesInventoryCardDetailIdentity(row, uid, identity) {
+    if (!uid || canonicalInventoryRowUid(row) !== uid) return false;
+    if (!Array.isArray(identity)) return false;
+    const tagId = identity[4] ? getDockSuspendDcRequestSourceUid(row) : '';
+    const actual = inventoryCardDetailIdentity(row, tagId);
+    return actual.length === identity.length && actual.every((value, index) => value === identity[index]);
+}
+
+function buildExactInventoryCardActivationAttrs(row, view, label, suspendTagId = '') {
+    const identity = inventoryCardDetailIdentity(row, suspendTagId);
+    const args = escapeHtml(encodeFastPressArgs([view, identity]));
+    const handler = 'return activateExactInventoryCard(event, this.dataset.cardDetail)';
+    return `role="button" tabindex="0" aria-label="${escapeHtml(label)}" data-card-detail="${args}" onclick="${handler}" onkeydown="${handler}"`;
+}
+
+function activateExactInventoryCard(event, encoded) {
+    if (event?.type === 'keydown' && (event.repeat || !['Enter', ' '].includes(event.key))) return true;
+    if (!encoded || shouldIgnoreFastPressTarget(event)) return true;
+    event?.preventDefault();
+    event?.stopPropagation();
+    const [view, identity] = decodeFastPressArgs(encoded);
+    if (shouldSuppressFastPressClick('card', view, encoded, event)) return false;
+    const uid = identity?.[0];
+    const tag = identity?.[4];
+    const row = resolveDetailItemBySource(uid, view, { cardIdentity: identity });
+    if (!row) return false;
+    if (tag && (!canReadSuspendQueue() || (!canUseRequestSuspendTagAssignedToFilter()
+        && resolveSuspendOwner(row) !== normalizeEvalAssignableUser(currentUser)))) return false;
+    pendingDetailTapStartedAt = beginInternalPerfMeasure();
+    if (tag) {
+        hydrateSuspendTagItemOptions([row]);
+        retryPendingSuspendTagInventoryReconciliations();
+    }
+    const detailOptions = view === 'request' ? { preferredTab:'request', skipRequestOpenInfoModal:true } : {};
+    openDetail(uid, view, { ...detailOptions, cardIdentity: identity });
+    if (tag && getItemUniqueId(activeItem) === uid) syncSuspendFillTagDetailAction(activeItem);
+    return false;
+}
+
+function resolveDetailItemBySource(uid, sourceView = '', options = {}) {
+    const view = String(sourceView || '').trim();
+    const id = String(uid || '').trim();
+    if (!id) return null;
+    const identity = options.cardIdentity;
+    const exact = row => identity ? matchesInventoryCardDetailIdentity(row, id, identity) : canonicalInventoryRowUid(row) === id;
+    if (exact(options.__masterDetailRow)) {
+        const source = resolveDetailItemBySource(id, view, { ...options, __masterDetailRow: null });
+        return mergeExactMasterDetailRow(source, options.__masterDetailRow);
+    }
+    if (view === 'tasks' && options.sourceDomId) {
+        const task = getRememberedTaskRenderedRow(options.sourceDomId, id);
+        if (task) return task;
+    }
+    if (view === 'request') return resolveRequestDetailCard(id, identity, exact);
+    if (view === 'sales-office') return salesOfficeInventoryById.get(id) || findItemByUniqueId(id);
+    if (view === 'docks') return dockDisplayInventoryById.get(id) || socInventoryById.get(id) || findItemByUniqueId(id);
+    const row = findItemByUniqueId(id);
+    return exact(row) ? row : null;
+}
+
+function resolveRequestDetailCard(id, identity, exact) {
+    const row = identity?.[4] ? findDockSuspendDcRequestMirrorRowByUniqueId(id) : findRequestRowByUniqueId(id);
+    const candidate = exact(row) ? row : findItemByUniqueId(id);
+    if (!exact(candidate)) return null;
+    if (hasEvalTaskRequestMeta(candidate)) hydrateEvalTaskRequestRowFromMeta(candidate);
+    return candidate;
+}
+
+function mergeExactMasterDetailRow(sourceRow, exactRow) {
+    if (!sourceRow) return exactRow;
+    const merged = { ...sourceRow, ...exactRow };
+    const masterFields = exactRow.__masterDetailColumns;
+    if (!(masterFields instanceof Set)) return merged;
+    for (const key of Object.keys(sourceRow)) {
+        if (!masterFields.has(String(key || "").toLowerCase())) merged[key] = sourceRow[key];
+    }
+    return merged;
+}
+
+function isCapturedEvaluationEditor(navigation) {
+    if (detailHydrationToken !== navigation.token) return false;
+    if (activeItem === navigation.editor) return true;
+    const identity = inventoryCardDetailIdentity(navigation.editor);
+    return matchesInventoryCardDetailIdentity(activeItem, identity[0], identity);
+}
+
+function captureEvaluationDetailReturn(item) {
+    const editor = activeItem;
+    const identity = inventoryCardDetailIdentity(editor);
+    const ownsEditor = !!editor && (editor === item || matchesInventoryCardDetailIdentity(item, identity[0], identity));
+    const viewId=String(detailReturnState?.viewId || lastView || activeDetailSourceView || '').trim();
+    return { ownsEditor, editor, token:detailHydrationToken, scope:getSupabaseReadIdentityScope(), viewId:viewId==='detail'?'':viewId,
+        scrollTop:Math.max(0,Number(detailReturnState?.scrollTop)||0) };
+}
+
+function returnFromConfirmedEvaluationDetail(snapshot) {
+    const nav=snapshot?.detailNavigation;
+    if (!nav?.ownsEditor || nav.scope!==getSupabaseReadIdentityScope() || !isViewVisible('detail')) return false;
+    if (!isCapturedEvaluationEditor(nav)) return false;
+    const parent=nav.viewId && getViewElementById(nav.viewId) ? nav.viewId : String(lastView || '').trim();
+    if (!parent || parent==='detail') return false;
+    lastView=parent;detailReturnState={viewId:parent,scrollTop:nav.scrollTop};
+    goBackFromDetail();
+    if (isViewVisible('detail')) {
+        // Shared overlays can consume Back; completion still owns exactly one parent return.
+        teardownDetailPresentation('confirmed-evaluation-return',{preserveDraft:true});
+        clearPendingDetailHydration();detailHydrationToken+=1;setDetailEditingChromeState(false);
+        activeItem=null;activeDetailSourceView='';activeDetailTab='overview';
+        fastBackToView(parent,{targetScrollTop:nav.scrollTop,skipFilterPersist:true,renderDelay:0});
+    }
+    return !isViewVisible('detail');
+}
+
+function calculateMatchQty(prefix) {
+    if (!activeItem) return;
+    const input = document.getElementById(prefix + 'match');
+    const display = document.getElementById(prefix + 'match-display');
+    const output = document.getElementById(prefix + 'match-qty-val');
+    if (!input) return;
+    markLocMatchInputValidity(input);
+    const valid = parseLocMatchPercent(input.value) != null;
+    display?.classList.toggle('hidden', !valid);
+    if (!valid || !output) return;
+    const row = findLinkedMasterRow(activeItem) || activeItem;
+    output.textContent = calculateCanonicalLocPhotoMatch(row, input.value) ?? 'Not verified';
+}
+
+function getCanonicalCardMatchDisplay(item, view) {
+    if (!item || !['drive','av','av-photo'].includes(view)) return null;
+    const row = item.__canonicalInventoryResolved || item.__canonicalAvLotRows ? item : resolveCanonicalInventoryRow(item);
+    const match = row.MATCH ?? row.match ?? row.MATCH_PCT ?? row.match_pct ?? row.LOC_MATCH_PCT ?? row.loc_match_pct;
+    if (parseLocMatchPercent(match) == null) return null;
+    const quantity = row.LOC_PHOTO_MATCH ?? row.loc_photo_match;
+    return quantity ?? null;
+}
+
 function buildEvalOwnerBadge(item) {
     return '<span class="card-eval-owner">EVAL: ' + escapeHtml(getSuspendEvalOwner(item) || 'Unassigned') + '</span>';
 }

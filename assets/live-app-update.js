@@ -15,6 +15,8 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     let registeredVersion = '', activation = null, activationTimer = null;
     let restoreReady = false, started = false, reloading = false, lastCheckAt = 0, lastShellProof = null;
     let prepareExplicitUpdate = null, applyMessage = '', userRequestedUpdateApply = false;
+    let pauseNoticeDeadline = 0, pauseNoticeTimer = null;
+    const pauseMessage = 'Update paused — tap to retry';
     let retryNotBefore = 0, manifestBackoff = 45000;
     let retiredWorkerCleanupStarted = false;
     let handoffFlight = null, handoffPostedWorker = null;
@@ -29,15 +31,38 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     function renderPill(message = '') {
         if (!doc.body || !targetVersion || !newer(targetVersion,currentVersion())) return;
         let pill = doc.getElementById('agdata-live-update-pill');
+        if (!message && !userRequestedUpdateApply && applyMessage === pauseMessage && busy()) {
+            if (pill) pill.hidden = true;
+            return;
+        }
         if (!pill) {
             pill=doc.createElement('button');pill.id='agdata-live-update-pill';pill.type='button';pill.setAttribute('aria-live','polite');
             pill.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);z-index:10020;max-width:calc(100vw - 32px);border:1px solid #b7dfce;border-radius:999px;padding:9px 15px;background:#123d2c;color:#ecfdf5;font:600 12px/1.3 system-ui;box-shadow:0 2px 10px #0003;cursor:pointer;pointer-events:auto';
             pill.addEventListener('click',event => { if (event.isTrusted) void applyBannerTap(); });
             doc.body.appendChild(pill);
         }
+        pill.hidden = false;
         pill.textContent = message || (userRequestedUpdateApply
             ? 'Applying v' + targetVersion + '…'
             : applyMessage || 'Update v' + targetVersion + ' ready — tap to apply');
+    }
+    function dismissPausedUpdate() {
+        pauseNoticeTimer = null;
+        if (applyMessage !== pauseMessage || pauseNoticeDeadline > Date.now()) return;
+        applyMessage = '';
+        const pill = doc.getElementById('agdata-live-update-pill');
+        if (pill && !userRequestedUpdateApply) pill.hidden = true;
+    }
+    function finishUpdateTap() {
+        applyFlight = null;
+        if (!activation) userRequestedUpdateApply = false;
+        if (reloading) return;
+        if (applyMessage === pauseMessage) {
+            root.clearTimeout(pauseNoticeTimer);
+            pauseNoticeDeadline = Date.now() + 4000;
+            pauseNoticeTimer = root.setTimeout(dismissPausedUpdate, 4000);
+        }
+        renderPill();
     }
     function showPendingUpdate() {
         if (!targetVersion || reloading) return false;
@@ -255,13 +280,18 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     function applyBannerTap() {
         if (reloading || !restoreReady || !visible() || !newer(targetVersion,currentVersion())) return false;
         if (applyFlight || activation) return false;
+        if (busy()) {
+            applyMessage = pauseMessage;
+            finishUpdateTap();
+            return false;
+        }
         userRequestedUpdateApply = true;
-        applyMessage='Update paused — tap to retry';
+        applyMessage=pauseMessage;
         renderPill('Applying v' + targetVersion + '…');
         applyFlight = applyTappedTarget(targetVersion).catch(error => {
             reportUnexpected(error,'UPDATE_APPLY_FAILED');
             return false;
-        }).finally(() => { applyFlight = null; if (!activation) userRequestedUpdateApply=false; if (!reloading) renderPill(); });
+        }).finally(finishUpdateTap);
         return applyFlight;
     }
     function retryPendingRestore() {

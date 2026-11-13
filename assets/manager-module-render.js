@@ -14,6 +14,7 @@ function renderManagers() {
     let html = buildManagerRenderHtml(tabs);
     if (typeof renderManagerTableManagementWorkspace === 'function' && (activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW || getManagerTableManagementKey(activeHomeTab))) html = renderManagerTableManagementWorkspace(html, activeHomeTab === MANAGER_TABLE_MANAGEMENT_VIEW ? managerTableManagementSelection : getManagerTableManagementKey(activeHomeTab));
     patchManagerRenderedSurface(container, html);
+    if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) bindEvalReport2DrillCommands(container);
     mountManagerPrimarySurfaces(container, tabs.canViewRuntimeWatchdog);
     mountManagerPagedApprovals(container);
     mountManagerAuxiliarySurfaces(container);

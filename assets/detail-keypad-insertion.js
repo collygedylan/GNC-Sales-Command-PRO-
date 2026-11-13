@@ -1,6 +1,11 @@
 function resolveDetailKeypadInsertion(type, { value, start, end }, key) {
     let inserted = String(key || '');
-    if (inserted && ['', 'N/A', '-'].includes(value.trim().toUpperCase())) {
+    const emptyMeasurement = ['', 'N/A', '-'].includes(value.trim().toUpperCase());
+    if (['spec', 'caliper'].includes(type) && ['"', "'"].includes(inserted)
+        && (emptyMeasurement || !/\d/.test(value.slice(0, start)))) {
+        return { nextValue: value, nextCursor: start };
+    }
+    if (inserted && emptyMeasurement) {
         value = '';
         start = end = 0;
     }

@@ -1,7 +1,7 @@
 function ensureAvTopControlsShell(container) {
     if (!container) return false;
     ensureAvControlsVisible(container);
-    const shellSignature = 'av-top-controls-shell:v16';
+    const shellSignature = 'av-top-controls-shell:v17';
     if (container.dataset.avTopControlsShell === shellSignature) {
         ensureAvControlsVisible(container);
         return false;
@@ -15,6 +15,7 @@ function ensureAvTopControlsShell(container) {
 function buildAvRailMarkup() {
     return `<div id="av-toolbar-primary">
             <button type="button" id="av-valid-photos" aria-pressed="false" onclick="return toggleAvValidPhotos()">📸 Valid Photos</button>
+            <button type="button" id="av-kiosk-toggle" class="ui-action" aria-pressed="false" onclick="return toggleAvToolbarKioskMode(this)">Kiosk Mode</button>
             <div class="task-top-control-shell av-filter-shell rounded-[1.05rem] border border-emerald-100 bg-white/96 shadow-sm" data-av-filter-shell="source">
                 <button type="button" data-role="button" ${buildExcelFilterFastAttrs('toggleAvSourceDropdown')}>
                     <i class="ph-bold ph-calendar-blank text-sm"></i>
@@ -28,6 +29,20 @@ function buildAvRailMarkup() {
             </div>
         </div>
         <div id="av-filter-options" class="av-top-controls-row"><section class="inventory-excel-bar" data-inventory-excel-scope="av"></section>${buildAvRailViewFields()}${buildAvRailAccountFields()}</div>`;
+}
+
+function syncAvToolbarKioskButton(button) {
+    if (!button) return;
+    const active = window.__agdataAvKioskState?.active === true;
+    button.setAttribute('aria-pressed', String(active));
+    button.textContent = active ? '✓ Kiosk Mode ON · Exit Kiosk Mode' : 'Kiosk Mode';
+}
+
+function toggleAvToolbarKioskMode(button) {
+    syncAvKioskMode(window.__agdataAvKioskState?.active !== true);
+    syncAvToolbarKioskButton(button);
+    renderAV();
+    return false;
 }
 
 function buildAvRailViewFields() {

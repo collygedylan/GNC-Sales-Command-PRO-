@@ -3,7 +3,7 @@
     const unique = (values) => Array.from(new Set(values));
     const core = {
         master: ['ph_master_inventory'],
-        avOpen: ['ph_master_inventory'], requests: ['ph_requests_pending', 'ph_master_inventory', 'ph_request_delivery_outbox'],
+        avOpen: ['ph_master_inventory'], requests: ['ph_requests_pending', 'ph_master_inventory'],
         requestHistory: ['ph_requests_completed_history'], salesCredits: ['ph_sales_credit_requests'],
         inventoryEditRequests: ['ph_inventory_edit_requests', 'ph_inventory_edit_request_events'],
         reserves: ['ph_reserves', 'ph_master_inventory'], customerRepMap: ['ph_customer_consignee_sales_reps'],

@@ -8,10 +8,10 @@ function buildAvCardPhotoActivationAttrs(hasPhotos) {
 }
 
 function buildAuthorizedAvCardActivationAttrs(item, sourceView, hasPhotos) {
-    if (isAvDetailSource(sourceView) && !globalThis.canEditEvidenceWorkflow?.('lsn-',item,sourceView)) {
+    if (sourceView === 'av-photo') {
         return buildAvCardPhotoActivationAttrs(hasPhotos);
     }
-    return buildCardActivationAttrs(item.DOM_ID,item.UNIQUE_ID,sourceView === 'reserves_drill' ? 'av' : sourceView,'Open Item Detail');
+    return buildExactInventoryCardActivationAttrs(item,sourceView === 'reserves_drill' ? 'av' : sourceView,'Open Item Detail');
 }
 
 function activateAvCardPhotos(event) {
@@ -37,8 +37,8 @@ function openAvGallery(item, options = {}) {
     return true;
 }
 
-function openAvInventoryCardPhotos(domId, uniqueId) {
-    const item = (domId && findItemByDomId(domId)) || (uniqueId && findItemByUniqueId(uniqueId));
+function openAvInventoryCardPhotos(_domId, uniqueId) {
+    const item = resolveDetailItemBySource(uniqueId, 'av');
     return openAvGallery(item, { silentIfMissing: true });
 }
 
