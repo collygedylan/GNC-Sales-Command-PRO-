@@ -45,6 +45,22 @@ Deno.test("captured Suspend tag ID reaches the exact authorization witness",asyn
   assert.equal((await handleScopedPhotoUpload(state.session,photoRequest(form),deps)).status,200);
   assert.equal((state.calls[0].args.p_identity as Record<string,unknown>).suspendTagId,"physical-tag");
 });
+Deno.test("queued Request upload binds the validated binary path and native session",async()=>{
+  const {state,deps}=photoFixture(),form=photoForm("req-");
+  form.set("queuedPhotoId","capture_1");
+  form.set("queuedObjectPath","v2/foreign.jpg");
+  const response=await handleScopedPhotoUpload(state.session,photoRequest(form),deps);
+  const data=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(state.calls[0].name,"authorize_request_photo_intent_v3079");
+  assert.equal(state.calls[0].args.p_photo_id,"capture_1");
+  assert.equal(state.calls[0].args.p_object_path,data.filePath);
+  assert.equal(state.nativeProofs,1);
+  state.rpcError={code:"42501",message:"REQUEST_PHOTO_INTENT_FORBIDDEN"};
+  state.writes.length=0;
+  assert.equal((await handleScopedPhotoUpload(state.session,photoRequest(form),deps)).status,403);
+  assert.equal(state.writes.length,0);
+});
 Deno.test("Eval private paths and assignment proof stay owned by the existing Eval hooks",async()=>{
   const {state,deps}=photoFixture(),response=await handleScopedPhotoUpload(state.session,photoRequest(photoForm("eval-")),deps);
   assert.equal(response.status,200);assert.equal(state.calls.length,0);

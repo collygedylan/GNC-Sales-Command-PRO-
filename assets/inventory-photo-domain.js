@@ -257,7 +257,7 @@ function capturedPhotoSourceFields(job) {
     if (job.prefix!=='req-') return {};
     return isDockSuspendDcRequestMirrorRow(job.item)
         ? {suspendTagId:getDockSuspendDcRequestSourceUid(job.item)}
-        : {requestId:job.identity.UNIQUE_ID};
+        : {requestId:job.identity.UNIQUE_ID,queuedPhotoId:job.id};
 }
 
 async function persistQueuedRowPhoto(job) {
@@ -315,7 +315,7 @@ function retryDrivePhotoAttachment(id) {
     job.promise = run;
     // An exact-row Drive job owns its append independently of the text evaluation.
     // Keep it in the shared activity registry for update and session safety.
-    registerPendingPhotoUpload(job.item,job.prefix,run,SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) || isSuspendDetailPhoto(job));
+    registerPendingPhotoUpload(job.item,job.prefix,run,isQueuedDetailPhoto(job.prefix));
     if (isQueuedDetailPhoto(job.prefix)) globalThis.protectCameraPhotoUpload?.(run);
     run.catch(error => {
         if (!isCurrentDrivePhotoAttachment(job)) return;
@@ -323,10 +323,6 @@ function retryDrivePhotoAttachment(id) {
         showToast('Photo not saved',formatPhotoUploadErrorMessage(error),true);
     }).finally(() => { job.running = false; });
     return false;
-}
-
-function isSuspendDetailPhoto(job) {
-    return job.prefix === 'req-' && isDockSuspendDcRequestMirrorRow(job.item);
 }
 
 function getScopedDetailRowPhotoJobs(item, prefix) {
@@ -337,6 +333,10 @@ function getScopedDetailRowPhotoJobs(item, prefix) {
 
 function getDetailRowPhotoUploadPromises(item, prefix = '') {
     return getScopedDetailRowPhotoJobs(item, prefix).map(job => job.promise).filter(Boolean);
+}
+
+function getQueuedRequestPhotoIds(item) {
+    return getScopedDetailRowPhotoJobs(item,'req-').map(job => job.id);
 }
 
 function hasUnsettledDetailRowPhotos(item, prefix = '') {

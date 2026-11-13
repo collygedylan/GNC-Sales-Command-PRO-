@@ -106,11 +106,13 @@ async function supabaseRpc(functionName, body = {}, requestOptions = {}) {
             if (!inScope()) throw staleSupabaseReadScopeError();
             const timeoutMs = Math.max(1000, Number(requestOptions.timeoutMs) || SUPABASE_WRITE_TIMEOUT_MS);
             if (rpcName === 'save_request_work') {
+                const patch = requestCompletionPhotoPatch(body);
                 const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'request_work',
                     operation: rpcName === 'get_request_capabilities' ? 'capabilities' : 'save',
-                    ...(rpcName === 'save_request_work' ? { requestId: body.request_id, expectedVersion: body.expected_version, patch: body.patch, complete: body.complete === true } : {})
+                    requestId: body.request_id, expectedVersion: body.expected_version, patch, complete: body.complete === true
                 }, { timeoutMs, signal: requestOptions.signal, label: 'Request work' });
                 if (!result?.ok || !result.data) throw new Error(result?.code || 'REQUEST_SAVE_UNCONFIRMED');
+                acknowledgeRequestPhotoIntentReceipt(patch,result.data);
                 return result.data;
             }
             const request = {

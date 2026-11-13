@@ -115,14 +115,16 @@ function ownsExactRequestWorkRow(identity, item) {
 
 function canCurrentUserWorkRequestItem(item = null, action = 'edit') {
     const identity = verifiedEvidenceActor();
-    if (!identity || !item || item.REQUEST_HISTORY || !evidenceModuleAllowed(identity,'view_que','can_access_que')) return false;
     const actionKey = String(action || 'edit').trim().toLowerCase();
+    if (!identity || !item || (item.REQUEST_HISTORY && actionKey !== 'queued-photo')
+        || !evidenceModuleAllowed(identity,'view_que','can_access_que')) return false;
     if (isDockSuspendDcRequestMirrorRow(item)) {
         return canCurrentUserViewDockSuspendDcRequests(item) && resolveCanonicalRowAccess(currentUser,item).canEdit;
     }
-    if (requestActionDeniedByReceipt(identity,actionKey)) return false;
+    const capability = actionKey === 'queued-photo' ? 'photo' : actionKey;
+    if (requestActionDeniedByReceipt(identity,capability)) return false;
     const fallback = getRetainedRequestWorkCapabilities();
-    const allowed = actionKey === 'photo' ? fallback?.canTakePhoto : actionKey === 'complete' ? fallback?.canComplete : fallback?.canEdit;
+    const allowed = capability === 'photo' ? fallback?.canTakePhoto : capability === 'complete' ? fallback?.canComplete : fallback?.canEdit;
     return !!(allowed && (identity.matrix.edit_any_row === 'Y' || ownsExactRequestWorkRow(identity,item)));
 }
 
@@ -137,10 +139,16 @@ function canEditEvidenceWorkflow(prefix, item, sourceView = '') {
 
 function canPublishRowEvidenceCommand(item, options) {
     if (options?.receipt || options?.seasonSalesOffice) return true;
-    if (options?.requestWork) return canCurrentUserWorkRequestItem(item,options.complete ? 'complete' : options.photoAttachmentUrl ? 'photo' : 'edit');
+    if (options?.requestWork) return canCurrentUserWorkRequestItem(item,requestEvidenceAction(options));
     if (!options || options.suspendCompletionScope) return canCurrentUserWorkRequestItem(item);
     if (['ssn-','lsn-','na-','global-','req-'].includes(options.prefix)) return canEditEvidenceWorkflow(options.prefix,item,options.sourceView);
     return true;
+}
+
+function requestEvidenceAction(options) {
+    if (options.complete) return 'complete';
+    if (options.queuedPhotoId) return 'queued-photo';
+    return options.photoAttachmentUrl ? 'photo' : 'edit';
 }
 
 function canEditRowDetails(prefix = '', itemOverride = null) {

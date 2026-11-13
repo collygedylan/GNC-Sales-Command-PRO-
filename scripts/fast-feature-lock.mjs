@@ -95,7 +95,7 @@ function ownershipFeatures(inspected, label, fail) {
     rpcOwners:{"save_drive_evidence_v3":["saveSecureDriveEvidence"],"save_request_work":["clearCurrentSectionData","persistConfirmedRowEvaluation","flushPendingRequestWorkEdits"]},
     rawMasterOwners:["patchBloomActionRowFormRow","persistNcrCurrentCropInheritance","writeNcrApprovalMasterPayload","writeNcrApprovalReverseCleanupPayload","writeNotOnInventoryApprovalMasterPayload","createNotOnInventoryRow","submitEvalTaskAssignment","completeEvalTaskFromDetail","forceTaskSeasonSalesNoteOverride","patchCropRollMasterInventoryRow","submitEndCap","persistConfirmedRowEvaluation"],
     seasonSaveOwners:["saveSalesOfficeAvNote","saveSeasonSalesOfficeAvNoteSnapshot"],
-    requestPhotoOwners:["persistQueuePhotoAttachment"],
+    requestPhotoOwners:["persistRegularRequestPhotoAttachment"],
     dynamicSuspendOwners:["runSuspendTagRowCommand","emailSuspendTagFromCard","sendSuspendTagApproval"],
     suspendOwners:{"complete":["emailSuspendTagFromCard","persistDockSuspendDcRequestCompletion"],"close":["closeDockSuspendDcRequestFromCard","markDockSuspendDcRequestHandled"]},
     reportRenderers:['renderManagerEvalReport2BrowseRegionHtml','renderManagerEvalReport2ReportsPanel','renderManagerEvalReport2MoreMenu','renderManagerEvalReports2LegacyPanel','renderManagerEvalReport2DrillGroupCard','renderFieldAuditReportDrillGroup','renderFieldAuditReport','fieldAuditBody']

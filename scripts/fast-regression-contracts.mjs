@@ -56,18 +56,47 @@ export function reaches(program, start, target, visited=new Set()) {
   return (program.functions.get(start)||[]).some(fn=>fn.calls.some(call=>call.name===target||reaches(program,call.name,target,visited)));
 }
 
-export function canonicalEngineFailures(program, contracts) {
+function isRequestPhotoAppendCall(call) {
+  if (call.name==='supabaseRpc') return call.firstArgument==='append_request_photo_intent_v3079';
+  return call.name==='postAppFunctionJson' && call.firstArgument==='request_work' && /['"]append_photo['"]/.test(call.source||'');
+}
+
+function requestPhotoAppendFailures(program, contracts) {
+  return program.calls.filter(call => isRequestPhotoAppendCall(call)
+    && (!contracts.requestPhotoOwners?.includes(call.owner)||!call.insidePublisher))
+    .map(call => call.owner+' bypasses canonical Request photo publication');
+}
+
+function reportChromeFailures(program, renderers) {
   const errors=[];
+  for(const name of renderers) {
+    for(const fn of program.functions.get(name)||[]) {
+      errors.push(...reportRendererFailures(name,fn.literals));
+    }
+  }
+  return errors;
+}
+
+function reportRendererFailures(name, literals) {
+  const errors=[];
+  const markup=literals.join('').replace(/&(?:gt|#62|#x3e);/gi,'>').replace(/&(?:larr|#8592|#x2190);/gi,'←').replace(/\s+/g,' ');
+  if(/←\s*All reports|EVAL REPORTS #2\s*>/i.test(markup))errors.push(name+' restores redundant report navigation');
+  if(/All reports/i.test(markup)&&/showEvalAggregateDashboard/.test(markup))errors.push(name+' restores inline report Back');
+  for(const summary of markup.matchAll(/<summary\b[^>]*>([\s\S]*?)<\/summary>/gi)) {
+    if(/(?:^|\s)(?:Reports\s*:|Filters)(?:\s|$)/i.test(summary[1].replace(/<[^>]*>/g,' ')))errors.push(name+' restores Reports/Filters accordion');
+  }
+  return errors;
+}
+
+export function canonicalEngineFailures(program, contracts) {
+  const errors=requestPhotoAppendFailures(program,contracts);
   for(const name of contracts.engines)if(program.functions.get(name)?.length!==1)errors.push('exactly one canonical '+name+' is required');
   for(const [caller,target] of contracts.routes)if(!reaches(program,caller,target))errors.push(caller+' bypasses '+target);
-  for(const [name,allowedOwners] of Object.entries(contracts.transports||{}))for(const call of program.calls) {
-    if(call.name===name && !allowedOwners.includes(call.owner))errors.push(call.owner+' bypasses canonical publication via '+name);
+  for(const [name,allowedOwners] of Object.entries(contracts.transports||{})) {
+    errors.push(...program.calls.filter(call=>call.name===name && !allowedOwners.includes(call.owner))
+      .map(call=>call.owner+' bypasses canonical publication via '+name));
   }
-  for(const call of program.calls)if(call.name==='runSuspendTagRowCommand'&&call.owner!=='publishRowEvaluationToMasterAndNotes') {
-    if(call.firstArgument==='save'||/['"]save['"]/.test(call.firstArgumentSource||''))errors.push(call.owner+' bypasses canonical Suspend save');
-    else if(call.firstArgument==null && contracts.dynamicSuspendOwners && !contracts.dynamicSuspendOwners.includes(call.owner))errors.push(call.owner+' bypasses audited Suspend lifecycle');
-    else if(call.firstArgument!=null && contracts.suspendOwners?.[call.firstArgument] && !contracts.suspendOwners[call.firstArgument].includes(call.owner))errors.push(call.owner+' bypasses audited Suspend '+call.firstArgument);
-  }
+  errors.push(...suspendCallFailures(program,contracts));
   for(const call of program.calls)if(call.name==='supabaseRpc'&&contracts.rpcOwners?.[call.firstArgument]) {
     if(!contracts.rpcOwners[call.firstArgument].includes(call.owner))errors.push(call.owner+' bypasses canonical RPC '+call.firstArgument);
     if(call.firstArgument==='save_request_work' && !call.insidePublisher)errors.push(call.owner+' invokes Request persistence outside canonical publication');
@@ -75,15 +104,26 @@ export function canonicalEngineFailures(program, contracts) {
   for(const call of program.calls) {
     if(contracts.rawMasterOwners && ['runDetailWriteWithRetry','supabaseFetch'].includes(call.name) && call.firstArgument==='ph_master_inventory' && /['"](?:PATCH|POST|PUT|DELETE)['"]/.test(call.source||'') && !contracts.rawMasterOwners.includes(call.owner))errors.push(call.owner+' bypasses audited master publication');
     if(call.name==='seasonSalesOfficeApi' && call.firstArgument==='save_av_note' && (!contracts.seasonSaveOwners?.includes(call.owner)||!call.insidePublisher))errors.push(call.owner+' bypasses canonical Season AV-note publication');
-    if(call.name==='postAppFunctionJson' && call.firstArgument==='request_work' && /['"]append_photo['"]/.test(call.source||'') && (!contracts.requestPhotoOwners?.includes(call.owner)||!call.insidePublisher))errors.push(call.owner+' bypasses canonical Request photo publication');
   }
-  for(const name of contracts.reportRenderers||[])for(const fn of program.functions.get(name)||[]) {
-    const markup=fn.literals.join('').replace(/&(?:gt|#62|#x3e);/gi,'>').replace(/&(?:larr|#8592|#x2190);/gi,'←').replace(/\s+/g,' ');
-    if(/←\s*All reports|EVAL REPORTS #2\s*>/i.test(markup))errors.push(name+' restores redundant report navigation');
-    if(/All reports/i.test(markup)&&/showEvalAggregateDashboard/.test(markup))errors.push(name+' restores inline report Back');
-    for(const summary of markup.matchAll(/<summary\b[^>]*>([\s\S]*?)<\/summary>/gi))if(/(?:^|\s)(?:Reports\s*:|Filters)(?:\s|$)/i.test(summary[1].replace(/<[^>]*>/g,' ')))errors.push(name+' restores Reports/Filters accordion');
+  return errors.concat(reportChromeFailures(program,contracts.reportRenderers||[]));
+}
+
+function suspendCallFailures(program, contracts) {
+  const errors=[];
+  for (const call of program.calls) {
+    if (call.name!=='runSuspendTagRowCommand'||call.owner==='publishRowEvaluationToMasterAndNotes') continue;
+    const issue=suspendCallFailure(call,contracts);
+    if (issue) errors.push(call.owner+issue);
   }
   return errors;
+}
+
+function suspendCallFailure(call, contracts) {
+  const operation=call.firstArgument;
+  if(operation==='save'||/['"]save['"]/.test(call.firstArgumentSource||''))return ' bypasses canonical Suspend save';
+  if(operation==null && contracts.dynamicSuspendOwners && !contracts.dynamicSuspendOwners.includes(call.owner))return ' bypasses audited Suspend lifecycle';
+  if(operation!=null && contracts.suspendOwners?.[operation] && !contracts.suspendOwners[operation].includes(call.owner))return ' bypasses audited Suspend '+operation;
+  return '';
 }
 
 export function forbiddenAssetText(source) {

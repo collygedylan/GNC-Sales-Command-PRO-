@@ -40,11 +40,17 @@ export async function authorizePhotoUpload(session: AppSessionClaims, request: R
   const identity = capturedPhotoIdentity(form);
   const legacySession=Boolean(request.headers.get("x-gnc-session")||request.headers.get("x-app-session"));
   let nativeSessionId:string|null=null;
-  if (session.authUserId && !legacySession) {
+  const photoId = prefix === "req-" && identity.requestId && !identity.suspendTagId
+    ? String(form.get("queuedPhotoId") || "") : "";
+  if (photoId || (session.authUserId && !legacySession)) {
     try { nativeSessionId=await deps.verifyNativeSession(actor,request); }
     catch { throw new PhotoUploadFailure("A verified session is required.",403,"PHOTO_SESSION_REQUIRED"); }
   }
-  const result = await deps.rpc("authorize_photo_upload_v3074",{
+  const path = String(form.get("queuedObjectPath") || "");
+  const result = photoId && path ? await deps.rpc("authorize_request_photo_intent_v3079",{
+    p_actor_id:String(actor.id),p_actor_username:username,p_session_id:nativeSessionId,
+    p_identity:identity,p_photo_id:photoId,p_object_path:path,
+  }) : await deps.rpc("authorize_photo_upload_v3074",{
     p_actor_id:String(actor.id),p_actor_username:username,p_prefix:prefix,p_identity:identity,
     p_session_id:nativeSessionId,p_app_issued_at:nativeSessionId ? null : session.iat,
   });

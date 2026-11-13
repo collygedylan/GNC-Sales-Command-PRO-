@@ -226,7 +226,7 @@ async function persistPhotoSettledEvaluation(prefix, silent, item, options) {
 }
 
 async function settleDetailEvaluationPhotos(snapshot) {
-    if (snapshot.isSuspend || SECURE_DRIVE_EVIDENCE_PREFIXES.has(snapshot.prefix)) {
+    if (snapshot.isSuspend || snapshot.prefix === 'req-' || SECURE_DRIVE_EVIDENCE_PREFIXES.has(snapshot.prefix)) {
         return {...snapshot, uploads:[]};
     }
     const rows = snapshot.uploadRows?.length ? snapshot.uploadRows : [snapshot.source];

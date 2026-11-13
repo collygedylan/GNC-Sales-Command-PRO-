@@ -120,6 +120,10 @@ export async function handleScopedPhotoUpload(session:AppSessionClaims|null,requ
     }
     const file=form.get("file");
     if (!(file instanceof File)) return deps.error("No photo file was provided.",400);
+    const queued=prefix==="req-" && form.has("queuedPhotoId") && form.get("uploadContract")==="plant-photo-v2"
+      && Boolean(String(form.get("requestId") || "").trim()) && !String(form.get("suspendTagId") || "").trim();
+    form.delete("queuedObjectPath");
+    if (queued) form.set("queuedObjectPath",await queuedRequestPhotoPath(file));
     const identity=protectedPrefixes.has(prefix) ? await deps.authorize(session,request,form,prefix) : null;
     const evalContext=prefix==="eval-" ? await authorizeEvalPhoto(session,form,deps) : null;
     const context={prefix,identity,eval:evalContext,bucket:deps.buckets[prefix]||deps.buckets.default};
@@ -129,4 +133,12 @@ export async function handleScopedPhotoUpload(session:AppSessionClaims|null,requ
     if (error instanceof PhotoUploadFailure) return deps.error(error.message,error.status,{code:error.code});
     return deps.error("Photo authorization is temporarily unavailable. Retry without retaking the photo.",503,{code:"PHOTO_UPLOAD_RETRY"});
   }
+}
+
+async function queuedRequestPhotoPath(file:File) {
+  if (file.size>PHOTO_V2_DISPLAY_MAX_BYTES) throw new PhotoUploadFailure("The compressed photo is too large.",413,"PHOTO_TOO_LARGE");
+  const display=await validatePhotoPart(file,PHOTO_V2_DISPLAY_MAX_BYTES).catch(error=>{
+    throw new PhotoUploadFailure("The photo encoding is invalid.",415,String(error.message || error));
+  });
+  return `v2/${await sha256Hex(display.bytes)}.${display.extension}`;
 }

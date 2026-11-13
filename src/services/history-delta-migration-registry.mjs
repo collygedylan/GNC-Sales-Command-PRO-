@@ -23,6 +23,7 @@ export const requestPendingAutosaveMigrationName = '20261109234500_agdata3048_ke
 const contracts = Object.freeze({
   ...suspendAssignedMigrationContracts,
   ...requestEvidenceMigrationContracts,
+  [requestPhotoIntentMigration]:requestPhotoIntentMigrationContract,
   [historyStateUniquenessMigrationName]: `select
     to_regclass('public.ph_orders_history_item_state_v2366') is null
     and to_regclass('public.ph_reserves_history_item_state_v2366') is null
@@ -227,4 +228,5 @@ export function historyDeltaMigrationContract(name) {
   return Object.hasOwn(contracts, name) ? contracts[name] : undefined;
 }
 import { requestEvidenceMigrationContracts } from './request-evidence-migration-registry.mjs';
+import {requestPhotoIntentMigration,requestPhotoIntentMigrationContract} from './request-photo-intent-migration-contract.mjs';
 import { suspendAssignedMigrationContracts } from '../core/suspend-assigned-migration-contract.mjs';

@@ -38,7 +38,6 @@ function fixture() {
         getRowSaveCoordinatorKey:() => 'row-key',getRowSaveCoordinatorState:() => ({}),ROW_SAVE_COMPLETE_INTENT_MS:1000,
         prepareMarkDoneCompletionPrompt:() => ({}),openMarkDoneConfirmModal:async () => true,
         getPendingPhotoUploadsForItem:() => [],getDetailRowPhotoUploadPromises:() => [],hasUnsettledDetailRowPhotos:() => false,
-        SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),
         mergeConfirmedRowEvaluationUploads() {},showToast:(title,message) => events.push({title,message}),
         SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-','ssn-','na-']),getDriveEvidenceConflictState:() => null,
         isLagSensitiveDetailPrefix:() => true
@@ -63,65 +62,51 @@ function fixture() {
     return {context,master,row,state,drafts,events,inputs};
 }
 
-async function assertCompletionWaitsForPhotos() {
+async function assertCompletionProceedsDuringPhotos() {
     const f = fixture();
-    let finish;
-    const upload = new Promise(resolve => { finish = resolve; });
+    const upload = new Promise(() => {});
     f.context.getDetailRowPhotoUploadPromises = () => [upload];
     f.context.hasUnsettledDetailRowPhotos = () => true;
     f.row.REQ_SPEC = 'typed spec';
-    const saving = f.context.saveData(true,'req-');
-    await new Promise(setImmediate);
-    assert.equal(f.events.filter(event => event.type === 'draft').length,1);
-    assert.equal(f.context.activeItem,f.row);
-    assert.equal(f.events.some(event => event.type === 'complete' || event.type === 'navigate'),false);
-    f.row.REQ_SPEC = 'later typed spec';
-    f.context.hasUnsettledDetailRowPhotos = () => false;
-    finish();
-    assert.equal(await saving,true);
-    assert.equal(f.events.find(event => event.type === 'complete').item.REQ_SPEC,'later typed spec');
+    assert.equal(await f.context.saveData(true,'req-'),true);
+    assert.equal(f.events.filter(event => event.type === 'draft').length,0);
+    assert.equal(f.context.activeItem,null);
+    assert.equal(f.events.find(event => event.type === 'complete').item.REQ_SPEC,'typed spec');
 }
 
-async function assertFailedPhotoRetainsEditor() {
+async function assertFailedSaveKeepsDraft() {
     for (const failedRpc of [false,true]) {
         const f = fixture();
         f.row.REQ_SPEC = 'retained spec';
         f.context.hasUnsettledDetailRowPhotos = () => true;
         if (failedRpc) f.context.persistConfirmedRowEvaluation = async () => { throw new Error('draft write failed'); };
-        assert.equal(await f.context.saveData(true,'req-'),false);
-        assert.equal(f.context.activeItem,f.row);
+        assert.equal(await f.context.saveData(true,'req-'),!failedRpc);
         assert.equal(f.row.REQ_SPEC,'retained spec');
-        assert.equal(f.events.some(event => event.type === 'complete' || event.type === 'navigate'),false);
+        assert.equal(f.events.some(event => event.type === 'complete'),!failedRpc);
         assert.equal(f.events.some(event => /saved (?:on|to|in) (?:the )?(?:server|Supabase)/i.test(event.message || '')),false);
     }
 }
 
-async function assertPhotoHoldRejectsOtherAccount() {
+async function assertConfirmationRejectsOtherAccount() {
     const f = fixture();
     let finish;
-    const upload = new Promise(resolve => { finish = resolve; });
-    f.context.getDetailRowPhotoUploadPromises = () => [upload];
+    f.context.openMarkDoneConfirmModal = () => new Promise(resolve => { finish = resolve; });
     const saving = f.context.saveData(true,'req-');
     await new Promise(setImmediate);
     f.context.scope = 'account-b';
     const replacement = {...f.row,UNIQUE_ID:'REQ-new-account'};
     f.context.activeItem = replacement;
-    finish();
+    finish(true);
     assert.equal(await saving,false);
     assert.equal(f.context.activeItem,replacement);
     assert.equal(f.events.some(event => event.type === 'complete' || event.type === 'navigate'),false);
 }
 
-async function assertDirectCompletionCannotBypassPhotoHold() {
+async function assertDirectCompletionDoesNotWaitForPhotos() {
     for (const silent of [true,false]) {
         const f = fixture();
         f.context.hasUnsettledDetailRowPhotos = () => true;
         const snapshot = f.context.captureConfirmedRowEvaluation(f.row);
-        assert.equal(await f.context.saveData(true,'req-',silent,f.row,
-            {markDoneConfirmationAccepted:true,markDoneSnapshot:snapshot}),false);
-        assert.equal(f.context.activeItem,f.row);
-        assert.equal(f.events.some(event => event.type === 'complete'),false);
-        f.context.hasUnsettledDetailRowPhotos = () => false;
         assert.equal(await f.context.saveData(true,'req-',silent,f.row,
             {markDoneConfirmationAccepted:true,markDoneSnapshot:snapshot}),true);
         assert.equal(f.events.filter(event => event.type === 'complete').length,1);
@@ -230,10 +215,10 @@ function assertSuspendDraftNeedsExactSavedLedger() {
 }
 
 export async function assertDetailLiveDraftRetention() {
-    await assertCompletionWaitsForPhotos();
-    await assertFailedPhotoRetainsEditor();
-    await assertPhotoHoldRejectsOtherAccount();
-    await assertDirectCompletionCannotBypassPhotoHold();
+    await assertCompletionProceedsDuringPhotos();
+    await assertFailedSaveKeepsDraft();
+    await assertConfirmationRejectsOtherAccount();
+    await assertDirectCompletionDoesNotWaitForPhotos();
     await assertSourceCompletionSkipsActivePhysicalRows();
     assertBlankRefreshKeepsExactEvidence();
     await assertInputDispatchesExactSnapshot();

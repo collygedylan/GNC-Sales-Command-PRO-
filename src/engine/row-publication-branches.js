@@ -288,7 +288,10 @@ export async function publishRequestWorkEvaluation(item, patch, options) {
             options.onConfirmed?.(result);
         }
         if (options.photoAttachmentUrl) {
-            if (result.lifecycle_state !== 'pending_active' || result.active === false
+            const queued = options.queuedPhotoId && result.queued_photo_id === options.queuedPhotoId;
+            const valid = result.lifecycle_state === 'pending_active' && result.active !== false
+                || queued && result.lifecycle_state === 'completed_history' && result.active === false && hasRequestCompletionState(saved);
+            if (!valid
                 || !parsePhotoCsvValues(saved.req_photo_link).includes(options.photoAttachmentUrl)) throw new Error('REQUEST_PHOTO_RECEIPT_UNCONFIRMED');
             photoReceipt = true;
             options.onConfirmed?.(result);
@@ -316,7 +319,8 @@ function reconcileRequestPublicationMaster({ result, saved, item, target, option
         if (!completedReceipt && !photoReceipt) options.onConfirmed?.(result);
         rollback.commit?.();
         const master = target || formatFetchedRows([result.master_row], 'ph_master_inventory')[0];
-        reconcileConfirmedDriveEvidence({ ok: true, row: result.master_row, canonicalConfirmed: true }, master, 'req-', { scope, preserveDetailDraft: true });
+        reconcileConfirmedDriveEvidence({ok:true,row:result.master_row,canonicalConfirmed:true,locationRows:[]},
+            master,'req-',{scope,preserveDetailDraft:true,photoOnly:photoReceipt});
     } else if (target || expected) throw new Error('REQUEST_MASTER_RECEIPT_UNCONFIRMED');
     else if (!completedReceipt && !photoReceipt) options.onConfirmed?.(result);
 }

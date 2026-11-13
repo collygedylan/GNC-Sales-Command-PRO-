@@ -6779,10 +6779,8 @@ import {assertErpTypedPreparationProgress} from './helpers/erp-typed-progress-co
 test('Invariant 640: bounded typed ERP preparation advances its durable stall clock without publishing or archiving before a receipt', assertErpTypedPreparationProgress);
 
 test('Invariant 641: operational ERP completion requires DRIVE, CAV, RESERVES, SOC and HL PO', async () => (await import('./helpers/erp-cron-release-contract.mjs')).assertErpStageSequence());
-
 test('Invariant 642: 250-row DRIVE preparation and its sealed digest require a later matching publication receipt', async () =>
   (await import('./helpers/erp-incremental-drive-preparation.mjs')).assertIncrementalDrivePublication());
-
 test('Invariant 643: bounded compiled DRIVE progress preserves the same fully typed stage without premature recovery', async () =>
   (await import('./helpers/erp-compiled-drive-work.mjs')).assertCompiledDrivePublicationClock());
 
@@ -6794,6 +6792,7 @@ test('Invariant 646: a prior DRIVE alias requires unique matching lineage and re
   (await import('./helpers/erp-prior-drive-alias-release.mjs')).assertPriorDriveAliasRelease());
 test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
   (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
-
 test('Invariant 648: six field photos transfer in order with bounded retries and verified preview fallback', async () =>
   (await import('./helpers/ordered-detail-photo-contract.mjs')).assertOrderedDetailPhotoUploads());
+test('Invariant 649: Request completion transports exact queued photo IDs and reports a missing registration receipt', async () =>
+  (await import('./helpers/request-photo-intent-contract.mjs')).assertRequestPhotoIntentContract());

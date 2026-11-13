@@ -189,7 +189,7 @@ test('a failed photo keeps its Blob and one-tap retry job while another account 
     const job = {id:'photo-1', preview, item, identity:{UNIQUE_ID:'request-1'}, prefix:'req-', scope:'account', file};
     const jobs = new Map([[job.id, job]]), sent = [];
     let owner = 'account', fail = true;
-    const c = context(['retryDrivePhotoAttachment', 'isQueuedDetailPhoto', 'isSuspendDetailPhoto', 'setDrivePhotoAttachmentStatus', 'getScopedDetailRowPhotoJobs',
+    const c = context(['retryDrivePhotoAttachment', 'isQueuedDetailPhoto', 'setDrivePhotoAttachmentStatus', 'getScopedDetailRowPhotoJobs',
         'getDetailRowPhotoUploadPromises', 'hasUnsettledDetailRowPhotos'], {
         drivePhotoAttachments:jobs, getSupabaseReadIdentityScope:() => owner,
         isCurrentDrivePhotoAttachment:target => target.scope === owner && jobs.get(target.id) === target,

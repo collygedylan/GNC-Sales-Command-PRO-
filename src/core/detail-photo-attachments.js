@@ -62,6 +62,18 @@ export function retryFailedSeasonDrivePhotoAttachments(item = null) {
     return retried;
 }
 
+export function requestCompletionPhotoPatch(body) {
+    if (body.complete !== true) return body.patch;
+    const ids = getQueuedRequestPhotoIds({unique_id:body.request_id});
+    return ids.length ? {...body.patch,queued_photo_ids:ids} : body.patch;
+}
+
+export function acknowledgeRequestPhotoIntentReceipt(patch, receipt) {
+    if (patch?.queued_photo_ids?.length && receipt?.photo_intents_registered !== true) {
+        globalThis.reportHandledRuntimeIssue?.('requestCompletionPhotoPatch','REQUEST_PHOTO_INTENT_UNCONFIRMED');
+    }
+}
+
 function retainDetailPhotoBlob(job, blob) {
     return putRequestBlobRecord({
         blobId:job.blobId, requestId:job.identity.UNIQUE_ID, fileName:job.fileName,
@@ -125,4 +137,43 @@ export function restoreCameraDetailSession() {
         window.finishCameraCapture?.();
         return true;
     } catch { return false; }
+}
+
+async function persistQueuePhotoAttachment(job) {
+    const { item, prefix, upload } = job;
+    const uid = String(item.UNIQUE_ID);
+    if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(item)) {
+        const proof = await loadCurrentSuspendTagPhotoRow(item);
+        const receipt = await persistSuspendTagUploadedPhoto(item, proof, upload.publicUrl, upload.fileName);
+        if (!receipt?.acknowledged) throw new Error('Suspend photo save was not confirmed.');
+    } else if (prefix === 'req-') {
+        await persistRegularRequestPhotoAttachment(job,uid);
+    } else {
+        const patch = {dock_photo_link:appendPhotoCsvValue(item.DOCK_PHOTO_LINK,upload.publicUrl),
+            dock_photo_name:appendPhotoCsvValue(item.DOCK_PHOTO_NAME,upload.fileName)};
+        const receipt = await writeSocReviewThroughAppApi('PATCH',patch,'unique_id=eq.' + encodeURIComponent(uid));
+        if (!receipt?.row || String(receipt.row.unique_id) !== uid || !parsePhotoCsvValues(receipt.row.dock_photo_link).includes(upload.publicUrl)) throw new Error('Dock photo save was not confirmed.');
+        if (isCurrentDrivePhotoAttachment(job)) setPhotoAliasFieldsForPrefix(item,prefix,receipt.row.dock_photo_link,receipt.row.dock_photo_name);
+    }
+    if (isCurrentDrivePhotoAttachment(job)) confirmRowPhotoSlot(job);
+}
+
+async function persistRegularRequestPhotoAttachment(job,uid) {
+    const {item,prefix,upload} = job;
+    const patch = {req_photo_link:upload.publicUrl,req_photo_name:upload.fileName};
+    const publication = await publishRowEvaluationToMasterAndNotes(item,patch,{requestWork:true,scope:job.scope,complete:false,
+        photoAttachmentUrl:upload.publicUrl,queuedPhotoId:job.id,memoryRollback:()=>{},persist:async () => {
+            const result = await supabaseRpc('append_request_photo_intent_v3079', {
+                p_request_id:uid,p_photo_id:job.id,p_url:patch.req_photo_link,p_name:patch.req_photo_name
+            }, {timeoutMs:25000,signal:job.uploadController.signal});
+            if (result?.queued_photo_id !== job.id) throw new Error('Request photo save was not confirmed.');
+            return {status:'saved',result};
+        }});
+    const saved = publication.result.row;
+    if (!isCurrentDrivePhotoAttachment(job)) return;
+    const live = findRequestRowByUniqueId(uid);
+    for (const target of new Set([item, live, activeItem].filter(row => row?.UNIQUE_ID === uid))) {
+        setPhotoAliasFieldsForPrefix(target,prefix,saved.req_photo_link,saved.req_photo_name);
+        target.ROW_VERSION = target.row_version = Math.max(Number(target.ROW_VERSION || 0), Number(saved.row_version || 0));
+    }
 }
