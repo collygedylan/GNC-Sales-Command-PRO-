@@ -1,9 +1,20 @@
+export function deduplicateSuspendTagPageRows(rows) {
+  const seen = new Set();
+  return rows.filter(row => {
+    const sourceUid = getDockSuspendDcRequestSourceUid(row);
+    const candidateUid = getItemUniqueId(row);
+    if (!sourceUid || !candidateUid) return true;
+    const key = JSON.stringify([sourceUid, candidateUid]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function prepareSuspendTagPageRows(plan, runtime) {
   const rows = plan.rows || [];
   runtime.rememberOperationalExport('request', plan.items || []);
   runtime.hydrateSuspendTagItemOptions(rows);
-  if (typeof runtime.getQueueCardInventoryState !== 'function') return;
-  rows.forEach(item => runtime.getQueueCardInventoryState(item, 'request'));
 }
 
 function prepareSuspendTagPageStage(input, runtime, renderSignature) {
@@ -39,7 +50,10 @@ function resolveSuspendTagPageRowRenderer(state, cardContainer, plan, runtime) {
 
 function createSuspendTagPageRowRenderer(cardContainer, plan, runtime) {
   const state = { render: null };
-  return (item, index) => resolveSuspendTagPageRowRenderer(state, cardContainer, plan, runtime)(item, index);
+  return (item, index) => {
+    runtime.getQueueCardInventoryState?.(item, 'request');
+    return resolveSuspendTagPageRowRenderer(state, cardContainer, plan, runtime)(item, index);
+  };
 }
 
 function publishRetainedSuspendTagPage(context, runtime) {
@@ -82,7 +96,7 @@ function buildSuspendTagPageOptions(context, runtime) {
     : (context.hasFilters ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.');
   return runtime.getPendingRequestChunkRenderOptions({
     _backgroundStage: !!context.retainCards,
-    initialRows: Math.min(40, Math.max(1, context.plan.rows?.length || 0)),
+    initialRows: Math.min(12, Math.max(1, context.plan.rows.length)),
     renderSignature: context.renderSignature,
     emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
     onComplete: () => completeSuspendTagPage(context, runtime),
@@ -98,14 +112,15 @@ export function renderSuspendTagPage(input = {}, runtime = {}) {
     runtime.paintFooterRequestBadgeOnly();
     return false;
   }
-  const plan = input.plan && typeof input.plan === 'object' ? input.plan : {};
-  prepareSuspendTagPageRows(plan, runtime);
+  const sourcePlan = input.plan || {};
+  const plan = { ...sourcePlan, rows: deduplicateSuspendTagPageRows(sourcePlan.rows || []) };
   const renderSignature = String(plan.renderSignature || '');
   const stageContext = prepareSuspendTagPageStage({ ...input, plan }, runtime, renderSignature);
   if (stageContext.reused) {
     runtime.syncRequestBrowseFooter(input.footerContainer, plan.footerMarkup);
     return true;
   }
+  prepareSuspendTagPageRows(plan, runtime);
   const context = { ...input, ...stageContext, plan, renderSignature };
   const renderRow = createSuspendTagPageRowRenderer(input.cardContainer, plan, runtime);
   const options = buildSuspendTagPageOptions(context, runtime);

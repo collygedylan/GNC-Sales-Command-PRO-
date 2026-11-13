@@ -52,9 +52,29 @@ async function verifyAvSearch(page) {
     assert.match(await card.textContent(), /AV Note\s*SPEC - 20-22" H/i);
     const hero = card.locator('.app-av-photo-slide img');
     await hero.waitFor({ timeout: 6000 });
+    assert.equal(await hero.getAttribute('loading'), 'lazy');
+    assert.equal(await hero.getAttribute('decoding'), 'async');
     await hero.evaluate(image => image.decode());
     assert.equal(await hero.evaluate(image => image.naturalWidth), 4);
     return result;
+}
+
+async function verifyAvKiosk(page) {
+    const result = await page.evaluate(() => {
+        const row = getCurrentAVBaseItems().items.find(item => item.LOCATIONCODE === 'E.07.000');
+        const previous = window.__agdataAvKioskState.active;
+        window.__agdataAvKioskState.active = true;
+        try {
+            const markup = document.createElement('template');
+            markup.innerHTML = generateCard(row, 'av');
+            const card = markup.content.querySelector('.app-av-catalog-card');
+            return { label:card.getAttribute('aria-label'), photo:!!card.querySelector('.app-av-photo-slide'),
+                controls:card.querySelectorAll('.app-av-catalog-meta, .card-checkbox, .app-av-primary-action, .app-av-catalog-hold-data').length };
+        } finally {
+            window.__agdataAvKioskState.active = previous;
+        }
+    });
+    assert.deepEqual(result, { label:'Open card photos', photo:true, controls:0 });
 }
 
 async function run() {
@@ -73,11 +93,14 @@ async function run() {
             .map(value => new URL(value.trim()).pathname));
         await page.route('**/storage/v1/object/public/**', route => {
             const request = route.request();
-            if (request.method() !== 'GET' || !photos.has(new URL(request.url()).pathname)) return route.fallback();
+            const pathname = new URL(request.url()).pathname;
+            if (pathname.includes('/_thumbs/')) return route.fulfill({status:404});
+            if (request.method() !== 'GET' || !photos.has(pathname)) return route.fallback();
             return route.fulfill({contentType:'image/svg+xml',body:pixel});
         });
         await seedAvSearch(page, rows);
         const result = await verifyAvSearch(page);
+        await verifyAvKiosk(page);
         await fs.writeFile(path.join(evidence, 'v3.0.52-av-canonical-edge.json'), JSON.stringify({ browser:browser.version(), result }, null, 2));
         process.stdout.write(JSON.stringify({ pass:true, result }) + '\n');
     } finally {

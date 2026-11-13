@@ -30,13 +30,18 @@ function groupAvLotCard(rows, resolve) {
     return {...card, DOM_ID:owner?.DOM_ID || card.DOM_ID || display.DOM_ID};
 }
 
+function getAvDisplayLotGroupKey(row) {
+    const table = String(row.SOURCE_TABLE || row.source_table || 'ph_master_inventory').toLowerCase();
+    if (table !== 'ph_master_inventory') return row;
+    const uid = canonicalInventoryRowUid(row);
+    return getCanonicalAvLotKey(row) || (uid ? 'uid:' + uid : row);
+}
+
 export function collapseCanonicalAvLotRows(rows, resolve = resolveCanonicalInventoryRow) {
     const groups = new Map();
     for (const row of rows) {
         if (!row) continue;
-        const table = String(row.SOURCE_TABLE || row.source_table || 'ph_master_inventory').toLowerCase();
-        const uid = canonicalInventoryRowUid(row);
-        const key = table === 'ph_master_inventory' && uid ? getCanonicalAvLotKey(row) || 'uid:' + uid : row;
+        const key = getAvDisplayLotGroupKey(row);
         const group = groups.get(key);
         if (group) group.push(row);
         else groups.set(key, [row]);
@@ -110,9 +115,10 @@ export function buildResolvedAVBaseState(options = {}) {
             const photos = getAvRawTabItems('open',{salesRows:eligible});
             const filtered = applyAvColumnFiltersToItems(photos).filter(createAvTopFilterPredicate());
             const matching = filterBySearch(filtered,term,searchProfile);
-            items = collapseCanonicalAvLotRows(items.concat(matching));
+            items = items.concat(matching);
         }
     }
+    if (safeTab === 'open') items = collapseCanonicalAvLotRows(items);
     avResolvedBaseStateKey = cacheKey;
     avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState, isPartial: liveCatalogIncomplete || !!(preparedSalesRows && preparedSalesRows.partial) };
     return avResolvedBaseStateCache;

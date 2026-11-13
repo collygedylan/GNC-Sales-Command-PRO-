@@ -99,6 +99,23 @@ export function renderEvalWorkInventoryCard(context) {
     return `<div class="flex items-center w-full mb-3 item-row app-smart-card app-smart-card--inventory relative app-request-card-surface border-purple-200 p-4 rounded-xl border shadow-sm active:scale-[0.99] transition-transform cursor-pointer overflow-hidden ${holdBorderClass}" data-dom-id="${esc(item.DOM_ID)}" data-eval-work-origin-row="true" data-eval-work-id="${esc(workId)}" data-eval-work-origin-uid="${esc(originUid)}" ${openAttrs}><div class="flex flex-col w-full min-w-0"><div class="flex justify-between items-start w-full"><div class="app-card-main flex-grow min-w-0 pr-2">${buildInventoryToplineHtml(item.COMMONNAME || 'Eval Work', item.CONTSIZE || '-', item)}${buildInventorySecondarylineHtml(location, reportLabel)}<div class="app-card-meta-grid grid grid-cols-2 gap-x-2 gap-y-1 mb-2 text-[11px] font-bold text-gray-600"><div class="truncate"><i class="ph-bold ph-user mr-1"></i>${esc(assignee)}</div><div class="truncate"><i class="ph-bold ph-map-pin mr-1"></i>Block ${esc(block)}</div></div><div class="app-card-chip-row flex flex-wrap gap-x-2 gap-y-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-600"><span class="px-1.5 py-0.5 rounded border ${statusTone}">${esc(statusLabel)}</span><span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded border border-purple-100">${esc(item.ITEMCODE || '-')}</span><span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded border border-blue-100">Loc: ${esc(location)}</span><span class="bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200">Lot: ${esc(lot)}</span><span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100">Email: ${esc(deliveryStatus)}</span>${compactCardFieldChipsHtml}</div></div>${inlineThumbHtml}</div></div></div>`;
 }
 
+function renderDockOrderMetadata(item) {
+    const fields = [
+        ['Dock', formatDockViewDockLabel(item.DOCK_NUM || item.DOCK)],
+        ['Drop', String(getDockStopOrDropValue(item) || '')],
+        ['Qty', getDockOrderedQtyDisplay(item)],
+        ['Plan Start', formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item))],
+        ['Consignee', String(item.CONSIGNEENAME || item.CONSIGNEE || '')],
+        ['Sales Rep', firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '')],
+    ];
+    const chips = fields.map(([label, raw]) => {
+        const value = String(raw || '').trim();
+        const display = value && value.toUpperCase() !== 'UNKNOWN REP' ? value : 'N/A';
+        return `<span class="app-request-card-meta-chip" style="min-width:0;color:#ecfdf5;background:#064e3bd9;border-color:#34d39966;overflow-wrap:anywhere"><span style="color:inherit">${esc(label)}</span><strong style="color:inherit">${esc(display)}</strong></span>`;
+    });
+    return `<div class="app-operational-card-meta">${chips.join('')}</div>`;
+}
+
 export function renderDockInventoryCard(context) {
     let { item, safeUidJs, safeDockIssueSourceUidJs, renderMeta, sourceView, isChecked, safeCardSourceViewKey, inlineThumbHtml, inventoryEditActionHtml } = context;
     const dockQuantityRaw = firstNonEmptyValue(getDockOrderedQtyRaw(item), item.PTRAVAILABLE, item.ptravailable, '');
@@ -108,12 +125,8 @@ export function renderDockInventoryCard(context) {
     const dockPlanstartInfo = getDockSuspendDcRequestPlanstartInfo(item);
     const dockPlanstartClass = dockPlanstartInfo.valid ? `app-operational-planstart-card ${dockPlanstartInfo.className} ${dockPlanstartInfo.legacyClassName}` : '';
     const dockPlanstartData = ` data-docks-stop-card="${escapeHtml(item.DOM_ID || item.UNIQUE_ID || '')}" data-docks-inventory-uid="${escapeHtml(item.__dockInventoryUid || '')}"` + (dockPlanstartInfo.valid ? ` data-planstart-value="${esc(dockPlanstartInfo.value)}" data-planstart-tone="${esc(dockPlanstartInfo.tone)}" data-planstart-valid="true"` : '');
-    const dockSalesRep = String(firstNonEmptyValue(item.SALESREPNAME, item.SALESREP, item.SALES_REP, item.SALESREPID, '') || '').trim();
-    const dockRequestQty = getDockOrderedQtyDisplay(item);
     const dockInventoryRow = getOperationalCardInventoryRow(item);
-    const dockMetaValue = value => value && value.toUpperCase() !== 'UNKNOWN REP' ? value : 'N/A';
-    const dockMetaChip = (label, value) => `<span class="app-request-card-meta-chip"><span>${esc(label)}</span><strong>${esc(dockMetaValue(value))}</strong></span>`;
-    const dockMetaHtml = `<div class="app-operational-card-meta">${dockMetaChip('Dock', formatDockViewDockLabel(item.DOCK_NUM || item.DOCK))}${dockMetaChip('Drop', String(getDockStopOrDropValue(item) || ''))}${dockMetaChip('Qty', dockRequestQty)}${dockMetaChip('Plan Start', formatDockCardPlanStartValue(getDockSuspendDcRequestPlanstartValue(item)))}${dockMetaChip('Consignee', String(item.CONSIGNEENAME || item.CONSIGNEE || ''))}${dockMetaChip('Sales Rep', dockSalesRep)}</div>`;
+    const dockMetaHtml = renderDockOrderMetadata(item);
     const noteText = String(firstNonEmptyValue(item.DOCK_ISSUE_NOTE, item.DOCK_NOTE, '')).trim();
     const issueState = String(firstNonEmptyValue(item.DOCK_ISSUE_STATE, '')).trim().toLowerCase();
     let noteHtml = '';
@@ -173,8 +186,8 @@ export function buildSuspendTagActions(item, pressAttrs = '') {
     const sourceUid = getDockSuspendDcRequestSourceUid(item);
     const actionBusy = !!sourceUid && suspendTagCompletionActions.has(getSupabaseReadIdentityScope() + '|' + sourceUid);
     const labels = { pending:'Pending',completed:'Completed — Ready to Email',awaiting_rep:'Awaiting Rep',approved:'Approved',denied:'Denied / Needs Changes' };
-    const action = (label,actionName) => '<button type="button" ' + pressAttrs + ' class="app-suspend-tag-action rounded-xl border border-emerald-200 text-xs font-bold" data-action="' + actionName + '" data-unique-id="' + uid + '"' + (actionBusy ? ' disabled aria-disabled="true" data-suspend-action-busy="' + esc(getSupabaseReadIdentityScope() + '|' + sourceUid) + '" title="This Suspend Tag action is already in progress."' : '') + '>' + label + '</button>';
-    return '<div class="app-suspend-tag-status border-t" data-suspend-tag-status="' + esc(status) + '">' + (status === 'pending' ? '' : '<div class="app-suspend-tag-status-label font-bold">' + esc(labels[status] || status) + '</div>') + '<div class="app-suspend-tag-actions">'
+    const action = (label,actionName) => '<button type="button" ' + pressAttrs + ' class="app-suspend-tag-action rounded-xl border border-emerald-200 text-xs font-bold" style="flex:1 1 8rem;min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-overflow:clip" data-action="' + actionName + '" data-unique-id="' + uid + '"' + (actionBusy ? ' disabled aria-disabled="true" data-suspend-action-busy="' + esc(getSupabaseReadIdentityScope() + '|' + sourceUid) + '" title="This Suspend Tag action is already in progress."' : '') + '>' + label + '</button>';
+    return '<div class="app-suspend-tag-status border-t" data-suspend-tag-status="' + esc(status) + '">' + (status === 'pending' ? '' : '<div class="app-suspend-tag-status-label font-bold">' + esc(labels[status] || status) + '</div>') + '<div class="app-suspend-tag-actions" style="display:flex;flex-wrap:wrap;min-width:0;max-width:100%;box-sizing:border-box">'
         + action('Change / Add Location','fill-tag')
         + (!isFalseBlockLocation(item.LOCATIONCODE || item.locationcode) ? action('Select ' + esc(item.LOCATIONCODE || item.locationcode), 'final-location') : '')
         + action('Remove Location','remove-location')
