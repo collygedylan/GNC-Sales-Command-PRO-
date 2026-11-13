@@ -372,4 +372,26 @@ begin
   execute definition;
 end
 $assignment$;
+
+-- The dedicated catch-up publisher opts in for one transaction. Keep normal
+-- assignment reconciliation and all independent delivery sessions active.
+do $catchup_outbox$
+declare
+  assignment_definition text := pg_get_functiondef('private.sync_new_unassigned_warehouse_itemcodes_v1(uuid)'::regprocedure);
+  wake_definition text := pg_get_functiondef('private.wake_request_delivery_worker_now(text)'::regprocedure);
+  assignment_anchor constant text := $anchor$from owner_values d where nullif(btrim(coalesce(d.assignedto,'')),'') is null$anchor$;
+  wake_anchor constant text := '  select decrypted_secret into worker_url';
+  guard constant text := $guard$current_setting('app.skip_catchup_outbox',true) is not distinct from 'on'
+      and session_user = 'postgres' and coalesce(auth.role(),'') = 'service_role'$guard$;
+begin
+  if md5(assignment_definition)<>'9f79749fb2ef8aa219b70d3330e82845'
+    or md5(wake_definition)<>'112362b33775fbcf5c49b4d050f2cb7b'
+    or cardinality(string_to_array(assignment_definition,assignment_anchor))<>2
+    or cardinality(string_to_array(wake_definition,wake_anchor))<>2 then
+    raise exception 'DRIVE_CATCHUP_OUTBOX_OWNER_CHANGED';
+  end if;
+  execute replace(assignment_definition,assignment_anchor,assignment_anchor||E'\n      and not ('||guard||')');
+  execute replace(wake_definition,wake_anchor,'  if '||guard||E' then return null; end if;\n'||wake_anchor);
+end
+$catchup_outbox$;
 commit;

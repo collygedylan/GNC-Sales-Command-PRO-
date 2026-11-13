@@ -36,5 +36,12 @@ export function erpDriveLineageWorkContract() {
       and strpos(prosrc,'private.reconcile_drive_item6_location_notes_v3084(p_run_id)')>0
       and strpos(prosrc,'private.assert_prior_run_day_prune_safe_v3078(')>0
       and 'statement_timeout=180s'=any(proconfig) and 'lock_timeout=15s'=any(proconfig)
-      from pg_proc where oid=to_regprocedure('public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)')) as installed`;
+      from pg_proc where oid=to_regprocedure('public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)'))
+    and (select count(*)=2 and bool_and(strpos(prosrc,'current_setting(''app.skip_catchup_outbox'',true)')>0
+      and strpos(prosrc,'session_user = ''postgres''')>0
+      and strpos(prosrc,'coalesce(auth.role(),'''') = ''service_role''')>0
+      and md5(pg_get_functiondef(oid)) in ('4af1640ab0296ccd29f216a4eb79e158','4c574b15e1c7aa80e747c3dc12596a2a'))
+      from pg_proc where oid in (
+        to_regprocedure('private.sync_new_unassigned_warehouse_itemcodes_v1(uuid)'),
+        to_regprocedure('private.wake_request_delivery_worker_now(text)'))) as installed`;
 }
