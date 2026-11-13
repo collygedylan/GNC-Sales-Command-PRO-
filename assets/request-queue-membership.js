@@ -1,3 +1,39 @@
+function queueAccessScope(tab = 'suspend-tag') {
+    const user = normalizeEvalAssignableUser(currentUser).replace(/^nally_aguilar$/, 'nelly_aguilar');
+    const access = globalThis.GncUserAccessControl;
+    const resolved = access?.resolveUserAccessMatrix(user);
+    const matrix = resolved?.__pendingAccessWrite ? null : resolved;
+    const role = String(matrix?.role || (typeof currentRole === 'string' ? currentRole : '')).toUpperCase().replace(/[^A-Z]/g, '');
+    const admin = ['ADMIN', 'ADMINISTRATOR', 'SUPERADMIN'].includes(role);
+    if (tab === 'pending') {
+        const all = !!user && (admin || ['MANAGER', 'EVAL', 'EVALUATOR'].includes(role)
+            || GLOBAL_LIVE_CHANGE_USER_KEYS.has(user) || matrix?.view_all_requests === 'Y'
+            || matrix?.request_default_scope === 'ALL');
+        return { user, all, initial: all ? 'ALL' : user };
+    }
+    const all = !!user && admin;
+    const defaultsToOwner = ['dylan_collyge', 'megan_kelly'].includes(user);
+    return { user, all, initial: all && !defaultsToOwner ? 'ALL' : user };
+}
+
+function getQueueScopeFilter(tab) {
+    const policy = queueAccessScope(tab);
+    const state = getManagerAssignedColumnState();
+    const signature = [policy.user, policy.all, policy.initial].join('|');
+    state.queueScopeFilters ||= {};
+    let choice = state.queueScopeFilters[tab];
+    if (!choice || choice.signature !== signature) {
+        choice = { signature, value: policy.initial };
+        state.queueScopeFilters[tab] = choice;
+    }
+    return policy.all ? choice.value : policy.user;
+}
+
+function isQueueOwnerVisible(row, tab = isDockSuspendDcRequestMirrorRow(row) ? 'suspend-tag' : 'pending') {
+    const selected = getQueueScopeFilter(tab);
+    return selected === 'ALL' || !!selected && (getAssignedQueueOwner(row) || 'Unassigned') === selected;
+}
+
 function prunePendingRequestCards(rows) {
     if (normalizeRequestTabValue(activeReqTab) !== 'pending') return false;
     const container = document.getElementById('request-content');
@@ -84,4 +120,65 @@ function renderPendingRequestReceiptSnapshot(rows) {
     decorateRequestRows();
     syncRequestBrowseFooter(container,plan.footerMarkup);
     scheduleDeferredCardPhotoHydration(container);
+}
+
+function activateQueCategory(tab) {
+    activeReqTab = tab;
+    syncQueActiveCategory();
+}
+
+function scheduleQueCategoryRefresh(tab, navigationSeq) {
+    runAfterShellInteractive(() => {
+        if (!isCurrentNavigationTransition(navigationSeq, 'request') || activeReqTab !== tab) return;
+        if (tab === 'projects') return void ensureQueueInventoryProjectsData(true);
+        if (window.BunchQueueShell?.isTab(tab)) return;
+        if (tab === 'eval-work') return void loadEvalWorkAssignments(true).catch(() => {});
+        if (tab === 'suspend-tag') refreshQueSuspendCategory(navigationSeq);
+        forceRefreshRequestsForView('request-tab', {
+            force: true,
+            allowWhileInteractive: true,
+            minIntervalMs: 0
+        }).catch(() => {});
+    });
+}
+
+function refreshQueSuspendCategory(navigationSeq) {
+    loadDatasetTargetsWithLimit([{ key: 'suspendTag', mode: 'full' }, { key: 'soc', mode: 'full' }], {
+        force: true,
+        preserveRequestedMode: true,
+        allowWhileInteractive: true,
+        retryReason: 'request-tab-suspend'
+    }, 1).then(() => {
+        if (isCurrentNavigationTransition(navigationSeq, 'request') && activeReqTab === 'suspend-tag') {
+            scheduleRequestRender(0, 0, true);
+        }
+    }).catch(() => {});
+}
+
+function resetQueCategoryDrills(nextTab) {
+    activeReqTab = nextTab;
+    if (nextTab === 'eval-work') subscribeEvalWorkRealtime();
+    activeLocationMoveQueDetailUid = '';
+    activeLocationWorkJobId = '';
+    activeShearQueDetailId = '';
+    activeAvOptionEvalDetailId = '';
+    if (nextTab !== 'eval-work') activeEvalWorkDetailId = '';
+    requestViewLevel = 0;
+    selectedReqFolder = null;
+    selectedReqRepView = null;
+    selectedReqCustView = null;
+    selectedReqConsigneeView = null;
+    selectedReqFolderView = null;
+    requestFolderSearchTerm = '';
+    requestRepSearchTerm = '';
+    requestCustomerSearchTerm = '';
+    requestConsigneeSearchTerm = '';
+    requestFolderDateFilter = '';
+    if (nextTab === 'suspend-tag') {
+        requestDylanFilterMode = 'all';
+        requestDylanFilterValue = '';
+        requestDylanSalesRepValue = '';
+        requestDylanFilterMenuOpen = '';
+    }
+    clearSelection();
 }

@@ -638,16 +638,16 @@ test('optimistic Suspend badge paint does not synchronously rebuild mobile navig
   let navSyncCalls = 0;
   let assignedCounts = { pending: 0 };
   const ctx = {
-    document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null, querySelector: () => null },
+    document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null },
     canUseFooterRequestShortcut: () => true,
     getRequestQueueAlertCount: counts => Number(counts.pending || 0),
     getActiveAssignedQueueCounts: () => assignedCounts,
+    isViewVisible: () => false,
     queueRequestBadgeLiveSync: () => { liveSyncCalls += 1; },
     updateFooterNavState: () => { navSyncCalls += 1; },
   };
   vm.createContext(ctx);
   vm.runInContext(`${badgePaint}\n${normalUpdate}`, ctx);
-
   assert.equal(ctx.paintFooterRequestBadgeOnly({ pending: 0 }), true);
   assert.equal(buttonClasses.has('hidden'), false);
   assert.equal(badgeClasses.has('hidden'), true);

@@ -8,7 +8,7 @@ export function badgeConnectionContract(runFunctions,functionSource,read) {
   const badgeContext = runFunctions('assets/app-runtime.js', ['paintFooterRequestBadgeOnly'], {
     document: { getElementById: id => id === 'footer-request-btn' ? button : id === 'footer-request-badge' ? badge : null,querySelector:()=>null },
     canUseFooterRequestShortcut: () => true,getActiveAssignedQueueCounts:()=>({pending:7}),
-    getRequestQueueAlertCount: counts => Number(counts.pending || 0),
+    getRequestQueueAlertCount: counts => Number(counts.pending || 0), isViewVisible: () => false,
   });
   assert.equal(badgeContext.paintFooterRequestBadgeOnly({ pending: 7 }), true);
   assert.equal(badge.textContent, '7');

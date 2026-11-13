@@ -6,7 +6,7 @@ import {parseExpressionAt} from 'acorn';
 export function assertCurrentSocDockContract(){
  for(const prefix of ['']){
   const source=fs.readFileSync(new URL('../../'+prefix+'assets/app-runtime.js',import.meta.url),'utf8');
-  const flow=['row-workflow-functions','suspend-exact-owner'].map(name=>fs.readFileSync(new URL('../../'+prefix+'assets/'+name+'.js',import.meta.url),'utf8')).join('\n');
+  const flow=['row-workflow-functions','suspend-exact-owner','request-queue-membership'].map(name=>fs.readFileSync(new URL('../../'+prefix+'assets/'+name+'.js',import.meta.url),'utf8')).join('\n');
   const fn=(src,name)=>{const at=src.indexOf('function '+name+'('),node=parseExpressionAt(src,at,{ecmaVersion:'latest'});return src.slice(at,node.end);};
   const ctx={normalizeDockViewDockKey, normalizeDockViewStopKey, isDockSuspendDcRequestSource, normalizeSocDockRowAliases, firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),getDockSuspendToValue:r=>String(r.SUSPEND_TO||r.suspend_to||'').trim().toLowerCase(),getDockSuspendValue:r=>String(r.SUSPEND||r.suspend||'').toUpperCase(),
    isDockSuspendDcRequestMirrorRow:()=>true,getQueueCompletionState:()=>({completedSuspendTagKeys:new Set()}),getDockSuspendDcRequestSourceUid:r=>r.unique_id,

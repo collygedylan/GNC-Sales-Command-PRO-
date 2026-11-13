@@ -132,33 +132,76 @@ export function renderRequestCategoryToolbar(counts = null) {
     const toolbar = document.getElementById('request-filter-toolbar');
     if (!toolbar) return false;
     counts = counts || getRequestTabQueueCounts();
-    let control = toolbar.querySelector('.que-view-control');
-    if (!control) {
-toolbar.querySelector('.request-category-options')?.setAttribute('hidden', '');
-control = document.createElement('label');
-control.className = 'que-view-control';
-control.innerHTML = '<span class="sr-only">Que View</span><select id="que-view-select" aria-label="Que View" onchange="return setReqTab(this.value)"></select>';
-toolbar.prepend(control);
-    }
-    const legacy = toolbar.querySelector('.request-category-options');
-    if (legacy && !legacy.children.length) legacy.innerHTML = getAuthorizedRequestCategories().map(category =>
-        '<button type="button" data-request-category="'+escapeHtml(category)+'" onclick="return setReqTab(this.dataset.requestCategory)"></button>').join('');
-    const select = control.querySelector('select');
-    const markup = getAuthorizedRequestCategories().map(category => '<option value="'+escapeHtml(category)+'">'
-+escapeHtml(REQUEST_TAB_LABELS[category])+' ('+formatRequestTabCount(Math.max(0, Number(counts[category]) || 0))+')</option>').join('');
-    if (select.innerHTML !== markup) select.innerHTML = markup;
-    select.value = activeReqTab;
-    if (!toolbar.querySelector('#que-other-owner')) {
-const other = document.createElement('select');
-other.id = 'que-other-owner';
-other.setAttribute('aria-label', 'Assigned / Eval User');
-other.disabled = true;
-toolbar.appendChild(other);
-    }
-    const fallback = toolbar.querySelector('#que-other-owner');
-    fallback.hidden = ['pending','suspend-tag'].includes(activeReqTab) && queueAccessScope(activeReqTab).all;
-    fallback.innerHTML = '<option>'+escapeHtml(queueAccessScope(activeReqTab).all ? 'All Users' : String(currentUser || 'Assigned User'))+'</option>';
+    const categories = getAuthorizedRequestCategories().map(category => ({
+        key: category,
+        label: REQUEST_TAB_LABELS[category],
+        count: Math.max(0, Number(counts[category]) || 0)
+    }));
+    syncQueCategoryButtons(toolbar.querySelector('.request-category-options'), categories);
+    syncQueCategorySelect(toolbar, categories);
+    syncQueOwnerFallback(toolbar);
     toolbar.dataset.toolbarSingleRow = 'true';
     syncQueHeaderLayout();
     return true;
+}
+
+export function syncQueCategoryCounts(counts, allCounts) {
+    const scope = getSupabaseReadIdentityScope();
+    const snapshot = requestTabQueueCountsSnapshotScope === scope ? requestTabQueueCountsSnapshot : null;
+    renderRequestCategoryToolbar({ ...snapshot, ...allCounts, ...counts });
+}
+
+function syncQueCategoryButtons(group, categories) {
+    if (!group) return;
+    const primary = categories.filter(({ key }) => key === 'pending' || key === 'suspend-tag');
+    const buttons = primary.map(({ key, label, count }) => {
+        const active = activeReqTab === key;
+        return `<button type="button" id="tab-req-${escapeHtml(key)}" class="request-category-chip${active ? ' is-active' : ''}" data-request-category="${escapeHtml(key)}" aria-pressed="${active}" onclick="return setReqTab(this.dataset.requestCategory)"><span>${escapeHtml(label)}</span><span class="request-category-chip__count${count > 0 ? ' has-count' : ''}">(${escapeHtml(formatRequestTabCount(count))})</span></button>`;
+    }).join('');
+    const focused = group.contains(document.activeElement) ? document.activeElement.id : '';
+    if (syncRequestChromeMarkup(group, buttons, requestCategoryToolbarMarkupByNode) && focused) {
+        document.getElementById(focused)?.focus({ preventScroll: true });
+    }
+    group.hidden = primary.length === 0;
+}
+
+function syncQueCategorySelect(toolbar, categories) {
+    let control = toolbar.querySelector('.que-view-control');
+    if (!control) {
+        control = document.createElement('label');
+        control.className = 'que-view-control';
+        control.innerHTML = '<span class="sr-only">Que View</span><select id="que-view-select" aria-label="Que View" onchange="return setReqTab(this.value)"></select>';
+        toolbar.prepend(control);
+    }
+    const select = control.querySelector('select');
+    const markup = categories.map(({ key, label, count }) =>
+        `<option value="${escapeHtml(key)}">${escapeHtml(label)} (${escapeHtml(formatRequestTabCount(count))})</option>`).join('');
+    if (select.innerHTML !== markup) select.innerHTML = markup;
+    select.value = activeReqTab;
+}
+
+export function syncQueActiveCategory(toolbar = document.getElementById('request-filter-toolbar')) {
+    if (!toolbar) return;
+    for (const button of toolbar.querySelectorAll('.request-category-chip')) {
+        const active = button.dataset.requestCategory === activeReqTab;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', String(active));
+    }
+    const select = toolbar.querySelector('#que-view-select');
+    if (select) select.value = activeReqTab;
+}
+
+function syncQueOwnerFallback(toolbar) {
+    let fallback = toolbar.querySelector('#que-other-owner');
+    if (!fallback) {
+        fallback = document.createElement('select');
+        fallback.id = 'que-other-owner';
+        fallback.setAttribute('aria-label', 'Assigned / Eval User');
+        fallback.disabled = true;
+        toolbar.appendChild(fallback);
+    }
+    const { all } = queueAccessScope(activeReqTab);
+    fallback.hidden = ['pending', 'suspend-tag'].includes(activeReqTab) && all;
+    const label = all ? 'All Users' : String(currentUser || 'Assigned User');
+    if (fallback.options[0]?.text !== label) fallback.innerHTML = `<option>${escapeHtml(label)}</option>`;
 }

@@ -1085,33 +1085,6 @@ function canUserUploadRowPhoto(user, row) {
     return resolveCanonicalRowAccess(user, row).canUploadPhoto;
 }
 
-function queueAccessScope(tab = 'suspend-tag') {
-    const user = normalizeEvalAssignableUser(currentUser).replace(/^nally_aguilar$/, 'nelly_aguilar');
-    const matrix = globalThis.GncUserAccessControl?.resolveUserAccessMatrix(user);
-    if (tab !== 'pending') {
-        const role = String(matrix?.role || (typeof currentRole === 'string' ? currentRole : '')).toUpperCase().replace(/[^A-Z]/g, '');
-        const all = ['ADMIN','ADMINISTRATOR','SUPERADMIN'].includes(role);
-        return { user, all, initial: all ? 'ALL' : user };
-    }
-    const all = matrix?.verified === true && matrix.view_all_requests === 'Y';
-    return { user, all, initial: all && (matrix?.request_default_scope || 'ALL') === 'ALL' ? 'ALL' : user };
-}
-
-function getQueueScopeFilter(tab) {
-    const policy = queueAccessScope(tab);
-    const state = getManagerAssignedColumnState();
-    const signature = [policy.user, policy.all, policy.initial].join('|');
-    state.queueScopeFilters ||= {};
-    let choice = state.queueScopeFilters[tab];
-    if (!choice || choice.signature !== signature) choice = state.queueScopeFilters[tab] = {signature, value:policy.initial};
-    return policy.all ? choice.value : policy.user;
-}
-
-function isQueueOwnerVisible(row, tab = isDockSuspendDcRequestMirrorRow(row) ? 'suspend-tag' : 'pending') {
-    const selected = getQueueScopeFilter(tab);
-    return selected === 'ALL' || !!selected && (getAssignedQueueOwner(row) || 'Unassigned') === selected;
-}
-
 function getWatchdogQueueAudit(root) {
     const counts = getActiveAssignedQueueCounts();
     return {total:getRequestQueueAlertCount(counts), foreign:['pending','suspend-tag'].includes(activeReqTab) && !queueAccessScope(activeReqTab).all && !!root?.querySelector('[data-watchdog-foreign-owner="true"]')};
@@ -1240,10 +1213,11 @@ function buildSuspendEvalUserFilter(items = [], id = 'suspend-eval-user-filter')
         if (owner) counts.set(owner, (counts.get(owner) || 0) + 1);
     }
     const selected = getSuspendEvalUserFilter(tab);
+    if (selected !== 'ALL' && !counts.has(selected)) counts.set(selected, 0);
     const option = (value, label, count) => '<option value="'+escapeHtml(value)+'"'+(value === selected ? ' selected' : '')+'>'+escapeHtml(label)+' ('+count+')</option>';
     const options = [...counts.keys()].filter(user => user !== 'Unassigned').sort().map(user => option(user,user,counts.get(user)));
     if (counts.has('Unassigned')) options.push(option('Unassigned','Unassigned',counts.get('Unassigned')));
-    return '<label class="workflow-control"><span>Assigned User / Eval User</span><select id="'+id+'" onchange="return setSuspendEvalUserFilter(this.value)">'+option('ALL',id === 'request-eval-user-filter' ? 'All Requests' : 'All Users',items.length)+options.join('')+'</select></label>';
+    return '<label class="workflow-control"><span>Assigned User / Eval User</span><select id="'+id+'" onchange="return setSuspendEvalUserFilter(this.value)">'+option('ALL','All Users',items.length)+options.join('')+'</select></label>';
 }
 
 function setSuspendEvalUserFilter(value = 'ALL') {

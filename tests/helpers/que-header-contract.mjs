@@ -2,7 +2,60 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {extractGoldenFunction} from '../../src/core/golden-function-extractor.mjs';
+import {readComposedRuntimeSource} from '../../scripts/composed-app-source.mjs';
 import {createSuspendRoutingFixture} from './suspend-assigned-routing-contract.mjs';
+
+export function assertQueueOwnerScopes() {
+    const state = {};
+    let matrix;
+    const context = vm.createContext({
+        GncUserAccessControl: { resolveUserAccessMatrix: () => matrix },
+        normalizeEvalAssignableUser: value => String(value).toLowerCase(),
+        getManagerAssignedColumnState: () => state,
+        getAssignedQueueOwner: row => row.owner
+    });
+    const source = readComposedRuntimeSource();
+    const powerKeys = source.match(/const GLOBAL_LIVE_CHANGE_USER_KEYS = new Set\(\[[\s\S]*?\]\);/)[0];
+    const functions = ['queueAccessScope', 'getQueueScopeFilter', 'isQueueOwnerVisible', 'setSuspendEvalUserFilter']
+        .map(name => extractGoldenFunction(source, name));
+    Object.assign(context, { getSuspendEvalUserFilter: tab => context.getQueueScopeFilter(tab),
+        markViewDirty() {}, renderRequest() {}, paintFooterRequestBadgeOnly() {} });
+    vm.runInContext([powerKeys, ...functions].join('\n'), context);
+    const pending = 'pending';
+    const suspend = 'suspend-tag';
+    const otherRow = { owner: 'other_user' };
+    const setActor = (user, role, access) => {
+        Object.assign(context, { currentUser: user, currentRole: role });
+        matrix = access;
+    };
+    for (const user of ['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser', 'nelly_aguilar', 'morgan_anderson', 'melissa_dowty']) {
+        setActor(user, 'REP');
+        assert.equal(context.getQueueScopeFilter(pending), 'ALL', user);
+    }
+    for (const role of ['super-admin', 'admin', 'manager', 'eval']) {
+        setActor('role_user', role, { verified: false });
+        assert.equal(context.isQueueOwnerVisible(otherRow, pending), true, role);
+    }
+    for (const grant of [{ view_all_requests: 'Y' }, { request_default_scope: 'ALL' }]) {
+        setActor('flag_user', 'REP', { ...grant, verified: false });
+        assert.equal(context.getQueueScopeFilter(pending), 'ALL');
+    }
+    setActor('ordinary_rep', 'REP', { verified: true, view_all_requests: 'N', request_default_scope: 'OWN' });
+    assert.equal(context.isQueueOwnerVisible(otherRow, pending), false);
+    assert.equal(context.isQueueOwnerVisible({ owner: 'ordinary_rep' }, pending), true);
+    for (const user of ['dylan_collyge', 'megan_kelly', 'jd_jones']) {
+        setActor(user, 'ADMIN');
+        assert.equal(context.getQueueScopeFilter(suspend), user === 'jd_jones' ? 'ALL' : user);
+        assert.equal(context.getQueueScopeFilter(pending), 'ALL');
+        context.activeReqTab = suspend;
+        context.setSuspendEvalUserFilter('other_user');
+        assert.equal(context.getQueueScopeFilter(suspend), 'other_user');
+        assert.equal(context.getQueueScopeFilter(pending), 'ALL');
+        matrix = { verified: true, view_all_requests: 'Y', request_default_scope: 'OWN' };
+        assert.equal(context.getQueueScopeFilter(pending), 'ALL');
+        assert.equal(context.getQueueScopeFilter(suspend), 'other_user');
+    }
+}
 
 export function assertQueOwnerNormalization() {
     const {context:c,state} = createSuspendRoutingFixture();

@@ -26,3 +26,6 @@ test('Invariant 652: the Spec keypad replaces placeholders and requires digits b
 
 test('Invariant 653: signed-in power and scoped row editors survive cold permission reads while AV Kiosk stays read only', async () =>
   (await import('../../tests/helpers/table-row-authorization-contract.mjs')).assertRetainedRowEditorAuthority());
+
+test('Invariant 654: Pending Request all-user scope survives cold matrix reads and remains separate from Suspend', async () =>
+  (await import('../../tests/helpers/que-header-contract.mjs')).assertQueueOwnerScopes());
