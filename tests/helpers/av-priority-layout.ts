@@ -90,7 +90,7 @@ function readPriorityCardGeometry(el: Element) {
     frameFits: frame.scrollWidth <= frame.clientWidth + 1,
     themeSurface: luminance(background(el)) < .2,
     namedAreas: areas.every(area => getComputedStyle(frame).gridTemplateAreas.includes(area)),
-    bloomActions: el.querySelectorAll('.app-av-catalog-actions .app-av-primary-action[data-cart-dom-id]').length,
+    bloomActions: el.querySelectorAll('.app-av-catalog-bloom-row .app-av-primary-action[data-cart-dom-id]').length,
     readable: font('.app-av-catalog-title') >= (innerWidth <= 900 ? 18 : 20)
       && font('.app-av-priority-badge') >= 13
       && font('.app-card-qty-label') >= 13
