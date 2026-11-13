@@ -5884,10 +5884,4 @@ test('Invariant 646: a prior DRIVE alias requires unique matching lineage and re
 test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
   (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
 await import('../src/core/golden-final-polish.mjs');
-
-import {assertClearedSuspendDefaultOwner} from './helpers/golden-restored-suspend-routing.mjs';
-test('Invariant 661 (Explicitly cleared exact Suspend owners override stale projections while zone overrides retain precedence)', assertClearedSuspendDefaultOwner);
-import {assertPlantingDrillUsesExactLocationPlans} from './helpers/golden-planting-drill-projection.mjs';
-test('Invariant 662 (Planting drill cards use the selected exact bay without leaking neighboring plans)', assertPlantingDrillUsesExactLocationPlans);
-import {assertGoldenFixtureOwnership} from './helpers/golden-fixture-ownership-contract.mjs';
-test('Invariant 663 (Golden fixtures retain explicit owners and fail on missing identities without activating optional UI)', assertGoldenFixtureOwnership);
+await import('./helpers/golden-release-fixture-ratchet.mjs');

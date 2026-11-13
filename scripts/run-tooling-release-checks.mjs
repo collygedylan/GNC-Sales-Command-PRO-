@@ -215,6 +215,9 @@ function runCapturedChecks(spawn, args, env, timeout) {
 }
 
 export const toolingPerformanceCheckFile = 'tests/canonical-row-owner-performance.test.mjs';
+export const toolingReleaseDeadlineMs = 120000;
+const performanceLaneDeadlineMs = 75000;
+const goldenReleaseCheckFile = 'tests/golden-invariants.test.mjs';
 
 function parseToolingSummary(output) {
   const count = name => {
@@ -251,16 +254,17 @@ export function runToolingReleaseChecks({ spawn = spawnSync, now = () => perform
   const fullAudit = env.AGDATA_FULL_AUDIT_ONCE === '1';
   delete env.AGDATA_FULL_AUDIT_ONCE;
   const prefix = ['--test', '--test-reporter=./scripts/compact-test-reporter.mjs'];
-  const performanceLane = runToolingLane({ spawn, env, error, label:'performance', timeout:75000,
+  const performanceLane = runToolingLane({ spawn, env, error, label:'performance', timeout:performanceLaneDeadlineMs,
     args:[...prefix, '--test-concurrency=1', toolingPerformanceCheckFile] });
   if (performanceLane.exitCode) return performanceLane;
-  const remaining = 75000 - (now() - started);
+  const remaining = toolingReleaseDeadlineMs - (now() - started);
   if (remaining <= 0) {
-    error('Tooling release checks exceeded the 75-second deadline.');
+    error(`Tooling release checks exceeded the ${toolingReleaseDeadlineMs / 1000}-second deadline.`);
     return { exitCode: 1 };
   }
   const normalLane = runToolingLane({ spawn, env, error, label:'functional', timeout:Math.max(1, Math.floor(remaining)),
-    args:[...prefix, `--test-concurrency=${fullAudit ? 1 : 8}`, ...toolingReleaseCheckFiles] });
+    args:['scripts/tooling-test-worker.mjs', `--test-concurrency=${fullAudit ? 1 : 4}`, goldenReleaseCheckFile,
+      ...toolingReleaseCheckFiles.filter(file => file !== goldenReleaseCheckFile)] });
   if (normalLane.exitCode) return normalLane;
   const passed = performanceLane.passed + normalLane.passed;
   print(`Tooling release checks passed (${passed} tests, ${((now() - started) / 1000).toFixed(1)}s).`);

@@ -18,17 +18,18 @@ export function createGoldenSourceReader(root) {
     return sources.get(file);
   }
   function syntax(file) {
-    if (!syntaxTrees.has(file)) syntaxTrees.set(file,ts.createSourceFile(file,read(file),ts.ScriptTarget.Latest,true,
-      file.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS));
+    if (!syntaxTrees.has(file)) syntaxTrees.set(file,parseSource(file, read(file), true));
     return syntaxTrees.get(file);
   }
   function lookup(file,name,globalOnly=false) {
-    if (indexes.has(file)) return indexedSource(indexes.get(file).get(name), syntaxTrees.get(file), globalOnly);
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (!new RegExp(`\\bfunction\\s+${escaped}\\s*\\(`).test(read(file))) return null;
-    const tree = syntax(file);
-    if (!indexes.has(file)) indexes.set(file,indexFunctions(tree));
-    return indexedSource(indexes.get(file).get(name), tree, globalOnly);
+    if (!indexes.has(file)) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (!new RegExp(`\\bfunction\\s+${escaped}\\s*\\(`).test(read(file))) return null;
+      const tree = syntaxTrees.get(file) || parseSource(file, read(file), false);
+      indexes.set(file,indexFunctions(tree));
+    }
+    const entry = indexes.get(file).get(name);
+    return entry && (!globalOnly || !entry.nested) ? entry.source : null;
   }
   function browserDefinition(name) {
     if (browserDefinitions.has(name)) return browserDefinitions.get(name);
@@ -63,19 +64,19 @@ function indexBrowserFunctionCandidates(read) {
   return candidates;
 }
 
-function indexedSource(node, tree, globalOnly) {
-  if (!node) return null;
-  for (let parent = node.parent; globalOnly && parent; parent = parent.parent) {
-    if (ts.isFunctionLike(parent)) return null;
-  }
-  return node.getText(tree);
+function parseSource(file, source, setParentNodes) {
+  return ts.createSourceFile(file,source,ts.ScriptTarget.Latest,setParentNodes,
+    file.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.JS);
 }
 
 function indexFunctions(tree) {
   const index = new Map();
-  function visit(node) {
-    if (ts.isFunctionDeclaration(node) && node.name && !index.has(node.name.text)) index.set(node.name.text,node);
-    ts.forEachChild(node,visit);
+  function visit(node, nested = false) {
+    if (ts.isFunctionDeclaration(node) && node.name && !index.has(node.name.text)) {
+      index.set(node.name.text, { source:node.getText(tree), nested });
+    }
+    const childNested = nested || ts.isFunctionLike(node);
+    ts.forEachChild(node,child => visit(child,childNested));
   }
   visit(tree);
   return index;

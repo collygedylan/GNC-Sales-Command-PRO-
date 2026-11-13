@@ -2,7 +2,6 @@ import ts from 'typescript';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import {execFileSync, spawnSync} from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +11,10 @@ import { findDuplicateGlobalFunctionDeclarations, INDEX_HTML_BUDGET, inspectSour
 import { generatedDatabaseTypesPath, readGeneratedDatabaseTypes } from '../scripts/database-type-parts.mjs';
 import { verifyRegisteredSymbol } from './helpers/release-gems-symbol-ownership.mjs';
 import { goldenRegistrationOrder } from './helpers/golden-registration-ratchet.mjs';
+import { previousRuntimeSources, runtimeSyntaxCounts } from './helpers/runtime-extraction-syntax.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const MIN_GOLDEN_INVARIANTS = 663;
+export const MIN_GOLDEN_INVARIANTS = 664;
 const sourceCache = new Map();
 const read = file => {
   if (!sourceCache.has(file)) sourceCache.set(file, file === generatedDatabaseTypesPath
@@ -206,10 +206,14 @@ test('golden invariant ratchet stays active, contiguous, and release-wired', () 
 });
 
 test('golden ratchet reads registered modules in order and rejects inactive tests', () => {
+  const main = 'tests/golden-invariants.test.mjs';
+  const first = "await import('../src/core/golden-final-polish.mjs');";
+  const second = "await import('./helpers/golden-release-fixture-ratchet.mjs');";
   const cases = new Map([
-    ['tests/golden-invariants.test.mjs', "test('Invariant 1', check); await import('../src/core/golden-final-polish.mjs'); test('Invariant 4', check);"],
+    [main, "test('Invariant 1', check);" + first + second],
     ['src/core/golden-final-polish.mjs', "test('Invariant 2', check); await import('../../tests/erp-drive-post-upsert.test.mjs');"],
     ['tests/erp-drive-post-upsert.test.mjs', "test('Invariant 3', {skip:false}, check);"],
+    ['tests/helpers/golden-release-fixture-ratchet.mjs', "test('Invariant 4', check);"],
   ]);
   const source = file => cases.get(file);
   assert.deepEqual(goldenRegistrationOrder(source),[1,2,3,4]);
@@ -217,6 +221,12 @@ test('golden ratchet reads registered modules in order and rejects inactive test
     cases.set('tests/erp-drive-post-upsert.test.mjs',inactive);
     assert.throws(()=>goldenRegistrationOrder(source),/inactive or exclusive|inactive invariant options/);
   }
+  cases.set('tests/erp-drive-post-upsert.test.mjs', "test('Invariant 3', check);");
+  for (const layout of [second + first, first + second + second]) {
+    cases.set(main,layout);
+    assert.throws(()=>goldenRegistrationOrder(source),/duplicate or out-of-order invariant registration import/);
+  }
+  cases.set(main,first + second);
   cases.set('src/core/golden-final-polish.mjs',"test('Invariant 2', check);");
   assert.throws(()=>goldenRegistrationOrder(source),/missing invariant registration import/);
 });
@@ -310,42 +320,32 @@ test('latest SQL lineage scopes security-definer compatibility views and keeps S
 });
 
 
-function emptyCatchCount(file, source) {
-  const syntax = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-  let empty = 0;
-  const visit = node => { if (ts.isCatchClause(node) && node.block.statements.length === 0) empty++; ts.forEachChild(node, visit); };
-  visit(syntax);
-  return empty;
-}
-function previousSource(file) {
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  const event = eventPath ? JSON.parse(readFileSync(eventPath, 'utf8')) : null;
-  const base = event?.pull_request?.base?.sha || event?.before;
-  const changed = spawnSync('git', ['diff', '--quiet', 'HEAD', '--', file], {cwd:root, windowsHide:true});
-  if (![0,1].includes(changed.status)) throw new Error(`Cannot inspect ${file} history`);
-  const ref = /^[a-f0-9]{40}$/.test(base || '') && !/^0+$/.test(base) ? base : changed.status === 1 ? 'HEAD' : 'HEAD^';
-  return execFileSync('git', ['show', `${ref}:${file}`], {cwd:root, encoding:'utf8', windowsHide:true, maxBuffer:64*1024*1024});
-}
-function assertEmptyCatchRatchet(file, current, prior) {
-  assert.ok(emptyCatchCount(file, current) <= emptyCatchCount(file, prior), `${file}: empty catches increased`);
+function assertEmptyCatchRatchet(file, counts, previous) {
+  assert.ok(counts.emptyCatches <= previous.emptyCatches, `${file}: empty catches increased`);
 }
 test('empty catch ratchet rejects new silent catches while retaining old debt', () => {
-  assertEmptyCatchRatchet('sample.js', 'try { run() } catch {}', 'try { run() } catch {}');
-  assert.throws(() => assertEmptyCatchRatchet('sample.js', 'try { run() } catch {}', 'run()'), /empty catches increased/);
+  const count = source => runtimeSyntaxCounts('sample.js',source);
+  const retained = count('function run() { function nested() { try {} catch {} } }');
+  const repaired = count('function run() { function nested() { try {} catch { report() } } }');
+  assert.deepEqual(retained,{declarations:2,emptyCatches:1});
+  assert.deepEqual(repaired,{declarations:2,emptyCatches:0});
+  assertEmptyCatchRatchet('sample.js', retained, retained);
+  assert.throws(() => assertEmptyCatchRatchet('sample.js', retained, repaired), /empty catches increased/);
 });
 
-test('runtime extraction preserves declarations while raw source and empty catches ratchet downward', () => {
-  const raw = read('assets/app-runtime.js');
-  assert.ok(raw.split('\n').length <= 168427);
-  let count = 0;
-  const tree = ts.createSourceFile('runtime.js', raw, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-  const visit = n => { if (ts.isFunctionDeclaration(n)) count++; ts.forEachChild(n, visit); }; visit(tree);
-  assert.ok(count <= 8966);
-  const fragment = ts.createSourceFile('fragment.js', read('assets/bloom-runtime-functions.js'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+test('runtime extraction preserves declarations while raw source and empty catches ratchet downward', async () => {
+  const files = ['assets/app-runtime.js', 'assets/bloom-runtime-functions.js', 'assets/live-sync-coordinator.js', 'assets/queue-inventory-hydration.js'];
+  const previous = await previousRuntimeSources(root, files);
+  assert.ok(read(files[0]).split('\n').length <= 168427);
+  const fragment = ts.createSourceFile('fragment.js', read(files[1]), ts.ScriptTarget.Latest, false, ts.ScriptKind.JS);
   assert.equal(fragment.statements.length, 213);
   assert.ok(fragment.statements.every(ts.isFunctionDeclaration), 'no initialization may move across the classic-script boundary');
-  for (const file of ['assets/app-runtime.js', 'assets/bloom-runtime-functions.js', 'assets/live-sync-coordinator.js', 'assets/queue-inventory-hydration.js']) {
-    assertEmptyCatchRatchet(file, read(file), previousSource(file));
+  for (const file of files) {
+    const current = read(file);
+    const prior = previous.get(file);
+    const counts = runtimeSyntaxCounts(file, current);
+    if (file === files[0]) assert.ok(counts.declarations <= 8966);
+    assertEmptyCatchRatchet(file, counts, prior === current ? counts : runtimeSyntaxCounts(file, prior));
   }
   const html = read('index.html');
   assert.ok(html.indexOf('agdata-kernel.js') < html.indexOf('live-sync-coordinator.js'));

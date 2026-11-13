@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { runToolingReleaseChecks, toolingReleaseCheckFiles, toolingPerformanceCheckFile } from '../scripts/run-tooling-release-checks.mjs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { runToolingReleaseChecks, toolingReleaseCheckFiles, toolingPerformanceCheckFile, toolingReleaseDeadlineMs } from '../scripts/run-tooling-release-checks.mjs';
 import compactTestReporter from '../scripts/compact-test-reporter.mjs';
 
 const reporterOption = '--test-reporter=./scripts/compact-test-reporter.mjs';
 const passedSummary = count => `# tests ${count}\n# pass ${count}\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n`;
+const workerPath = fileURLToPath(new URL('../scripts/tooling-test-worker.mjs',import.meta.url));
 
 async function reportEvents(events) {
   let output = '';
@@ -50,6 +55,30 @@ test('compact reporter rejects missing, duplicate, and malformed run summaries',
   await assert.rejects(reportEvents([{type:'test:summary',data:{}}]), /TEST_SUMMARY_COUNTS_MISSING/);
 });
 
+test('functional worker starts files in supplied order and reports exact totals and failures', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(),'agdata-worker-'));
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  try {
+    const first = path.join(dir,'z-first.test.mjs'), second = path.join(dir,'a-second.test.mjs');
+    const marker = JSON.stringify(path.join(dir,'started'));
+    writeFileSync(first,`import test from 'node:test'; import {writeFileSync} from 'node:fs';
+      test('first',()=>writeFileSync(${marker},'started'));`);
+    writeFileSync(second,`import test from 'node:test'; import {readFileSync} from 'node:fs';
+      test('second',()=>{ if(readFileSync(${marker},'utf8')!=='started') throw Error('first test ran late'); });`);
+    const pass = spawnSync(process.execPath,[workerPath,'--test-concurrency=1',first,second],{env,encoding:'utf8',timeout:10000});
+    assert.equal(pass.status,0,pass.stdout || pass.stderr);
+    assert.ok(pass.stdout.includes(passedSummary(2)));
+    writeFileSync(second,"import test from 'node:test'; test('failure witness',()=>{throw Error('intentional failure');});");
+    const bad = spawnSync(process.execPath,[workerPath,'--test-concurrency=1',first,second],{env,encoding:'utf8',timeout:10000});
+    assert.equal(bad.status,1,bad.stderr);
+    assert.match(bad.stdout,/not ok .*failure witness.*intentional failure/);
+    assert.match(bad.stdout,/# tests 2\n# pass 1\n# fail 1/);
+  } finally {
+    rmSync(dir,{recursive:true,force:true});
+  }
+});
+
 test('daytime tooling runs only focused scope, registration, governance and mocked runner contracts', () => {
   assert.deepEqual(toolingReleaseCheckFiles, [
     'tests/anti-spaghetti-lock.test.mjs',
@@ -82,11 +111,13 @@ test('daytime tooling runs only focused scope, registration, governance and mock
     spawn(command, args, options) {
       calls++;
       assert.equal(command, process.execPath);
-      const expected = calls === 1 ? ['--test', reporterOption, '--test-concurrency=1', toolingPerformanceCheckFile]
-        : ['--test', reporterOption, '--test-concurrency=8', ...toolingReleaseCheckFiles];
-      assert.deepEqual(args, expected);
+      if (calls === 1) assert.deepEqual(args, ['--test', reporterOption, '--test-concurrency=1', toolingPerformanceCheckFile]);
+      else {
+        assert.deepEqual(args.slice(0,3), ['scripts/tooling-test-worker.mjs','--test-concurrency=4','tests/golden-invariants.test.mjs']);
+        assert.deepEqual(args.slice(2).sort(), [...toolingReleaseCheckFiles].sort());
+      }
       assert.equal(options.shell, false);
-      assert.equal(options.timeout, 75000);
+      assert.equal(options.timeout, calls === 1 ? 75000 : toolingReleaseDeadlineMs);
       assert.equal(options.windowsHide, true);
       return { status: 0, stdout: passedSummary(7) };
     },
@@ -144,7 +175,7 @@ test('full serial audit is explicit, consumed once, and never inherited', () => 
  const spawn=(command,args,options)=>{assert.equal(command,process.execPath);argsSeen.push(args);assert.equal(options.env.AGDATA_FULL_AUDIT_ONCE,undefined);return {status:0,stdout:passedSummary(1)};};
  for(let i=0;i<2;i++)assert.equal(runToolingReleaseChecks({env,spawn,print(){}}).exitCode,0);
  assert.ok(argsSeen[0].includes(toolingPerformanceCheckFile));assert.ok(argsSeen[1].includes('--test-concurrency=1'));
- assert.ok(argsSeen[2].includes(toolingPerformanceCheckFile));assert.ok(argsSeen[3].includes('--test-concurrency=8'));
+ assert.ok(argsSeen[2].includes(toolingPerformanceCheckFile));assert.ok(argsSeen[3].includes('--test-concurrency=4'));
  assert.equal(env.AGDATA_FULL_AUDIT_ONCE,undefined);
 });
 
@@ -152,7 +183,7 @@ test('large child output does not exhaust the child process buffer', () => {
   const script = `process.stdout.write('x'.repeat(17 * 1024 * 1024) + ${JSON.stringify('\n' + passedSummary(1))})`;
   const result = runToolingReleaseChecks({
     spawn: (command, args, options) => {
-      assert.ok(args.includes('--test'));
+      assert.ok(args.includes('--test') || args[0] === 'scripts/tooling-test-worker.mjs');
       return spawnSync(command, ['-e', script], options);
     },
     print() {},
@@ -188,12 +219,23 @@ test('performance failure stops functional work and functional failure remains f
   }
 });
 
-test('performance time is charged against the shared 75-second deadline', () => {
+test('performance time is charged against the bounded shared 120-second deadline', () => {
+  assert.equal(toolingReleaseDeadlineMs,120000);
   const times = [0, 15000, 15000], timeouts = [];
   const result = runToolingReleaseChecks({ now:()=>times.shift(), print(){}, error(){},
     spawn(_command,_args,options) { timeouts.push(options.timeout); return {status:0,stdout:passedSummary(1)}; } });
   assert.equal(result.exitCode, 0);
-  assert.deepEqual(timeouts, [75000, 60000]);
+  assert.deepEqual(timeouts, [75000, 105000]);
+});
+
+test('an exhausted shared deadline prevents functional work', () => {
+  const times = [0,toolingReleaseDeadlineMs], errors = [];
+  let launches = 0;
+  const result = runToolingReleaseChecks({now:()=>times.shift(),print(){},error:message=>errors.push(message),
+    spawn(){launches++;return {status:0,stdout:passedSummary(1)};}});
+  assert.equal(result.exitCode,1);
+  assert.equal(launches,1);
+  assert.deepEqual(errors,['Tooling release checks exceeded the 120-second deadline.']);
 });
 
 function checkInvalidLane(bad, failingLane) {

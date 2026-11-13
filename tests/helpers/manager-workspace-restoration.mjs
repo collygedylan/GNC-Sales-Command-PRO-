@@ -1,16 +1,14 @@
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import vm from 'node:vm';
-import { createGoldenSourceReader } from './golden-source-reader.mjs';
+import { functionSource } from './golden-test-environment.mjs';
 import { applyUniversalPinnedResultsLayout } from '../../src/ui/manager-table-layout.js';
 import { renderManagerTableWorkspaceMarkup } from '../../src/views/manager-table-workspace.js';
 import { renderEvalReport2PickerMarkup } from '../../src/views/eval-report2-controls.js';
-import { fileURLToPath } from 'node:url';
 
 function restorationRuntime(names,extra={}) {
-  const reader = createGoldenSourceReader(fileURLToPath(new URL('../../',import.meta.url)));
   const scope = vm.createContext(extra);
-  vm.runInContext(names.map(name=>reader.functionSource('assets/app-runtime.js',name)).join('\n'),scope);
+  vm.runInContext(names.map(name=>functionSource('assets/app-runtime.js',name)).join('\n'),scope);
   return scope;
 }
 
@@ -87,8 +85,7 @@ export function assertEvalReportOptionalFilters() {
 }
 
 export function assertEval2InitialSelection(engine) {
-  const reader = createGoldenSourceReader(fileURLToPath(new URL('../../',import.meta.url)));
-  const get = name => reader.functionSource('assets/app-runtime.js',name);
+  const get = name => functionSource('assets/app-runtime.js',name);
   const scope = vm.createContext({getManagerEvalReports2Api:()=>engine,managerEvalReport2SelectionInitialized:false,managerEvalReport2SelectedReportIds:[],activeManagerEvalReport2:''});
   vm.runInContext(get('getManagerEvalReport2SelectedReportIds'),scope);
   assert.deepEqual(Array.from(scope.getManagerEvalReport2SelectedReportIds()),['low-stock']);

@@ -75,7 +75,13 @@ function unresolvedChanges(source,current,baseline,prior,changed) {
   return issues;
 }
 export function compareRuntimeIdentifiers(source,baseline) {
-  return compareRuntimeScopes(source,baseline,parseSource(source)).undeclared;
+  const current = normalizeLineEndings(source);
+  const prior = normalizeLineEndings(baseline);
+  return compareRuntimeScopes(current,prior,current === prior ? null : parseSource(current)).undeclared;
+}
+
+function normalizeLineEndings(source) {
+  return source.replaceAll('\r\n','\n');
 }
 
 function compareRuntimeScopes(source, baseline, ast) {
@@ -104,7 +110,7 @@ function auditMasterUid(root, source, runtimeAst) {
     const text = fs.readFileSync(path.join(root, 'assets', file), 'utf8');
     if (!text.includes('masterUid')) continue;
     let ast;
-    try { ast = text === source ? runtimeAst : parseSource(text); } catch { // ES module assets retain their import scope.
+    try { ast = runtimeAst && text === source ? runtimeAst : parseSource(text); } catch { // ES module assets retain their import scope.
       ast = parseSource(text, 'module');
     }
     collectMasterUidReferences(ast, file, masterUid);
@@ -118,9 +124,9 @@ function auditMasterUid(root, source, runtimeAst) {
 }
 
 export function auditRuntimeIdentifiers(root = process.cwd(), baselineSource = null) {
-  const source = readComposedRuntimeSource({ directory: root });
-  const baseline = composedHeadRuntime(root, baselineSource);
-  const ast = parseSource(source);
+  const source = normalizeLineEndings(readComposedRuntimeSource({ directory: root }));
+  const baseline = normalizeLineEndings(composedHeadRuntime(root, baselineSource));
+  const ast = source === baseline ? null : parseSource(source);
   return { ...compareRuntimeScopes(source, baseline, ast), masterUid: auditMasterUid(root, source, ast) };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

@@ -28,3 +28,43 @@ test('masterUid audit rejects an undeclared asset reference and accepts a local 
     assert.deepEqual(auditRuntimeIdentifiers(dir,'function ready(){return 1}\n').masterUid,[]);
   } finally { rmSync(dir,{recursive:true,force:true}); }
 });
+
+test('identical runtime baseline still audits raw runtime and inline masterUid references', () => {
+  const dir=mkdtempSync(path.join(os.tmpdir(),'gnc-identifier-identical-'));
+  try {
+    mkdirSync(path.join(dir,'assets'));
+    const runtime=path.join(dir,'assets/app-runtime.js'), html=path.join(dir,'index.html');
+    const unsafe='function ready(){return masterUid}\n';
+    writeFileSync(runtime,unsafe);
+    writeFileSync(html,'<script>function inlineReady(){return masterUid}</script>');
+    assert.deepEqual(auditRuntimeIdentifiers(dir,unsafe),{
+      changedFunctions:0,undeclared:[],masterUid:[{file:'app-runtime.js',line:1},{file:'index.html',line:1}],
+    });
+    const safe='function ready(masterUid){return masterUid}\n';
+    writeFileSync(runtime,safe);
+    writeFileSync(html,'<script>function inlineReady(masterUid){return masterUid}</script>');
+    assert.deepEqual(auditRuntimeIdentifiers(dir,safe),{changedFunctions:0,undeclared:[],masterUid:[]});
+    writeFileSync(runtime,safe.replace('return masterUid','return unexpected'));
+    assert.deepEqual(auditRuntimeIdentifiers(dir,safe),{
+      changedFunctions:1,undeclared:[{name:'unexpected',line:1}],masterUid:[],
+    });
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test('runtime audit ignores CRLF checkout differences and detects changed code at its original line', () => {
+  const dir=mkdtempSync(path.join(os.tmpdir(),'gnc-identifier-crlf-'));
+  try {
+    mkdirSync(path.join(dir,'assets'));
+    const runtime=path.join(dir,'assets/app-runtime.js');
+    writeFileSync(path.join(dir,'index.html'),'<html></html>');
+    const baseline='function ready(masterUid){\nreturn masterUid;\n}\n';
+    const current=baseline.replaceAll('\n','\r\n');
+    writeFileSync(runtime,current);
+    assert.deepEqual(auditRuntimeIdentifiers(dir,baseline),{changedFunctions:0,undeclared:[],masterUid:[]});
+    const changed=current.replace('return masterUid','return missingOwner');
+    writeFileSync(runtime,changed);
+    const expected=[{name:'missingOwner',line:2}];
+    assert.deepEqual(compareRuntimeIdentifiers(changed,baseline),expected);
+    assert.deepEqual(auditRuntimeIdentifiers(dir,baseline),{changedFunctions:1,undeclared:expected,masterUid:[]});
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});

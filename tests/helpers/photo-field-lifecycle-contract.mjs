@@ -5,6 +5,52 @@ import {functionSource} from './completed-row-contract.mjs';
 import {nativePhotoRecoveryResponse,nativePhotoTransportFunctions} from './photo-suspend-contract.mjs';
 import {createOperationalFetchDeadline,waitForOperationalPrerequisite} from '../../src/services/operational-rpc-retry.js';
 const context=(names,values)=>{const c=vm.createContext(values);vm.runInContext(names.map(functionSource).join('\n'),c);return c;};
+
+function createPhotoTransportDeadlineFixture() {
+ const started = Promise.withResolvers();
+ const response = Promise.withResolvers();
+ const clock = { cancelled:false };
+ const createDeadline = (timeoutMs, options) => createOperationalFetchDeadline(timeoutMs, {
+   ...options,
+   visibleTimeout(interrupt, duration) {
+     assert.equal(duration, 5);
+     clock.expire = interrupt;
+     return () => { clock.cancelled = true; };
+   },
+ });
+ const timeout = context(['fetchWithTimeout','fetchTimedTransport','isDirectOperationalTransport'], {
+   SUPABASE_URL:'https://test', SUPABASE_WRITE_TIMEOUT_MS:900, window:{}, createOperationalFetchDeadline:createDeadline,
+   fetchSupabaseRestViaAppApiIfNeeded:async()=>null, recoverDirectOperationalRead:(_url,_options,send)=>send(),
+   isRecoverableRequestRead:()=>false,
+   fetch(_url, {signal}) {
+     started.resolve(signal);
+     const interrupted = new Promise((_,reject) => signal.addEventListener('abort', () => reject(signal.reason), {once:true}));
+     return Promise.race([response.promise,interrupted]);
+   },
+ });
+ const send = () => timeout.fetchWithTimeout('https://test/storage',{method:'POST'},5,'Storage', value => value);
+ return { clock, started, response, send };
+}
+
+export async function assertPhotoTransportDeadline() {
+ const expired = createPhotoTransportDeadlineFixture();
+ const failure = assert.rejects(expired.send(),/timed out/);
+ const signal = await expired.started.promise;
+ assert.equal(signal.aborted,false);
+ expired.clock.expire();
+ await failure;
+ assert.equal(signal.aborted,true,'timeout closes the native fetch');
+ assert.equal(expired.clock.cancelled,true,'transport releases its timeout');
+ const healthy = createPhotoTransportDeadlineFixture();
+ const success = healthy.send();
+ const healthySignal = await healthy.started.promise;
+ const response = Response.json({ok:true});
+ healthy.response.resolve(response);
+ assert.equal(await success,response);
+ assert.equal(healthySignal.aborted,false);
+ assert.equal(healthy.clock.cancelled,true,'a successful response clears the deadline');
+}
+
 export async function photoFieldLifecycleContract(){
  const now=new Date('2026-11-02T12:00:00');
  class Clock extends Date {static now(){return +now;}}
@@ -24,9 +70,7 @@ export async function photoFieldLifecycleContract(){
    c.currentUser=user;c.currentRole=role;c.nativeAuthProfile={id:'fixture-profile',username:user};
    assert.equal(c.canUnlockCompletedRow({owner:'jorge_colunga'}),allowed,user);
  }
- let signal;
- const timeout=context(['fetchWithTimeout','fetchTimedTransport','isDirectOperationalTransport'],{SUPABASE_URL:'https://test',SUPABASE_WRITE_TIMEOUT_MS:900,AbortController,setTimeout,clearTimeout,createOperationalFetchDeadline,fetchSupabaseRestViaAppApiIfNeeded:async()=>null,recoverDirectOperationalRead:(_url,_opts,send)=>send(),isRecoverableRequestRead:()=>false,window:{},fetch:(_u,init)=>{signal=init.signal;return new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Object.assign(new Error('abort'),{name:'AbortError'}))));}});
- await assert.rejects(timeout.fetchWithTimeout('https://test/storage',{method:'POST'},5,'Storage'),/timed out/);assert.equal(signal.aborted,true,'timeout closes the native fetch');
+ await assertPhotoTransportDeadline();
  let queued;const input={value:'',isConnected:true,setSelectionRange(){}};let dispatched=0,owner='one';const tap=context(['updateDetailMeasurementKeyboardTargetValue'],{detailMeasurementKeyboardTarget:input,activeItem:{UNIQUE_ID:'row'},getCompletedRowUnlockKey:()=> 'row',getSupabaseReadIdentityScope:()=>owner,setTimeout:fn=>{queued=fn;return 1;},clearTimeout(){},markDetailMeasurementKeyboardInteraction(){},normalizeDetailMeasurementKeyboardValueForInput:(_i,v)=>v,getNormalizedDetailMeasurementCursor:(...args)=>args[2],dispatchDetailMeasurementKeyboardInput(){dispatched++;},normalizeDetailSpecTextForSave:v=>v,document:{getElementById:()=>null}});tap.updateDetailMeasurementKeyboardTargetValue('24',2);assert.equal(input.value,'24');assert.equal(dispatched,0,'tap updates the value before background autosave');queued();assert.equal(dispatched,1);tap.updateDetailMeasurementKeyboardTargetValue('25',2);owner='two';queued();assert.equal(dispatched,1,'stale-account queued work cannot save');
  const docks=context(['getDockOwnedPhotoLinkCsv'],{window:{},getLinkedMasterPhotoState:()=>({photoCsv:'',photoNameCsv:''}),mergePhotoCsvList:xs=>xs.filter(Boolean).join(','),getSharedAppPhotoLinkCsvRaw:()=>'',getSharedAppPhotoName:()=>'',getDisplayPhotoLinkCsv:(csv,_i,_p,opts)=>{assert.equal(opts.respectRetention,false);return csv;}});assert.equal(docks.getDockOwnedPhotoLinkCsv({DOCK_PHOTO_LINK:'https://test/photos/2020-01-01.jpg'}),'https://test/photos/2020-01-01.jpg');
  let view='detail',notices=0;const runs=new Map();const noticesContext=context(['notifyManagerUnassignedItemsAfterSync'],{currentUser:'manager',getCurrentVisibleViewId:()=>view,getSupabaseReadIdentityScope:()=> 'manager',sessionStorage:{getItem:k=>runs.get(k),setItem:(k,v)=>runs.set(k,v)},notifyManagerUnassignedItems:()=>++notices});noticesContext.notifyManagerUnassignedItemsAfterSync('run');assert.equal(notices,0);view='home';noticesContext.notifyManagerUnassignedItemsAfterSync('run');noticesContext.notifyManagerUnassignedItemsAfterSync('run');assert.equal(notices,1);

@@ -9,8 +9,8 @@ export function assertIsolatedToolingBenchmark() {
   } });
   assert.equal(result.passed, 2);
   assert.deepEqual(calls[0].slice(-2), ['--test-concurrency=1', toolingPerformanceCheckFile]);
-  assert.deepEqual(calls[1].slice(-toolingReleaseCheckFiles.length), toolingReleaseCheckFiles);
-  assert.ok(calls[1].includes('--test-concurrency=8'));
+  assert.deepEqual(calls[1].slice(0,3), ['scripts/tooling-test-worker.mjs','--test-concurrency=4','tests/golden-invariants.test.mjs']);
+  assert.deepEqual(calls[1].slice(2).sort(), [...toolingReleaseCheckFiles].sort());
   let attempts = 0;
   const failed = runToolingReleaseChecks({ now:()=>0, print(){}, error(){}, env:{}, spawn() {
     attempts++;

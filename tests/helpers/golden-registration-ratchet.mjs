@@ -3,8 +3,8 @@ import path from 'node:path';
 import { parse } from 'acorn';
 
 const registrationOwners = new Map([
-  ['tests/golden-invariants.test.mjs', '../src/core/golden-final-polish.mjs'],
-  ['src/core/golden-final-polish.mjs', '../../tests/erp-drive-post-upsert.test.mjs'],
+  ['tests/golden-invariants.test.mjs', ['../src/core/golden-final-polish.mjs','./helpers/golden-release-fixture-ratchet.mjs']],
+  ['src/core/golden-final-polish.mjs', ['../../tests/erp-drive-post-upsert.test.mjs']],
 ]);
 
 function registeredInvariant(call, file) {
@@ -32,21 +32,21 @@ function registeredInvariant(call, file) {
 export function goldenRegistrationOrder(read, file = 'tests/golden-invariants.test.mjs') {
   const source = parse(read(file), {ecmaVersion:'latest',sourceType:'module'});
   const ids = [];
-  const owner = registrationOwners.get(file);
+  const owners = registrationOwners.get(file) || [];
   let registrations = 0;
   for (const statement of source.body) {
     const expression = statement.expression;
     const imported = expression?.type === 'AwaitExpression' && expression.argument.type === 'ImportExpression'
       ? expression.argument.source.value : null;
-    if (owner && imported === owner) {
+    if (owners.includes(imported)) {
+      assert.equal(imported,owners[registrations],`${file}: duplicate or out-of-order invariant registration import`);
       registrations++;
-      assert.equal(registrations,1,`${file}: duplicate invariant registration import`);
-      ids.push(...goldenRegistrationOrder(read,path.posix.normalize(path.posix.join(path.posix.dirname(file),owner))));
+      ids.push(...goldenRegistrationOrder(read,path.posix.normalize(path.posix.join(path.posix.dirname(file),imported))));
       continue;
     }
     const invariant = registeredInvariant(expression,file);
     if (invariant !== null) ids.push(invariant);
   }
-  assert.equal(registrations,owner ? 1 : 0,`${file}: missing invariant registration import`);
+  assert.equal(registrations,owners.length,`${file}: missing invariant registration import`);
   return ids;
 }
