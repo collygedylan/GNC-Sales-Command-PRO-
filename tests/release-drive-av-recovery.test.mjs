@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import { parseExpressionAt } from 'acorn';
 
 const html = readComposedAppSource().replace(/\r\n/g, '\n');
 const registry = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
 
 function functionSource(name) {
-  const start = html.indexOf(`        function ${name}(`);
+  const start = html.search(new RegExp(`(?:async )?function ${name}\\(`));
   assert.ok(start >= 0, `function ${name} exists`);
-  const end = html.indexOf('\n        }', start);
-  assert.ok(end > start, `function ${name} closes`);
-  return html.slice(start, end + 10);
+  const { end } = parseExpressionAt(html, start, { ecmaVersion: 'latest' });
+  return html.slice(start, end);
 }
 
 function recoveryRuntime() {
@@ -83,8 +83,9 @@ test('Drive retains the settings side adapter in the shared cohort', () => {
 
 test('Drive and AV recovery pass coordinator errors to the view owner', () => {
   assert.match(functionSource('showViewErrorState'), /showAvReadUnavailableState\(error \|\| new Error\(message\), hasProgressiveViewData\(\), viewId\)/);
-  const ensure = functionSource('ensureViewDataForRender');
+  const ensure = functionSource('ensureProductionViewDataForRender');
+  const read = functionSource('startProductionViewRead');
   assert.match(ensure, /showViewErrorState\(viewId, productionLiveSyncCoordinator\.getStatus\(\)\.message[^;]+, true, productionLiveSyncViewLoad\.error\)/);
-  assert.match(ensure, /showAvReadUnavailableState\(load\.error[^;]+, false, viewId\)/);
-  assert.match(ensure, /productionLiveSyncViewLoad !== load \|\| !isViewVisible\(viewId\) \|\| productionVerifiedViewKey\(\) !== key/);
+  assert.match(read, /showAvReadUnavailableState\(load\.error[^;]+, false, viewId\)/);
+  assert.match(read, /productionLiveSyncViewLoad !== load \|\| !isViewVisible\(viewId\) \|\| productionVerifiedViewKey\(\) !== key/);
 });

@@ -10,6 +10,7 @@ function fixture() {
     const context = vm.createContext({
         Date, Map, Error, Object,
         nativeAuthProfile: { active: true },
+        activeReqTab: 'pending', canAccessView: () => true, hasAuthenticatedOperationalReadIdentity: () => true,
         VIEW_LOAD_UI: { request: { container: 'request-content', crumb: 'crumb' }, av: { container: 'av-content' } },
         document: { getElementById: id => id === 'crumb' ? crumb : container },
         hasProgressiveViewData: () => true,
@@ -24,6 +25,7 @@ function fixture() {
         escapeHtml: value => String(value), getViewRetryState: () => ({ count: 0 }), VIEW_LOAD_RETRY_MAX_ATTEMPTS: 3
     });
     const extract = (name, next) => source.slice(source.indexOf(`        function ${name}(`), source.indexOf(`        ${next}`, source.indexOf(`        function ${name}(`)));
+    vm.runInContext(source.match(/function retainPendingRequestDisplayOnReadFailure\([^]*?\n}/)[0], context);
     vm.runInContext(extract('isNativeProfileRetryRequired', 'function nativeReadRequiresRls('), context);
     vm.runInContext(extract('hasConfirmedCurrentAccountRevocation', 'function isPrivilegedManagerUser('), context);
     vm.runInContext(extract('showViewErrorState', 'const VIEW_LOAD_RETRY_MAX_ATTEMPTS'), context);
