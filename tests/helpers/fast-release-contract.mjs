@@ -55,7 +55,7 @@ export function fastDefaultContract(){
  const env={AGDATA_FULL_AUDIT_ONCE:'1'},modes=[],lanes=[];
  const spawn=(_cmd,args,options)=>{modes.push(args.find(a=>a.startsWith('--test-concurrency=')));lanes.push(args.at(-1));assert.equal(options.env.AGDATA_FULL_AUDIT_ONCE,undefined);return {status:0,stdout:'# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n'};};
  for(let i=0;i<2;i++)assert.equal(runToolingReleaseChecks({env,spawn,print(){}}).exitCode,0);
- assert.deepEqual(modes,['--test-concurrency=1','--test-concurrency=1','--test-concurrency=1','--test-concurrency=8']);
+ assert.deepEqual(modes,['--test-concurrency=1','--test-concurrency=1','--test-concurrency=1','--test-concurrency=4']);
  assert.equal(lanes[0],'tests/canonical-row-owner-performance.test.mjs');assert.equal(lanes[2],lanes[0]);
  const charter=read('AGENTS.md');for(const role of ['Nursery Business and Product Truth','Photo Lifecycle Owner','Dark-Emerald Touch Owner','Tables, Roster and Access Owner','Database, Storage and Anti-Rogue Owner','Fast Snapshot QA and Zero-Regression Gatekeeper'])assert.ok(charter.includes(role),role);
 }
