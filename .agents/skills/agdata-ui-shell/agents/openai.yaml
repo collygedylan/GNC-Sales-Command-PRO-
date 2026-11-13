@@ -1,4 +1,0 @@
-interface:
-  display_name: "AgData UI Shell"
-  short_description: "Guard shell, theme, tables, and modal behavior"
-  default_prompt: "Use $agdata-ui-shell to change the AgData shell or Table Management while preserving the current theme."

@@ -1639,41 +1639,6 @@ function isRowPhotoEvaluationExpired(item = null, prefix = '') {
     return match != null && calculateLiveLocPhotoMatch(item) <= 0;
 }
 
-function persistCameraDetailSession(input = null) {
-    if (!activeItem || !currentUser) return;
-    const state = window.GncCameraState;
-    if (state) {
-        state.captureId = (Number(state.captureId) || 0) + 1;
-        if (input?.type === 'file') input.__gncCameraCaptureId = state.captureId;
-        state.cameraCaptureInFlight = true; state.returnUntil = Date.now() + 15_000;
-    }
-    persistAppFilterStateNow();
-    try {
-        sessionStorage.setItem('agdata_camera_detail_v1',JSON.stringify({owner:getSupabaseReadIdentityScope(),captureId:state?.captureId || 0,createdAt:Date.now(),row:{...activeItem},rowUid:getCompletedRowUnlockKey(activeItem),source:activeDetailSourceView || lastView || 'drive',tab:activeDetailTab,scrollY:getMainAreaScrollTop(),filterKey:getAppFilterStateStorageKey(),filters:JSON.stringify(readAppFilterStateSnapshot())}));
-        window.persistCameraCaptureState?.();
-    } catch (_) { /* Camera capture remains usable when storage is disabled. */ }
-}
-
-function restoreCameraDetailSession() {
-    if (!currentUser) return false;
-    try {
-        const saved = JSON.parse(sessionStorage.getItem('agdata_camera_detail_v1') || 'null');
-        if (!saved) return false;
-        if (saved.owner !== getSupabaseReadIdentityScope() || Date.now()-saved.createdAt > 30*60_000) { sessionStorage.removeItem('agdata_camera_detail_v1'); return false; }
-        sessionStorage.removeItem('agdata_camera_detail_v1');
-        const row = fullInventory.find(item => getCompletedRowUnlockKey(item) === saved.rowUid) || saved.row;
-        if (!row || getCompletedRowUnlockKey(row) !== saved.rowUid) return false;
-        if (saved.filters && saved.filterKey === getAppFilterStateStorageKey()) {
-            try { localStorage.setItem(saved.filterKey,saved.filters); restorePersistedAppFilterStateForCurrentUser(true); } catch (_) { /* Restore the row even if filter storage is unavailable. */ }
-        }
-        openDetail(saved.rowUid,saved.source,{__masterDetailRow:row,preferredTab:saved.tab || 'location'});
-        requestAnimationFrame(() => setMainAreaScrollTop(Number(saved.scrollY)||0));
-        window.finishCameraCapture?.();
-        return true;
-    } catch (_) { return false; }
-}
-
-
 function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
     if (!currentUser || !completedRunId || !['home','managers'].includes(getCurrentVisibleViewId())) return 0;
     const key = 'gnc_unassigned_completed_sync_v1:' + getSupabaseReadIdentityScope();
@@ -1834,41 +1799,6 @@ function startVisiblePhotoTimeout(onTimeout, budget) {
     document.addEventListener('visibilitychange', update);
     update();
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', update); };
-}
-
-async function persistQueuePhotoAttachment(job) {
-    const { item, prefix, upload } = job;
-    const uid = String(item.UNIQUE_ID);
-    if (prefix === 'req-' && isDockSuspendDcRequestMirrorRow(item)) {
-        const proof = await loadCurrentSuspendTagPhotoRow(item);
-        const receipt = await persistSuspendTagUploadedPhoto(item, proof, upload.publicUrl, upload.fileName);
-        if (!receipt?.acknowledged) throw new Error('Suspend photo save was not confirmed.');
-    } else if (prefix === 'req-') {
-        const patch = {req_photo_link:upload.publicUrl,req_photo_name:upload.fileName};
-        const publication = await publishRowEvaluationToMasterAndNotes(item,patch,{requestWork:true,scope:job.scope,complete:false,
-            photoAttachmentUrl:upload.publicUrl,memoryRollback:()=>{},persist:async () => {
-                const response = await postAppFunctionJson(APP_API_FUNCTION_URL, {action:'request_work',operation:'append_photo',requestId:uid,patch},
-                    {timeoutMs:25000,signal:job.uploadController.signal,label:'Request photo save'});
-                const saved = response?.data?.row;
-                if (!response?.ok || saved?.unique_id !== uid
-                    || !parsePhotoCsvValues(saved.req_photo_link).includes(upload.publicUrl)) throw new Error('Request photo save was not confirmed.');
-                return {status:'saved',result:response.data};
-            }});
-        const saved = publication.result.row;
-        if (!isCurrentDrivePhotoAttachment(job)) return;
-        const live = findRequestRowByUniqueId(uid);
-        for (const target of new Set([item, live, activeItem].filter(row => row?.UNIQUE_ID === uid))) {
-            setPhotoAliasFieldsForPrefix(target,prefix,saved.req_photo_link,saved.req_photo_name);
-            target.ROW_VERSION = target.row_version = Math.max(Number(target.ROW_VERSION || 0), Number(saved.row_version || 0));
-        }
-    } else {
-        const patch = {dock_photo_link:appendPhotoCsvValue(item.DOCK_PHOTO_LINK,upload.publicUrl),
-            dock_photo_name:appendPhotoCsvValue(item.DOCK_PHOTO_NAME,upload.fileName)};
-        const receipt = await writeSocReviewThroughAppApi('PATCH',patch,'unique_id=eq.' + encodeURIComponent(uid));
-        if (!receipt?.row || String(receipt.row.unique_id) !== uid || !parsePhotoCsvValues(receipt.row.dock_photo_link).includes(upload.publicUrl)) throw new Error('Dock photo save was not confirmed.');
-        if (isCurrentDrivePhotoAttachment(job)) setPhotoAliasFieldsForPrefix(item,prefix,receipt.row.dock_photo_link,receipt.row.dock_photo_name);
-    }
-    if (isCurrentDrivePhotoAttachment(job)) confirmRowPhotoSlot(job);
 }
 
 function evalPhotoRow(work, originUid) {

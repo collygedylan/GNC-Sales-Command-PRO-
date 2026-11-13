@@ -1,3 +1,0 @@
-SELECT count(*) = 0 AS bulk_tables_excluded FROM pg_publication_tables WHERE pubname='supabase_realtime' AND regexp_replace(tablename,'^test_','') = ANY(ARRAY['ph_master_inventory','ph_reserves','ph_customer_reserves','ph_27f1_hl_po','ph_27s1_hl_po','ph_hl_po','ph_soc_master','ph_drive_around_report_rows','ph_hold_stop_itemcode_summaries','ph_hold_stop_itemcode_cycles','ph_hold_learning_profiles','ph_weather_daily','ph_erp_sync_runs']);
-SELECT rolname, 'log_statement=none'=ANY(coalesce(rolconfig,ARRAY[]::text[])) AS statement_logging_disabled FROM pg_roles WHERE rolname IN ('anon','authenticated','service_role','postgres');
-SELECT tablename FROM pg_publication_tables WHERE pubname='supabase_realtime' AND tablename LIKE '%app_dataset_revisions';

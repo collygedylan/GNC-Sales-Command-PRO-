@@ -301,7 +301,7 @@ async function uploadNativeDrivePhotoPart(path, blob, headers, currentOwner, opt
         const response = await fetchWithTimeout(SUPABASE_URL + '/storage/v1/object/' + path, {
             method:'POST', headers:{...headers, 'Content-Type':blob.type, 'x-upsert':'true', 'cache-control':'max-age=31536000'},
             referrerPolicy:'no-referrer', cache:'no-store', body:blob, signal:options.signal, photoUploadAttempt:true
-        }, Math.min(4000, Math.max(1, Number(options.timeoutMs) || 4000)), 'Drive photo storage');
+        }, Math.min(25000, Math.max(1, Number(options.timeoutMs) || 25000)), 'Drive photo storage');
         if (!response.ok) {
             throw Object.assign(new Error('Photo storage did not confirm the upload.'), { status:response.status });
         }
@@ -329,7 +329,7 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
     const owner = getSupabaseReadIdentityScope(), epoch = nativeAuthRecoveryEpoch;
     const currentOwner = () => epoch === nativeAuthRecoveryEpoch && owner === getSupabaseReadIdentityScope();
     const readHeaders = refresh => waitForOperationalPrerequisite(() => getNativeAuthRequestHeaders(refresh), {
-        signal:options.signal, current:currentOwner, timeoutMs:500
+        signal:options.signal, current:currentOwner, timeoutMs:25000
     });
     let headers = options.nativeHeaders || await readHeaders(false);
     assertCurrentPhotoUpload(currentOwner, options);
@@ -343,11 +343,10 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
         if ((options.attachPhoto && parts.some(([,blob]) => !blob)) || Date.now() < state.storageGatewayCooldownUntil) {
             throw Object.assign(new Error('Storage cooldown.'), { code:'STORAGE_COOLDOWN' });
         }
-        const transfers = parts.filter(([,blob]) => blob).map(([path,blob]) =>
-            uploadNativeDrivePhotoPart(bucketName + '/' + path, blob, headers, currentOwner, options));
-        uploaded.thumbnailUploads = Promise.allSettled(transfers.slice(0,-1));
-        await transfers[transfers.length - 1];
+        const send = ([path, blob]) => uploadNativeDrivePhotoPart(bucketName + '/' + path, blob, headers, currentOwner, options);
+        await send(parts.at(-1));
         assertCurrentPhotoUpload(currentOwner, options);
+        uploaded.thumbnailUploads = Promise.allSettled(parts.slice(0,-1).filter(([,blob]) => blob).map(send));
         options.onStorageUploaded?.(uploaded);
         return uploaded;
     } catch (error) {
@@ -362,7 +361,7 @@ async function uploadDrivePhotoWithNativeSession(formData, options = {}) {
     const store = auth => fetchWithTimeout(SUPABASE_URL + '/rest/v1/rpc/' + (attachPhoto ? 'attach_drive_photo_blob_v1' : 'store_drive_photo_blob_v1'), {
         method:'POST', headers:{...auth,'Content-Type':'application/json'}, referrerPolicy:'no-referrer', signal:options.signal, photoUploadAttempt:true,
         body:JSON.stringify({p_path:filePath,p_content:content,p_content_type:file.type,...command})
-    }, 4000, 'Database photo recovery', async response => ({ok:response.ok, status:response.status, saved:await response.json()}));
+    }, 25000, 'Database photo recovery', async response => ({ok:response.ok, status:response.status, saved:await response.json()}));
     assertCurrentPhotoUpload(currentOwner, options);
     let response = await store(headers);
     if (response.status === 401) {

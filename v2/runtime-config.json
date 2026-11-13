@@ -1,0 +1,8 @@
+{
+  "environment": "sandbox",
+  "projectRef": "apztnscvagayslumnalr",
+  "supabaseUrl": "https://apztnscvagayslumnalr.supabase.co",
+  "publishableKey": "sb_publishable_uhcu2MjWHDRJ2voNu9ps4A_vesiNZNO",
+  "testData": true,
+  "productionProjectRef": "kzrnyjsosryejjejliii"
+}

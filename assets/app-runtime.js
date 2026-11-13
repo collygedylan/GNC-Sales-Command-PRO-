@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.78';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.79';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1959,7 +1959,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
         const PHOTO_MAX_WIDTH = 1920;
-        const PHOTO_JPEG_QUALITY = 0.90;
+        const PHOTO_JPEG_QUALITY = 0.85;
         const PHOTO_WEBP_QUALITY = 0.82;
         const PHOTO_DISPLAY_MAX_BYTES = 200 * 1024;
         const PHOTO_THUMB_144_MAX_BYTES = 80 * 1024;
@@ -20901,11 +20901,12 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
                 method: 'POST',
                 headers,
                 signal: safeOptions.signal,
+                referrerPolicy: 'no-referrer', photoUploadAttempt: safeOptions.singleUploadAttempt === true,
                 body: formData
             }, Number(safeOptions.timeoutMs || SUPABASE_UPLOAD_TIMEOUT_MS || 90000), String(safeOptions.label || 'App Function Upload'));
             const text = await response.text();
             let payload = null;
-            try { payload = text ? JSON.parse(text) : null; } catch (error) { payload = text || null; }
+            try { payload = text ? JSON.parse(text) : null; } catch { payload = text || null; }
             if (!response.ok) {
                 if (response.status === 401 && callOwner
                     && (!payload?.code || payload.code === 'AUTH_REQUIRED') && !safeOptions.authRetried
@@ -24698,7 +24699,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.78';
+        const APP_VERSION = '3.0.79';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -36226,63 +36227,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 value.textContent = card.classList.contains('app-drive-compact-card') ? 'N/A' : 'Not verified';
                 value.setAttribute('title', 'Photo could not be loaded. Reopen to retry.');
             });
-        }
-
-        function handleDeferredCardPhotoLoadFailure(img = null) {
-            if (!img) return;
-            // An img error has no HTTP status: back off, never permanently blacklist a transient outage.
-            window.AgDataStorageGuard?.noteFailure(img.src || img.dataset?.src, 0);
-            const fallbackSrc = String(img.dataset && img.dataset.photoFallbackSrc || getDeferredCardPhotoFallbackSrc(img.src || (img.dataset && img.dataset.src) || '')).trim();
-            if (fallbackSrc && !window.AgDataStorageGuard?.blocked(fallbackSrc) && img.dataset.photoFallbackAttempted !== '1' && String(img.src || '').trim() !== fallbackSrc) {
-                img.dataset.photoFallbackAttempted = '1';
-                img.hidden = false;
-                img.src = fallbackSrc;
-                return;
-            }
-            img.classList.add('app-photo-thumbnail-failed');
-            img.alt = '';
-            img.hidden = true;
-            invalidateCardPhotoMatchOnLoadFailure(img);
-            const host = img.parentElement;
-            if (!host || host.querySelector('.app-photo-unavailable')) return;
-            const placeholder = document.createElement('span');
-            placeholder.className = 'app-photo-unavailable';
-            placeholder.textContent = 'NO PHOTO';
-            host.appendChild(placeholder);
-        }
-
-        function hydrateDeferredCardPhoto(img = null, expectedSrc = '') {
-            if (!img || img.dataset.photoHydrated === '1') return;
-            if (img.isConnected === false) {
-                delete img.dataset.photoObserved;
-                delete img.dataset.photoObservedSrc;
-                return;
-            }
-            const src = String(img.dataset.src || '').trim();
-            if (!src || (expectedSrc && src !== String(expectedSrc).trim())) return;
-            delete img.dataset.photoObserved;
-            delete img.dataset.photoObservedSrc;
-            const fallbackSrc = getDeferredCardPhotoFallbackSrc(src);
-            if (fallbackSrc) img.dataset.photoFallbackSrc = fallbackSrc;
-            if (img.dataset.photoRecoveryBound !== '1') {
-                img.dataset.photoRecoveryBound = '1';
-                img.addEventListener('load', () => {
-                    delete img.dataset.photoLoadFailed;
-                    img.classList.remove('app-photo-thumbnail-failed');
-                    img.hidden = false;
-                    const placeholder = img.parentElement && img.parentElement.querySelector('.app-photo-unavailable');
-                    if (placeholder) placeholder.remove();
-                });
-            }
-            img.dataset.photoHydrated = '1';
-            img.onerror = () => {
-                if (!img || !img.dataset) return;
-                if (String(img.dataset.src || '').trim() !== src) return;
-                img.dataset.photoLoadFailed = '1';
-                handleDeferredCardPhotoLoadFailure(img);
-            };
-            if (window.AgDataStorageGuard?.blocked(src)) handleDeferredCardPhotoLoadFailure(img);
-            else img.src = src;
         }
 
         function getDeferredCardPhotoRootMargin() {
@@ -148366,91 +148310,10 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const drivePhotoAttachments = new Map();
         const drivePhotoSaveChains = new Map();
-
-        function clearDrivePhotoAttachments() {
-            drivePhotoAttachments.forEach(job => {
-                job.uploadController?.abort();
-                job.commandRow?.__drivePhotoAbort?.();
-                clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
-            });
-            drivePhotoAttachments.clear();
-            drivePhotoSaveChains.clear();
-            const urls = new Set([...rowPhotosByKey.values()].flat().map(entry => entry.url));
-            rowPhotosByKey.clear();
-            urls.forEach(url => { if (url.startsWith('blob:')) URL.revokeObjectURL(url); });
-        }
-
-        function isCurrentDrivePhotoAttachment(job) {
-            return drivePhotoAttachments.get(job.id) === job && job.scope === getSupabaseReadIdentityScope();
-        }
-
-        async function persistDrivePhotoAttachment(job) {
-            if (!isCurrentDrivePhotoAttachment(job)) throw new Error('Photo session changed.');
-            if (job.prefix === 'eval-') return persistEvalPhotoAttachment(job);
-            const current = getMasterPhotoSyncItem(job.item) || job.item;
-            if (job.prefix === 'req-' || job.prefix === 'dock-') return persistQueuePhotoAttachment(job);
-            if (!canEditRowDetails(job.prefix, current) || !isSameDriveEvidenceLocation(current, job.identity, true)) {
-                throw new Error('The inventory row or access changed. Reopen the item before retrying.');
-            }
-            if (!job.commandRow) {
-                job.commandRow = { ...current, __drivePhotoAttachment: true, __drivePhotoIsCurrent: () => isCurrentDrivePhotoAttachment(job) };
-                job.baseline = buildSecureDriveEvidenceBaseline(current);
-                job.payload = {
-                    photo_link: appendPhotoCsvValue(job.baseline.photo_link, job.upload.publicUrl),
-                    photo_name: appendPhotoCsvValue(job.baseline.photo_name, job.upload.fileName)
-                };
-            }
-            // The location-scoped RPC owns authorization, replay, and serialization.
-            const {applied:reconciled,projectionDeferred} = await publishRowEvaluationToMasterAndNotes(job.commandRow,job.payload,{
-                prefix:job.prefix,scope:job.scope,complete:false,baseline:job.baseline,receipt:job.upload.receipt,
-                photoOnly:true,photoIdentity:job.identity,isCurrent:()=>isCurrentDrivePhotoAttachment(job)
-            });
-            if (!isCurrentDrivePhotoAttachment(job)) return;
-            if (projectionDeferred) { confirmRowPhotoSlot(job); return; }
-            const saved = reconciled.row;
-            confirmRowPhotoSlot(job);
-            if (job.item !== saved && job.item !== activeItem) {
-                setPhotoAliasFieldsForPrefix(job.item, job.prefix, saved.PHOTO_LINK || '', saved.PHOTO_NAME || '');
-                MASTER_EVIDENCE_SYNC_KEYS.forEach(key => { if (Object.prototype.hasOwnProperty.call(saved, key)) job.item[key] = saved[key]; });
-            }
-            if (reconciled.applied) queueAppLiveEventForWrite('ph_master_inventory', 'PATCH', [{ unique_id: saved.UNIQUE_ID }], '');
-            refreshPendingPhotoUiForItem(job.item, job.prefix);
-        }
-
-
-
-        globalThis.persistDrivePhotoAttachment = persistDrivePhotoAttachment;
-
-        function retryFailedSeasonDrivePhotoAttachments(item = null) {
-            if (navigator.onLine === false) return false;
-            let retried = false;
-            drivePhotoAttachments.forEach((job) => {
-                if (job.status !== 'Save failed' || job.running || !isCurrentDrivePhotoAttachment(job)) return;
-                if (item && String(job.identity.UNIQUE_ID) !== String(item.UNIQUE_ID || item.unique_id || '')) return;
-                retried = true;
-                retryDrivePhotoAttachment(job.id);
-            });
-            return retried;
-        }
-
+        /* @runtime-fragment assets/detail-photo-attachments.js */
         window.addEventListener('online', () => retryFailedSeasonDrivePhotoAttachments());
 
-        function queueDrivePhotoAttachment(item, prefix, file, fileName, formFields = null, inquiry = null) {
-            markLocalRowSaveRefreshQuiet('photo-attachment');
-            const preview = createPendingPhotoPreview(item, prefix, URL.createObjectURL(file), fileName);
-            const job = { id: preview.id, preview, item, prefix, file, fileName, formFields, inquiry, scope: getSupabaseReadIdentityScope(), running: false,
-                identity: Object.fromEntries(['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'].map(key => [key, String(item[key] || '')])) };
-            if (prefix === 'req-') {
-                job.blobId = 'request:' + item.UNIQUE_ID + ':' + job.id;
-                job.blobBackup = putRequestBlobRecord({blobId:job.blobId,requestId:item.UNIQUE_ID,fileName,
-                    contentType:file.type,blob:file,createdAt:preview.createdAt,acknowledged:false}).catch(() => false);
-            }
-            drivePhotoAttachments.set(job.id, job);
-            setDrivePhotoAttachmentStatus(job, 'Uploading');
-            retryDrivePhotoAttachment(job.id);
-            return true;
-        }
-
+        globalThis.queueRowPhotoUpload = queueRowPhotoUpload;
         function queueRowPhotoUpload(itemToUpload, prefix, file) {
             if (!itemToUpload || !file || !String(file.type || '').startsWith('image/')) return false;
 

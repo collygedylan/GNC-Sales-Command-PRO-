@@ -1,3 +1,0 @@
-CREATE OR REPLACE FUNCTION private.soc_operational_source_row_v23191(row_value jsonb) RETURNS boolean LANGUAGE plpgsql IMMUTABLE SET search_path='' AS $fn$
-declare dock_value text:=regexp_replace(btrim(coalesce(nullif(row_value->>'dock',''),row_value->>'docknumber','')),'^dock\s*','','i'); warehouse_value text:=btrim(coalesce(nullif(row_value->>'warehouseid',''),nullif(row_value->>'warehousei',''),nullif(row_value->>'warehouse',''),row_value->>'warehousecode',''));
-begin if dock_value !~ '^[0-9]+$' or warehouse_value !~ '^0*10([.]0+)?$' then return false; end if; return dock_value::numeric>0; end $fn$;

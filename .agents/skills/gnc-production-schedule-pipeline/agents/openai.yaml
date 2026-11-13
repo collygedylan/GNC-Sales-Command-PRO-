@@ -1,3 +1,0 @@
-interface:
-  display_name: "GNC Production Schedule Pipeline"
-  short_description: "Reconcile schedules, demand, and capacity"

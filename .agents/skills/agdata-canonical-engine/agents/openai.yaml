@@ -1,4 +1,0 @@
-interface:
-  display_name: "AgData Canonical Engine"
-  short_description: "Protect canonical inventory and receipt engines"
-  default_prompt: "Use $agdata-canonical-engine to change canonical inventory hydration or mutation receipts safely."

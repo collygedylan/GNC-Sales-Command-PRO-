@@ -25,10 +25,22 @@ function fitDimensions(width, height, maxEdge) {
   };
 }
 
+async function encodeAtAvailableQuality(canvas, type, qualities, maxBytes) {
+  let blob;
+  for (const quality of qualities) {
+    blob = await canvas.convertToBlob({ type, quality });
+    if (!(blob instanceof Blob) || !blob.size || !(await blobHasEncoding(blob, type))) {
+      throw new Error(type === 'image/webp' ? 'WEBP_ENCODER_UNAVAILABLE' : 'IMAGE_ENCODER_UNAVAILABLE');
+    }
+    if (blob.size <= maxBytes) break;
+  }
+  return blob;
+}
+
 async function encodeBounded(bitmap, target, type, maxBytes) {
   let width = target.width;
   let height = target.height;
-  const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.90, 0.85, 0.74, 0.66, 0.56, 0.46];
+  const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.85, 0.74, 0.66, 0.56, 0.46];
   for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
     const canvas = new OffscreenCanvas(width, height);
     const context = canvas.getContext('2d', { alpha: false, desynchronized: true });
@@ -38,17 +50,9 @@ async function encodeBounded(bitmap, target, type, maxBytes) {
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, width, height);
     context.drawImage(bitmap, 0, 0, width, height);
-    let lastBlob = null;
-    for (const quality of qualities) {
-      const encoded = await canvas.convertToBlob({ type, quality });
-      if (!(encoded instanceof Blob) || !encoded.size || !(await blobHasEncoding(encoded, type))) {
-        throw new Error(type === 'image/webp' ? 'WEBP_ENCODER_UNAVAILABLE' : 'IMAGE_ENCODER_UNAVAILABLE');
-      }
-      lastBlob = encoded;
-      if (encoded.size <= maxBytes) return { blob: encoded, width, height };
-    }
-    if (!lastBlob) throw new Error('Image encoding failed.');
-    const shrink = Math.max(0.62, Math.min(0.88, Math.sqrt(maxBytes / lastBlob.size) * 0.94));
+    const blob = await encodeAtAvailableQuality(canvas, type, qualities, maxBytes);
+    if (blob.size <= maxBytes) return { blob, width, height };
+    const shrink = Math.max(0.62, Math.min(0.88, Math.sqrt(maxBytes / blob.size) * 0.94));
     width = Math.max(1, Math.round(width * shrink));
     height = Math.max(1, Math.round(height * shrink));
   }

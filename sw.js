@@ -1,9 +1,9 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-const APP_SHELL_BUILD = 'AgData v3.0.78';
+const APP_SHELL_BUILD = 'AgData v3.0.79';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
-const APP_ASSET_VERSION = '3.0.78';
+const APP_ASSET_VERSION = '3.0.79';
 importScripts('./assets/storage-request-guard.js?v=' + APP_ASSET_VERSION);
 importScripts('./assets/service-worker-url.js?v=' + APP_ASSET_VERSION);
 importScripts('./src/core/live-shell-worker.js?v=' + APP_ASSET_VERSION);
@@ -14,7 +14,7 @@ const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUIL
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_VERSION = 'agdata-v3.0.78';
+const CACHE_VERSION = 'agdata-v3.0.79';
 const CACHE_RUNTIME_REVISION = 'network-first-r1';
 const CACHE_NAME = CACHE_VERSION + '-' + CACHE_RUNTIME_REVISION;
 const SHELL_FETCH_TIMEOUT_MS = 1200;
@@ -72,7 +72,27 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
   "./assets/branding/ag-data-solutions-splash-v2026081709.png"
 ]);
 // END GENERATED BRANDING ASSETS
-const DEFERRED_VIEW_ASSETS = /* release-generated */ [];
+const DEFERRED_VIEW_ASSETS = /* release-generated */ [
+  "./assets/bunch-note-cards.css",
+  "./assets/bunch-note-chunks/CardBoard-P3OULQNR.js",
+  "./assets/bunch-note-chunks/StructuredBunchNote-XDG7VGHK.js",
+  "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
+  "./assets/bunch-note-structured.js",
+  "./assets/bunch-note.css",
+  "./assets/bunch-queue-shell.js",
+  "./assets/bunch-queue.css",
+  "./assets/bunch-queue.js",
+  "./assets/field-counting-chunks/FieldCountingView-SAWUREZ4.js",
+  "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
+  "./assets/field-counting.css",
+  "./assets/field-counting.js",
+  "./assets/historical-requests-chunks/HistoricalRequestsView-YNNATYMU.js",
+  "./assets/historical-requests-chunks/chunk-5NIXS3YO.js",
+  "./assets/historical-requests.css",
+  "./assets/historical-requests.js",
+  "./assets/report-pages-live.js",
+  "./assets/report-pages.js"
+];
 const STATIC_ASSETS = [
   "./",
   "./index.html",
@@ -162,7 +182,7 @@ const STATIC_ASSETS = [
     "./assets/manager-workspace.css",
     "./assets/public-photo-share.js", "./assets/access-display-cache.js", "./assets/navigation-visibility.js", "./assets/navigation-routing.js",
     "./assets/operational-rpc-retry.js", "./assets/rpc-recovery-domain.js", "./assets/canonical-row-unlock.js",
-    "./assets/app-api-transport.js",
+    "./assets/app-api-transport.js", "./assets/detail-photo-attachments.js",
     "./assets/reclass-move-outbox.js",
     "./assets/reclass-move-worksheet.js", "./assets/reclass-move-command.js",
     "./assets/reclass-access-policy.js", "./assets/reclass-modal-open.js", "./assets/reclass-submission.js",
@@ -180,6 +200,7 @@ const SHELL_INSTALL_RECEIPT = './__agdata_shell_install_complete__';
 const ASSETS_TO_CACHE = [
   './services/bunch-note-pdf.mjs',
   ...STATIC_ASSETS,
+  ...["./assets/preboot-recovery.js?v=3.0.79","./assets/location-code.js?v=3.0.79","./assets/bunch-note.js?v=3.0.79","./assets/bunch-queue-shell.js?v=3.0.79","./assets/sales-workspace.js?v=3.0.79","./assets/mobile-workspace.js?v=3.0.79","./assets/navigation-preferences.js?v=3.0.79","./assets/access-matrix-policy.js?v=3.0.79","./assets/user-access-control.js?v=3.0.79","./assets/bunch-note.css?v=3.0.79","./assets/bunch-queue.css?v=3.0.79","./assets/bunch-note-cards.css?v=3.0.79","./assets/sales-workspace.css?v=3.0.79","./assets/mobile-workspace.css?v=3.0.79","./assets/navigation-preferences.css?v=3.0.79","./assets/user-access-control.css?v=3.0.79","./assets/theme-tokens.css?v=3.0.79","./assets/live-tailwind-v2026082010.min.css?v=3.0.79","./assets/vendor/phosphor/regular/style.css?v=3.0.79","./assets/vendor/phosphor/bold/style.css?v=3.0.79","./assets/vendor/phosphor/duotone/style.css?v=3.0.79","./assets/vendor/phosphor/fill/style.css?v=3.0.79","./assets/vendor/phosphor/light/style.css?v=3.0.79","./assets/live-app-update.js?v=3.0.79","./assets/live-app-styles-base-v2026090503.css?v=3.0.79","./assets/ops-precision-pilot.css?v=3.0.79","./assets/production-schedule.css?v=3.0.79","./assets/live-app-styles-authority-v2026090503.css?v=3.0.79","./assets/app-styles.css?v=3.0.79","./assets/av-mobile-toolbar.css?v=3.0.79","./assets/manager-workspace.css?v=3.0.79","./assets/assigned-items.css?v=3.0.79","./assets/erp-sync-progress.css?v=3.0.79","./assets/editable-input-contrast.css?v=3.0.79","./assets/request-detail-reference.css?v=3.0.79","./assets/body-prepaint-theme.js?v=3.0.79","./assets/vendor/supabase-browser-2.112.3.min.js?v=3.0.79","./assets/drive-demand-detail.js?v=3.0.79","./assets/inventory-list-contract.js?v=3.0.79","./assets/inventory-card-window.js?v=3.0.79","./assets/chunk-render-pacing.js?v=3.0.79","./assets/suspend-tag-page.js?v=3.0.79","./assets/drive-common-name-preparation.js?v=3.0.79","./assets/queue-inventory-hydration.js?v=3.0.79","./assets/login-network-trace.js?v=3.0.79","./assets/smart-hold-intelligence.js?v=3.0.79","./assets/agdata-kernel.js?v=3.0.79","./assets/storage-request-guard.js?v=3.0.79","./assets/watchdog-queue-controls.js?v=3.0.79","./assets/runtime-watchdog.js?v=3.0.79","./assets/live-sync-registry.js?v=3.0.79","./assets/manager-source-live-events.js?v=3.0.79","./assets/customer-mapping-live-events.js?v=3.0.79","./assets/live-sync-adapters.js?v=3.0.79","./assets/live-sync-coordinator.js?v=3.0.79","./assets/inventory-hydration-recovery.js?v=3.0.79","./assets/av-derived-rows.js?v=3.0.79","./assets/bounded-snapshot-cache.js?v=3.0.79","./assets/stable-view-dom.js?v=3.0.79","./assets/company-directory-cache.js?v=3.0.79","./assets/nursery-command-tables.css?v=3.0.79","./assets/nursery-command-model.js?v=3.0.79","./assets/nursery-command-tables.js?v=3.0.79","./assets/manager-table-management.js?v=3.0.79","./assets/queue-completion-state.js?v=3.0.79","./assets/request-submission.js?v=3.0.79","./assets/ops-precision-pilot.js?v=3.0.79","./assets/production-schedule.js?v=3.0.79","./assets/eval-reports-engine.js?v=3.0.79","./assets/report-pages-live.js?v=3.0.79","./assets/photo-history-v2026090401.js?v=3.0.79","./assets/runtime-watchdog-panel.js?v=3.0.79"],
   './assets/app-styles.css',
   ...DEFERRED_VIEW_ASSETS,
   './assets/bunch-queue-shell.js?v=' + encodeURIComponent(APP_SHELL_BUILD),

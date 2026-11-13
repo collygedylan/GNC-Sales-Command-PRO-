@@ -183,6 +183,7 @@ async function saveData(isComplete = false, prefix, isSilentAutoSave = false, sp
                 if (!await openMarkDoneConfirmModal(plan)) return false;
                 if (snapshot.scope !== getSupabaseReadIdentityScope()) return false;
                 snapshot = await settleDetailEvaluationPhotos(snapshot);
+                if (!snapshot) return false;
                 const coordinator = getRowSaveCoordinatorState(getRowSaveCoordinatorKey(prefix,item));
                 if (coordinator) coordinator.completionIntentUntil = Date.now() + ROW_SAVE_COMPLETE_INTENT_MS;
                 optimistic = beginConfirmedRowEvaluationUi(snapshot);
@@ -201,7 +202,7 @@ async function saveData(isComplete = false, prefix, isSilentAutoSave = false, sp
                 return optimistic.confirmed;
             } catch (error) {
                 if (optimistic?.confirmed) { queueVisibleDatasetCatchup(0); globalThis.reportHandledRuntimeIssue?.('saveData','HANDLED_OPERATION_FAILURE'); return true; }
-                optimistic?.rollback(); showToast('Save Stopped',error?.message || 'Your draft is retained. Please retry.',true); return false;
+                optimistic?.rollback(); showToast('Evaluation not saved',error?.message || 'Your draft is retained. Please retry.',true); return false;
             }
             finally {
                 if (actions.get(actionKey) === token) actions.delete(actionKey);
@@ -213,16 +214,19 @@ async function persistPhotoSettledEvaluation(prefix, silent, item, options) {
     const snapshot = options.markDoneSnapshot || captureConfirmedRowEvaluation(item || activeItem,prefix);
     try {
         const settled = await settleDetailEvaluationPhotos(snapshot);
-        if (settled.scope !== getSupabaseReadIdentityScope()) return false;
+        if (!settled || settled.scope !== getSupabaseReadIdentityScope()) return false;
         return await globalThis.persistConfirmedRowEvaluation(true,prefix,silent,settled.row,{...options,markDoneSnapshot:settled});
     } catch (error) {
         options.optimisticCompletion?.rollback();
-        if (!silent) showToast('Save Stopped',error?.message || 'Your draft is retained. Please retry.',true);
+        if (!silent) showToast('Evaluation not saved',error?.message || 'Your draft is retained. Please retry.',true);
         return false;
     }
 }
 
 async function settleDetailEvaluationPhotos(snapshot) {
+    if (snapshot.isSuspend || snapshot.prefix === 'req-' || SECURE_DRIVE_EVIDENCE_PREFIXES.has(snapshot.prefix)) {
+        return {...snapshot, uploads:[]};
+    }
     const rows = snapshot.uploadRows?.length ? snapshot.uploadRows : [snapshot.source];
     const collect = row => [...getPendingPhotoUploadsForItem(row,snapshot.prefix),
         ...(globalThis.getDetailRowPhotoUploadPromises?.(row,snapshot.prefix) || [])];
@@ -234,7 +238,8 @@ async function settleDetailEvaluationPhotos(snapshot) {
     const results = await Promise.allSettled(uploads);
     if (snapshot.scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
     if (results.some(result => result.status === 'rejected') || unsettled()) {
-        throw new Error('Photo not saved. Your entries and photos are retained on this row. Retry the photo, then Mark Done.');
+        showToast('Photos pending','Your entries are retained. Retry the photo to finish this evaluation.',true);
+        return null;
     }
     const navigation = snapshot.detailNavigation;
     if (navigation?.ownsEditor && activeItem === navigation.editor && detailHydrationToken === navigation.token) {

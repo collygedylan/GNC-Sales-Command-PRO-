@@ -52,6 +52,8 @@ if (!(typeof window !== 'undefined' ? window : globalThis).AgMetricLifecycle) {
     let savedCamera = null;
     try { savedCamera = JSON.parse(root.sessionStorage.getItem(cameraKey) || 'null'); } catch (_) {}
     const state = root.GncCameraState = {cameraCaptureInFlight:!!(savedCamera?.cameraCaptureInFlight && Date.now()-savedCamera.startedAt < 30*60_000),startedAt:savedCamera?.startedAt || 0,returnUntil:Number(savedCamera?.returnUntil)||0,captureId:Number(savedCamera?.captureId)||0};
+    const photoUploads = new Set();
+    let cameraPickerOpen = state.cameraCaptureInFlight;
     root.isCameraCaptureProtected = () => state.cameraCaptureInFlight || Date.now() < state.returnUntil;
     root.persistCameraCaptureState = () => {
         if (state.cameraCaptureInFlight && !state.startedAt) state.startedAt = Date.now();
@@ -60,10 +62,25 @@ if (!(typeof window !== 'undefined' ? window : globalThis).AgMetricLifecycle) {
         root.navigator?.serviceWorker?.controller?.postMessage(message);
         root.navigator?.serviceWorker?.getRegistration?.().then(reg => { reg?.waiting?.postMessage(message); reg?.installing?.postMessage(message); }).catch(() => {});
     };
-    root.finishCameraCapture = () => {
-        if (!state.cameraCaptureInFlight) return;
-        state.cameraCaptureInFlight = false; state.startedAt = 0; state.returnUntil = Date.now()+15_000;
+    const updateCameraActivity = () => {
+        const active = cameraPickerOpen || photoUploads.size > 0;
+        if (state.cameraCaptureInFlight === active) return;
+        state.cameraCaptureInFlight = active;
+        if (!active) { state.startedAt = 0; state.returnUntil = Date.now()+15_000; }
         root.persistCameraCaptureState();
+    };
+    root.beginCameraCapture = () => { cameraPickerOpen = true; updateCameraActivity(); };
+    root.finishCameraCapture = () => { cameraPickerOpen = false; updateCameraActivity(); };
+    root.protectCameraPhotoUpload = pending => {
+        photoUploads.add(pending);
+        updateCameraActivity();
+        const release = () => { photoUploads.delete(pending); updateCameraActivity(); };
+        pending.then(release, release);
+    };
+    root.clearCameraPhotoUploads = () => {
+        photoUploads.clear();
+        cameraPickerOpen = false;
+        updateCameraActivity();
     };
     doc?.addEventListener('visibilitychange', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
     root.addEventListener('pageshow', () => { if (!doc.hidden) root.finishCameraCapture(); }, {passive:true});
