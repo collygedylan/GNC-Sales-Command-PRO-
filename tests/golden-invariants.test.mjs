@@ -4084,9 +4084,7 @@ test('Invariant 190 (Suspend lot fallback stays at the same physical location an
   assert.equal(result.row.PTRONHAND,160);assert.equal(result.row.LOC_ON_HAND,264);assert.equal(result.row.PHOTO_LINK,'sh.jpg');assert.equal(result.row.LOC_MATCH_QTY,64);
   assert.equal(index.resolveSuspendTagDisplay({itemcode:'003566.051.1',locationcode:'0.00.111',lotcode:'27.F1'}).status,'missing');
 });
-
 test('Invariant 191 (Bloom opens project creation directly with all grading fields)', () => bloomProjectContract(runFunctions,read));
-
 test('Invariant 192 (Suspend AV has one action and no nested Reclass card)', () => {
   const source=['renderRequestMatchingInventoryOptions','renderLegacyRequestAvOptions','renderRequestAvOptionCard'].map(name=>functionSource('assets/app-runtime.js',name)).join('\n');
   assert.ok(source.includes('suspendFillTag ? `<div class="suspend-av-option-evidence">'));
@@ -6795,3 +6793,5 @@ test('Invariant 650: warm AV uses the active account and a final Suspend receipt
   const {assertWarmAvAndFinalSuspendReceipt} = await import('../src/core/warm-av-suspend-receipt-fixture.mjs');
   assertWarmAvAndFinalSuspendReceipt();
 });
+test('Invariant 651: Eval overview and drills, Bloom cart continuity, and Project presets work in Chromium', async () =>
+  (await import('../src/views/eval-bloom-project-browser-fixture.mjs')).verifyEvalBloomProjectBrowser());

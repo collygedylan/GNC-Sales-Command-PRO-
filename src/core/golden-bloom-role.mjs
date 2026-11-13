@@ -43,13 +43,14 @@ export function bloomRoleActionContract(runFunctions) {
 
 export async function bloomProjectContract(runFunctions,read) {
   let shown=0;const nodes=new Map();const modal={innerHTML:'',querySelectorAll:()=>[],showModal:()=>shown++,querySelector:selector=>{if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:'',setAttribute(){}});return nodes.get(selector);}};
-  const ctx=runFunctions('assets/app-runtime.js',['setBloomProjectPickerOptions','renderBloomProjectSavedVariables','syncBloomProjectParameters','renderBloomProjectQuestionCard','renderBloomProjectTaskConfigurator','buildBloomProjectSummary','addInventoryRowsToProject'],{
+  const ctx=runFunctions('assets/app-runtime.js',['setBloomProjectPickerOptions','renderBloomProjectSavedVariables','buildBloomProjectSummary','addInventoryRowsToProject','dispatchBloomProjectPartyChange'],{
     queueInventoryProjectsLoad:null,CSS:{escape:String},fullInventory:[],masterInventory:[],ensureQueueInventoryProjectsScope(){},ensureQueueInventoryProjectsData:async()=>{},bloomInventoryProjectDraft:null,crypto:{randomUUID:()=> 'command'},getSupabaseReadIdentityScope:()=> 'owner',isRepReadOnlyUser:()=>false,
     document:{getElementById:()=>modal,querySelector:()=>null},getAllRequestModalRepOptions:()=>[{label:'Rep One'}],getAssignableAppUserOptions:()=>[{username:'grader',display:'Grade Person'}],
     ensureRequestRepUserOptionsReady:async()=>[],ensureAssignableAppUsers:async()=>[],normalizeRepDisplayOrder:value=>value,esc:String
   });
+  vm.runInContext(read('assets/bloom-inventory-project.js'), ctx);
   await ctx.addInventoryRowsToProject([{ITEMCODE:'x',COMMONNAME:'Tree',LOCATIONCODE:'A.01.000'}]);
-  assert.equal(shown,1);for(const label of ['Sales Rep Name','Customer Name','Consignee Name','Qty to Inspect / Target Count','What They Are Marked With','Assign To · Who completes this project?'])assert.ok(modal.innerHTML.includes(label),label);
+  assert.equal(shown,1);for(const label of ['Sales Rep Name','Customer Name','Consignee Name','Grade Best N count','What They Are Marked With','Assigned User'])assert.ok(modal.innerHTML.includes(label),label);
   assert.doesNotMatch(modal.innerHTML,/Load More|Create an Inventory Project before/);
   assert.match(read('supabase/migrations/20261029210000_agdata_v23107_row_workflows.sql'),/PROJECT_COMMAND_CONFLICT/);
 }

@@ -158,7 +158,7 @@ const STATIC_ASSETS = [
     "./assets/login-continuity.js", "./assets/request-folder-choice.js", "./assets/inventory-share-text.js", "./assets/header-excel-export.js",
     "./assets/av-filter-rail.js",
     "./assets/av-filter-markup.js", "./assets/deferred-card-photo-queue.js",
-    "./assets/eval-report2-controls.js",
+    "./assets/eval-report2-controls.js", "./assets/eval-report2-overview.js", "./assets/bloom-cart-persistence.js", "./assets/bloom-cart-actions.js", "./assets/bloom-inventory-project.js",
     "./assets/manager-workspace.css",
     "./assets/public-photo-share.js", "./assets/access-display-cache.js", "./assets/navigation-visibility.js", "./assets/navigation-routing.js",
     "./assets/operational-rpc-retry.js", "./assets/rpc-recovery-domain.js", "./assets/canonical-row-unlock.js",

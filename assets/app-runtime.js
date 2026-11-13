@@ -20956,6 +20956,10 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/av-filter-rail.js */
         /* @runtime-fragment assets/av-filter-markup.js */
         /* @runtime-fragment assets/eval-report2-controls.js */
+        /* @runtime-fragment assets/eval-report2-overview.js */
+        /* @runtime-fragment assets/bloom-cart-persistence.js */
+        /* @runtime-fragment assets/bloom-cart-actions.js */
+        /* @runtime-fragment assets/bloom-inventory-project.js */
         /* @runtime-fragment assets/app-update-state.js */
         /* @runtime-fragment assets/app-update-restore.js */
         /* @runtime-fragment assets/inventory-photo-domain.js */
@@ -46134,7 +46138,6 @@ function renderDriveQuickRequestBar(rows = null) {
         bar.innerHTML = '';
         return;
     }
-    const selectAction = stats.allSelected ? 'clearDriveReturnedRowsSelection' : 'selectDriveReturnedRows';
     const selectLabel = stats.allSelected ? 'Clear Returned' : 'Select All Returned';
     const selectIcon = stats.allSelected ? 'ph-x-circle' : 'ph-check-square';
     const sendDisabled = stats.selected ? '' : ' disabled';
@@ -46150,10 +46153,23 @@ function renderDriveQuickRequestBar(rows = null) {
                 <button type="button" class="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-600" onclick="return clearBloomPickerSelection()">Clear Bloom Picker</button>
             </div>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button type="button" class="min-h-[46px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-[.99]" onclick="return ${selectAction}()"><i class="ph-bold ${selectIcon} mr-2"></i>${escapeHtml(selectLabel)}</button>
+                <button type="button" data-bloom-returned-selection class="min-h-[46px] rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-[11px] font-black uppercase tracking-[0.12em] text-[#007a4d] shadow-sm active:scale-[.99]"><i class="ph-bold ${selectIcon} mr-2"></i>${escapeHtml(selectLabel)}</button>
                 <button type="button"${sendDisabled} class="min-h-[46px] rounded-xl px-4 text-[11px] font-black uppercase tracking-[0.12em] ${sendDisabledClass}" onclick="return sendSelectedDriveRowsAsShift()"><i class="ph-bold ph-arrows-left-right mr-2"></i>Send As Shift</button>
             </div>
         </div>`;
+    bar.querySelector('[data-bloom-returned-selection]')?.addEventListener('click', toggleDriveReturnedBloomSelection);
+}
+
+function toggleDriveReturnedBloomSelection() {
+    const stats = getDriveReturnedSelectionStats();
+    const ids = stats.selectableRows.map(row => row.DOM_ID).filter(Boolean);
+    if (stats.allSelected) {
+        persistBloomCartSelection(ids, true);
+        return clearDriveReturnedRowsSelection();
+    }
+    const result = selectDriveReturnedRows();
+    persistBloomCartSelection(ids);
+    return result;
 }
 
 function selectDriveReturnedRows(silent = false) {
@@ -69456,20 +69472,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         async function removeInventoryProjectRow(rowId){const projectId=activeInventoryProjectId;await inventoryProjectApi('project_update_row',{rowId,remove:true});await refreshInventoryProjectsData();return openInventoryProject(projectId);}
         function openReclassFromInventoryProject(itemcode,locationcode,lotcode){const row=(masterInventory||[]).find(item=>String(item.ITEMCODE||item.itemcode)===itemcode&&String(item.LOCATIONCODE||item.locationcode)===locationcode&&String(item.LOTCODE||item.lotcode)===lotcode);if(row)openReclassItemInquiry(row);}
         let bloomInventoryProjectDraft = null;
-        async function addInventoryRowsToProject(items) {
-            const rows=(items||[]).filter(Boolean);if(!rows.length||isRepReadOnlyUser())return false;
-            ensureQueueInventoryProjectsScope();
-            bloomInventoryProjectDraft={id:crypto.randomUUID(),owner:getSupabaseReadIdentityScope(),rows,pairs:[],busy:false,displayId:'PRJ-'+Date.now().toString().slice(-6),taskTypes:{grading:true,discard:false,hauling:false,maintenance:false},mode:'qc',parameters:{priority:true,spec:true,dates:true,assignee:true,goal:false,count:true,marking:true,notes:true,photo:false,sales:false},customVariables:[]};
-            let modal=document.getElementById('bloom-inventory-project-modal');if(!modal){modal=document.createElement('dialog');modal.id='bloom-inventory-project-modal';document.body.appendChild(modal);}
-            const field=(label,input)=>'<label class="bloom-project-field"><span>'+label+'</span>'+input+'</label>';
-            const picker=(name,label,initial='')=>'<input name="'+name+'" value="'+esc(initial)+'" readonly required autocomplete="off" '+(name==='salesrep'?'onchange="return updateBloomProjectCustomers(this.value)"':name==='customername'?'onchange="return updateBloomProjectConsignees(this.value)"':'')+'><button type="button" class="bloom-project-picker-trigger" onclick="return toggleBloomProjectPicker(this)">'+esc(label)+' ▾</button><div class="bloom-project-picker-menu" hidden><input type="search" placeholder="Search people or teams" oninput="return filterBloomProjectPicker(this)" onkeydown="handleBloomProjectPickerKey(event,this)"><div class="bloom-project-picker-options" data-picker="'+name+'"></div></div>';
-            const today=new Date(),tomorrow=new Date(today);tomorrow.setDate(tomorrow.getDate()+1);const date=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-            const title='Open Stock QC Grade — '+(rows[0].COMMONNAME||rows[0].ITEMCODE||'Inventory')+' '+(rows[0].CONTSIZE||'')+' ('+(rows[0].LOCATIONCODE||'')+')';
-            modal.innerHTML='<form onsubmit="event.preventDefault();return submitBloomInventoryProject(this)"><header class="project-builder-header"><div><h2>Create Inventory Project</h2>'+buildBloomProjectSummary(rows)+'</div><button type="button" aria-label="Close" onclick="this.closest(\'dialog\').close()">×</button></header><div class="project-builder-body"><section class="project-builder-section"><h3>1. Who, what &amp; when</h3><div class="project-builder-grid">'+field('Project Title / Goal','<input name="projectName" required maxlength="160" value="'+esc(title)+'"><select aria-label="Quick project templates" onchange="applyBloomProjectTemplate(this.value)"><option value="">Quick templates…</option>'+['Open Stock QC Grade','Cull & Clean Block','Haul / Consolidate','Space / Shear Maintenance','Sales Rep Customer Pull'].map(t=>'<option>'+esc(t)+'</option>').join('')+'</select>')+field('Assign To · Who completes this project?',picker('assignedTo','QC Team','QC Team'))+'<div class="project-builder-dates">'+field('Start Date','<input name="startDate" type="date" required value="'+date(today)+'">')+field('Finish By Date','<input name="finishByDate" type="date" required value="'+date(tomorrow)+'">')+'</div><div><span>Priority</span><div class="project-priority">'+['Normal','High','Critical'].map((p,i)=>'<label><input type="radio" name="priority" value="'+p+'" '+(!i?'checked':'')+'><span>'+p+'</span></label>').join('')+'</div></div></div></section><section class="project-builder-section"><h3>2. Check which fields &amp; questions to include</h3><p>Check a card to include it and show its settings.</p>'+renderBloomProjectTaskConfigurator(rows)+renderBloomProjectQuestionCard('sales','For a Sales Rep / Customer / Consignee',field('Sales Rep Name',picker('salesrep','Choose Sales Rep'))+field('Customer Name',picker('customername','Choose Customer','N/A'))+field('Consignee Name',picker('consigneename','Choose Consignee','N/A')))+renderBloomProjectQuestionCard('notes','Project Instructions / Notes for Worker','<label>Instructions / Notes<textarea name="targetNotes" maxlength="2000" placeholder="Special instructions for the worker"></textarea></label>')+'</section><section class="project-builder-section"><h3>3. Custom questions &amp; variables</h3><div data-project-saved-fields></div><div data-project-custom-fields></div><button type="button" class="project-add-question" onclick="return addBloomProjectCustomVariable()">➕ Add Custom Question / Variable</button></section></div><footer class="project-builder-footer"><p role="status" data-project-status></p><div><button type="button" onclick="this.closest(\'dialog\').close()">Cancel</button><button type="submit" class="bloom-project-submit">✅ Create Inventory Project</button></div></footer></form>';
-            syncBloomProjectParameters();modal.showModal();renderBloomProjectSavedVariables();
-            const draft=bloomInventoryProjectDraft;
-            const fillDirectories=()=>{if(draft!==bloomInventoryProjectDraft||draft.owner!==getSupabaseReadIdentityScope())return;setBloomProjectPickerOptions('salesrep',getAllRequestModalRepOptions().map(rep=>normalizeRepDisplayOrder(rep.label)));setBloomProjectPickerOptions('customername',['N/A']);setBloomProjectPickerOptions('consigneename',['N/A']);setBloomProjectPickerOptions('assignedTo',['QC Team','Eval Team','Production Team',...getAssignableAppUserOptions().map(user=>user.username)]);};
-            fillDirectories();void Promise.all([ensureRequestRepUserOptionsReady(),ensureAssignableAppUsers()]).then(fillDirectories).catch(()=>{});ensureQueueInventoryProjectsData();void queueInventoryProjectsLoad?.then(()=>{if(draft===bloomInventoryProjectDraft&&draft.owner===getSupabaseReadIdentityScope())renderBloomProjectSavedVariables();});return false;
+        function addInventoryRowsToProject(items) {
+            return openBloomInventoryProject(items, dispatchBloomProjectPartyChange);
+        }
+
+        function dispatchBloomProjectPartyChange(event) {
+            const { name, value } = event.target;
+            if (name === 'salesrep') void updateBloomProjectCustomers(value);
+            if (name === 'customername') updateBloomProjectConsignees(value);
         }
 
         async function updateBloomProjectCustomers(repName) {
@@ -91103,42 +91113,6 @@ function getDocksSuspendSyncAudit() {
             });
         }
 
-        function initializeCartUi() {
-            if (cartUiObserver) {
-                cartUiObserver.disconnect();
-                cartUiObserver = null;
-            }
-            scheduleCartUiRefresh();
-        }
-
-        function startDriveModeBloomOrder(event, domId) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-            }
-            if (!isExactDylanCollygeUser()) {
-                showToast('Restricted', 'Bloom Picker Order submission is available only to Dylan.', true);
-                return false;
-            }
-            const item = findItemByDomId(domId);
-            if (!item || !canSubmitBloomPickerOrder([item])) {
-                showToast('Open Stock Only', 'Bloom Picker orders can only be created from Drive Mode open stock rows.', true);
-                return false;
-            }
-            isMultiSelectMode=false;
-            document.body.classList.remove('multi-select-mode');
-            selectedItems.clear();
-            selectedItemSources.clear();
-            selectedItems.add(domId);
-            selectedItemSources.set(domId, 'drive');
-            cartPanelOpen=false;
-            bloomPickerActionsOpen=false;
-            updateGlobalActionBar();
-            refreshCartButtons();
-            openBloomPickerModal();
-            return false;
-        }
 
         async function openAuraBloomPickerDraft(draft, options = {}) {
             const identity = getSupabaseReadIdentityScope();
@@ -91285,8 +91259,14 @@ function getDocksSuspendSyncAudit() {
 
         function toggleCartPanel(forceOpen = null) {
             if (forceOpen !== false && !canAccessView('bloom')) { showToast('Access unavailable','You do not have permission to open Bloom Picker.',true); return false; }
-            if (!selectedItems.size && forceOpen !== false) {
+            if (forceOpen !== false) restoreBloomCartSelection();
+            if (!selectedItems.size && forceOpen !== false && !hasSavedBloomCartRows()) {
                 restoreBloomPickerOrderDraftSelection(true);
+            }
+            if (!selectedItems.size && forceOpen !== false && hasSavedBloomCartRows()) {
+                cartPanelOpen = true;
+                showToast('Bloom Picker', 'Saved rows will appear as inventory becomes available.');
+                return false;
             }
             if (!selectedItems.size) {
                 cartPanelOpen = false;
@@ -92553,73 +92533,9 @@ function getDocksSuspendSyncAudit() {
             return false;
         }
 
-        function clearSelection() {
-            isMultiSelectMode=false;
-            document.body.classList.remove('multi-select-mode');
-            selectedItems.forEach(domId => requestSelectionTokens.delete(domId));
-            selectedItems.clear();
-            selectedItemSources.clear();
-            cartPanelOpen=false;
-            bloomPickerActionsOpen=false;
-            bloomShareMenuOpen=false;
-            updateGlobalActionBar();
-            refreshCartButtons();
-            syncDriveReturnedSelectionToolbar();
-        }
-        function clearBloomPickerSelection() {
-            clearSelection();
-            return false;
-        }
-        function toggleGlobalItem(domId,isChecked=null,sourceView='') {
-            const safeDomId = String(domId || '').trim();
-            const safeSourceView = String(sourceView || '').trim().toLowerCase();
-            if (!safeDomId) return;
-            if (safeDomId.startsWith('hl-order:')) {
-                if (isChecked !== true) void removeHlDraftRow(safeDomId.slice(9));
-                return;
-            }
-            const hadItem = selectedItems.has(safeDomId);
-            const wantsAdd = isChecked === null ? !hadItem : !!isChecked;
-            const isDriveBloomPickerSelection = safeSourceView === 'drive-bloom';
-            if (wantsAdd && (isDriveBloomPickerSelection || isCurrentDriveCardOptionsContext(safeSourceView))) {
-                const item = findItemByDomId(safeDomId);
-                const canSelectDriveWorkflow = canCurrentUserSelectDriveWorkflowRow(item, 'drive');
-                const canSelectDriveBloomPicker = isDriveBloomPickerSelection && canAddItemToBloomPicker(item, 'drive-bloom');
-                if (!canSelectDriveWorkflow && !canSelectDriveBloomPicker) {
-                    showToast('View Only', 'This Drive Mode row is not available for your workflows.', true);
-                    return;
-                }
-            }
-            if (wantsAdd && getRoleAccessState().isForeman) {
-                const item = findItemByDomId(safeDomId);
-                if (!canAddItemToBloomPicker(item, safeSourceView)) {
-                    showToast('Restricted', 'Foreman users can add priority Drive Mode rows to Take Back.', true);
-                    return;
-                }
-            }
-            if(isChecked===null){
-                if(hadItem){selectedItems.delete(safeDomId);selectedItemSources.delete(safeDomId);}
-                else{selectedItems.add(safeDomId);selectedItemSources.set(safeDomId, safeSourceView);}
-            } else if(isChecked){selectedItems.add(safeDomId);selectedItemSources.set(safeDomId, safeSourceView);}
-            else{selectedItems.delete(safeDomId);selectedItemSources.delete(safeDomId);}
-            const hasItemNow = selectedItems.has(safeDomId);
-            if (hadItem === hasItemNow) return;
-            if (hasItemNow) requestSelectionTokens.set(safeDomId, createStableClientBatchId());
-            else requestSelectionTokens.delete(safeDomId);
-            if(!selectedItems.size){
-                cartPanelOpen=false;
-                bloomPickerActionsOpen=false;
-                bloomShareMenuOpen=false;
-            }
-            updateGlobalActionBar();
-            refreshCartButtons(safeDomId);
-            syncDriveReturnedSelectionToolbar();
-            if(!hadItem && hasItemNow){
-                showToast('Added To Bloom Picker', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} in Bloom Picker.`);
-            } else if(hadItem && !hasItemNow){
-                showToast('Removed', `${selectedItems.size} row${selectedItems.size === 1 ? '' : 's'} left in Bloom Picker.`);
-            }
-        }
+
+
+
         function getTaskDetailTabForItem(item = activeItem, taskTab = activeTaskTab) {
             const safeTaskView = normalizeTaskViewValue(taskTab);
             if (isEvalNcrOrMoveUpDetailTask(item)) return 'ncr';
@@ -111829,20 +111745,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
-        function openManagerEvalReport2DrillValue(kind = '', encodedValue = '') {
-            const safeKind = String(kind || '').trim().toLowerCase();
-            let value = '';
-            try { value = decodeURIComponent(String(encodedValue || '')); } catch (error) { value = String(encodedValue || ''); }
-            rememberManagerEvalReport2DrillScroll();
-            if (safeKind === 'commonname') { managerEvalReport2SelectedCommonName = value; managerEvalReport2SelectedContSize = ''; managerEvalReport2DrillLevel = 1; }
-            else if (safeKind === 'contsize') { managerEvalReport2SelectedContSize = value; managerEvalReport2DrillLevel = 2; }
-            else if (safeKind === 'blockalpha') { managerEvalReport2SelectedBlockAlpha = value; managerEvalReport2SelectedBlockNumber = ''; managerEvalReport2SelectedLocationCode = ''; managerEvalReport2DrillLevel = 1; }
-            else if (safeKind === 'locationcode') { managerEvalReport2SelectedLocationCode = value; managerEvalReport2DrillLevel = 2; }
-            refreshManagerEvalReport2BrowseRegion({ fallbackToFullRender: true });
-            queueScrollMainAreaToTop(`manager-eval2:${safeKind}:${value}`);
-            return false;
-        }
-
         function backManagerEvalReport2Drill() {
             if (managerEvalReport2DetailItemKey) {
                 closeManagerEvalReport2ItemDetail();
@@ -113162,6 +113064,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function renderManagerEvalReport2BrowseRegionHtml() {
             const itemcodeLevel = isManagerEvalReport2ItemcodeBrowseLevel();
+            const blockRows = !itemcodeLevel && managerEvalReport2DrillLevel === 1
+                ? renderEvalReport2BlockRowsButton(managerEvalReport2SelectedBlockAlpha) : '';
             const visibleSelection = itemcodeLevel ? getManagerEvalReport2VisibleSelectionState() : { visibleKeys:[], allVisibleSelected:false };
             const selectShown = itemcodeLevel
                 ? `<button id="manager-eval-report-2-select-shown" type="button" class="min-h-[40px] rounded-full border border-emerald-300 bg-emerald-50 px-4 text-[10px] font-black uppercase tracking-[0.12em] text-[#007a4d] ${visibleSelection.visibleKeys.length ? '' : 'pointer-events-none opacity-50'}" onclick="return toggleAllShownManagerEvalReport2Items()" ${visibleSelection.visibleKeys.length ? '' : 'disabled'}><i class="ph-bold ph-checks mr-1"></i><span data-role="label">${visibleSelection.allVisibleSelected ? 'Deselect Shown' : 'Select All Shown'}</span></button>`
@@ -113173,7 +113077,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 : (managerEvalReport2DrillLevel <= 0
                     ? 'Choose a Block Alpha. Your selected reports, users, search, and optional filters stay applied.'
                     : 'Choose a LocationCode in this block. Queue selection and Item Inquiry behavior stay the same at the ITEMCODE level.');
-            return `${renderManagerEvalReport2BrowseModeSwitch()}${selectShown ? `<div class="mt-3 flex flex-wrap gap-2">${selectShown}</div>` : ''}<div class="mt-2 text-[10px] font-bold text-slate-500">${escapeHtml(helperText)}</div><div id="manager-eval-report-2-records" class="manager-eval2-drive-list"></div>`;
+            return `${renderManagerEvalReport2BrowseModeSwitch()}${blockRows}${selectShown ? `<div class="mt-3 flex flex-wrap gap-2">${selectShown}</div>` : ''}<div class="mt-2 text-[10px] font-bold text-slate-500">${escapeHtml(helperText)}</div><div id="manager-eval-report-2-records" class="manager-eval2-drive-list"></div>`;
         }
 
         function refreshManagerEvalReport2BrowseRegion(options = {}) {
@@ -113207,20 +113111,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             else requestAnimationFrame(publishRecords);
             return true;
         }
-
-        function renderManagerEvalReport2DrillGroupCard(group = null, presentation = null) {
-            const safeGroup = group && typeof group === 'object' ? group : { kind:'', value:'', label:'Unknown', itemCount:0, rowCount:0, locationCount:0 };
-            const encodedValue = encodeURIComponent(String(safeGroup.value || ''));
-            const isBlock = safeGroup.kind === 'blockalpha';
-            const eyebrow = isBlock ? 'Block Alpha' : 'LocationCode';
-            const detail = isBlock
-                ? `${safeGroup.locationCount} LocationCode${safeGroup.locationCount === 1 ? '' : 's'}`
-                : `${safeGroup.itemCount} ITEMCODE${safeGroup.itemCount === 1 ? '' : 's'}`;
-            const label = isBlock && /^[A-L]$/i.test(String(safeGroup.value || '').trim()) ? String(safeGroup.value).trim().toUpperCase() : safeGroup.label || 'Unknown';
-            const openAttrs = presentation?.openAttrs || `data-manager-eval2-drill-kind="${escapeHtml(safeGroup.kind)}" data-manager-eval2-drill-value="${escapeHtml(encodedValue)}" onclick="return openManagerEvalReport2DrillValue('${escJsAttrValue(safeGroup.kind)}','${escJsAttrValue(encodedValue)}')"`;
-            return `<button type="button" class="manager-eval2-drill-card flex min-h-[92px] w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-white p-4 text-left shadow-sm" ${openAttrs}><span class="min-w-0"><span class="block text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700">${escapeHtml(eyebrow)}</span><span class="mt-1 block break-words text-xl font-black text-slate-900">${escapeHtml(label)}</span><span class="mt-1 block text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">${escapeHtml(detail)} &bull; ${escapeHtml(String(safeGroup.rowCount))} row${safeGroup.rowCount === 1 ? '' : 's'}</span></span><i class="ph-bold ph-caret-right shrink-0 text-2xl text-[#007a4d]" aria-hidden="true"></i></button>`;
-        }
-
 
 
         function renderManagerEvalReports2LegacyPanel() {

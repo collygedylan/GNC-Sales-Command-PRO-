@@ -4,5 +4,5 @@ import { assertManagerTableLayoutRestoration, assertEvalReportSelectionRestorati
 
 test('all five Manager tables retain their compact workspace while Drive stays pinned',assertManagerTableLayoutRestoration);
 test('persistent report choices commit their union only on Apply',assertEvalReportSelectionRestoration);
-test('fresh Eval2 entry opens reports and delegates root Back to the universal owner',assertEvalReportWorkspaceEntry);
+test('fresh Eval2 entry opens the overview and delegates root Back to the universal owner',assertEvalReportWorkspaceEntry);
 test('existing optional filters remain visible with their exact values',assertEvalReportOptionalFilters);

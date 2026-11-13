@@ -722,24 +722,21 @@ body > .erp-sync-progress-backdrop > #erp-sync-progress-modal {
 #bloom-inventory-project-modal .project-builder-grid,#bloom-inventory-project-modal .project-builder-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 #bloom-inventory-project-modal .bloom-project-field{display:flex;flex-direction:column;gap:6px;margin:0;font-size:13px;font-weight:650;min-width:0}
 #bloom-inventory-project-modal .bloom-project-field>input[readonly]{display:none}
-#bloom-inventory-project-modal .project-priority{display:flex;gap:0;margin-top:6px;border:1px solid #34775b;border-radius:10px;overflow:hidden}
-#bloom-inventory-project-modal .project-priority label{flex:1;cursor:pointer;text-align:center;position:relative;font-size:13px}
-#bloom-inventory-project-modal .project-priority input{position:absolute;opacity:0;width:1px;height:1px}
-#bloom-inventory-project-modal .project-priority span{display:block;padding:12px 3px}
-#bloom-inventory-project-modal .project-priority input:checked+span{background:#047857;color:white;font-weight:800}
-#bloom-inventory-project-modal .project-priority input:focus-visible+span{outline:2px solid #a7f3d0;outline-offset:-3px}
+#bloom-inventory-project-modal .project-preset{display:grid;gap:8px;margin-bottom:12px}
+#bloom-inventory-project-modal .project-preset-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,136px),1fr));gap:6px}
+#bloom-inventory-project-modal .project-preset-options button{min-height:44px;padding:6px;border:1px solid #34775b;border-radius:10px;background:#102e20;color:#ecfdf5;font-weight:700}
+#bloom-inventory-project-modal .project-preset-options button[aria-pressed=true]{border-color:#6ee7b7;background:#047857}
+#bloom-inventory-project-modal .project-preset [data-project-preset-description]{margin:0;color:#a7f3d0;font-size:13px}
+#bloom-inventory-project-modal .project-builder-grid+details{margin-top:16px}
 #bloom-inventory-project-modal .project-question-card{display:block;margin:10px 0;padding:0;border:1px solid #34775b;border-radius:12px;background:#102e20;overflow:hidden}
 #bloom-inventory-project-modal .project-question-heading{display:flex;align-items:center;gap:10px;padding:13px;cursor:pointer;font-size:14px}
 #bloom-inventory-project-modal .project-question-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:0 13px 14px;font-size:13px}
-#bloom-inventory-project-modal .project-question-body>p,#bloom-inventory-project-modal .project-question-body>.project-checks,#bloom-inventory-project-modal .project-question-body>.project-marking-choices,#bloom-inventory-project-modal [data-project-question=notes] label{grid-column:1/-1}
+#bloom-inventory-project-modal .project-question-body>p,#bloom-inventory-project-modal .project-question-body>.project-checks,#bloom-inventory-project-modal [data-project-question=notes] label{grid-column:1/-1}
 #bloom-inventory-project-modal .project-question-body>label{display:flex;flex-direction:column;gap:6px;min-width:0}
 #bloom-inventory-project-modal .project-question-body>label.project-check{flex-direction:row;align-items:center}
 #bloom-inventory-project-modal input:is([type=checkbox],[type=radio]){min-height:20px;min-width:20px;width:20px;height:20px;flex:0 0 20px;padding:0;accent-color:#10b981}
-#bloom-inventory-project-modal .project-priority input{min-width:1px;min-height:1px;width:1px;height:1px}
-#bloom-inventory-project-modal .project-marking-choices{display:flex;flex-wrap:wrap;gap:6px}
-#bloom-inventory-project-modal .project-marking-choices button{border:1px solid #34775b;border-radius:999px;padding:7px 10px;background:#0b2416;color:#ecfdf5}
 #bloom-inventory-project-modal .project-add-question{width:100%;border:1px dashed #34d399;border-radius:12px;padding:14px;background:#123c2c;color:#ecfdf5;font-weight:750}
-#bloom-inventory-project-modal .project-builder-footer{flex:0 0 auto;padding:12px 20px;background:#0b2416;border-top:1px solid #34775b}
+#bloom-inventory-project-modal .project-builder-footer{position:sticky;bottom:0;flex:0 0 auto;padding:12px 20px;background:#0b2416;border-top:1px solid #34775b;z-index:1}
 #bloom-inventory-project-modal .project-builder-footer>div{display:flex;justify-content:flex-end;gap:10px;align-items:center}
 #bloom-inventory-project-modal .project-builder-footer button{border:1px solid #34775b;border-radius:10px;padding:12px;color:#ecfdf5;background:#123c2c;font-weight:750}
 #bloom-inventory-project-modal .project-builder-footer .bloom-project-submit{background:#047857}

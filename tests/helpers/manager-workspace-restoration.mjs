@@ -56,13 +56,12 @@ export function assertEvalReportSelectionRestoration() {
 }
 
 export function assertEvalReportWorkspaceEntry() {
-  const state = {selected:'field-audit',entry:3}, audit = {modes:{eval:'audit'}};
+  const state = {selected:'field-audit'}, audit = {modes:{eval:'audit'}};
   const runtime = restorationRuntime(['enterEvalAggregateDashboard','isEvalAggregateDashboardVisible','backEvalAggregateDashboard'],{evalAggregateDashboardState:()=>state,fieldAuditState:()=>audit});
   runtime.enterEvalAggregateDashboard();
-  assert.equal(state.selected,'reports');
-  assert.equal(state.entry,4);
-  assert.equal(audit.modes.eval,'legacy');
-  assert.equal(runtime.isEvalAggregateDashboardVisible(),false);
+  assert.equal(state.selected,'');
+  assert.equal(audit.modes.eval,'audit');
+  assert.equal(runtime.isEvalAggregateDashboardVisible(),true);
   assert.equal(runtime.backEvalAggregateDashboard(),false);
 }
 

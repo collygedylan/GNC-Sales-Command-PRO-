@@ -29,7 +29,7 @@ export function invariant525({ read, functionSource }) {
  const access={yn:v=>String(v||'').toUpperCase(),normalizeSalesRepKey:v=>String(v||'')};vm.createContext(access);vm.runInContext(functionSource('assets/user-access-control.js','canRequestSalesRep'),access);
  assert.equal(access.canRequestSalesRep({make_request:'Y',can_make_request:'Y',request_all_reps:'N',sales_rep_access:{toby_brown:'N'}},'toby_brown'),true);assert.equal(access.canRequestSalesRep({make_request:'N',can_make_request:'N'},'toby_brown'),false);
  const state={modes:{eval:'legacy',drive:'legacy'}};
- const context={isEvalAggregateDashboardVisible:()=>false,canViewManagerEvalReports2:()=>true,fieldAuditState:()=>state,
+ const context={isEvalAggregateDashboardVisible:()=>false,canViewManagerEvalReports2:()=>true,fieldAuditState:()=>state,syncEvalOverviewAuditRows(){},
   renderManagerEvalReports2LegacyPanel:()=>'<Low Stock><Not in F1><Other Reports>',renderFieldAuditReport:()=>'<Field Audit>'};
  vm.createContext(context);vm.runInContext(functionSource('assets/eval-report2-controls.js','renderManagerEvalReports2Panel'),context);
  assert.equal(context.renderManagerEvalReports2Panel(),'<Low Stock><Not in F1><Other Reports>');

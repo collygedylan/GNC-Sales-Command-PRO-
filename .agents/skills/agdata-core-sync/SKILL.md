@@ -169,3 +169,4 @@ Cross-layer blast radius: browser commands delegate to the authenticated app-api
 
 - Never discard a validated manual restart flag at the Edge handler, reset a sealed publication checkpoint, or treat a coordinator wake as a completed Home metadata read. Invariant 616 exercises restart forwarding, healthy-run retention, late-account rejection and prepared-versus-published receipts.
 - Keep Edge imports inside supabase/functions. Prepare durable ERP publication parts in bounded batches, validate replay content, and move source files only after the canonical atomic publication receipt.
+- Keep Bloom Picker inventory selections in both account-scoped storage mirrors. Rebind them by physical UID after hydration, since indexed DOM IDs can refer to a different row after reload. An external share handoff cannot clear the cart. Invariant 651.

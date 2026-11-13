@@ -119,4 +119,6 @@ export function processAndLoadData(payload) {
     publishLoadedReserveInventory(res, hasMaster);
     publishLoadedCustomerInventory(res);
     finishLoadedInventoryPublication(res, hasMaster, changedDatasetKeys, clearOps);
+    if (hasMaster || changedDatasetKeys.includes('avOpen')) restoreBloomCartSelection();
+    if (hasMaster || changedDatasetKeys.includes('warehouseAssignedItems')) refreshVisibleEvalOverview();
 }
