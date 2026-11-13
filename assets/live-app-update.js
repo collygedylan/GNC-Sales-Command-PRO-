@@ -20,12 +20,13 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     let retryNotBefore = 0, manifestBackoff = 45000;
     let retiredWorkerCleanupStarted = false;
     let handoffFlight = null, handoffPostedWorker = null;
+    let automaticRelease = '';
     const visible = () => !doc.hidden && root.navigator?.onLine !== false;
     const deadline = work => typeof root.withBootDeadline === 'function' ? root.withBootDeadline(work,null) : Promise.resolve(null);
     const runtimeReady = () => typeof root.saveWorkStateBeforeAppUpdate === 'function' && typeof root.getAppUpdateBusyState === 'function' && typeof root.isAppUpdateSnapshotCurrent === 'function' && typeof root.commitAppUpdateSnapshotForReload === 'function';
     const busy = () => {
         if (!restoreReady || !runtimeReady()) return true;
-        try { return root.isCameraCaptureProtected?.() === true || Number(root.GncLiveUpdateNetwork?.pendingWrites || 0)>0 || root.getAppUpdateBusyState()?.busy !== false; }
+        try { return root.GncCameraState?.cameraCaptureInFlight === true || root.isCameraCaptureProtected?.() === true || Number(root.GncLiveUpdateNetwork?.pendingWrites || 0)>0 || root.getAppUpdateBusyState()?.busy !== false; }
         catch (error) { reportUnexpected(error,'UPDATE_BUSY_CHECK_FAILED'); return true; }
     };
     function renderPill(message = '') {
@@ -84,6 +85,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
             void askWorkerVersion(reg.waiting || installing);
             offerInstalledBannerWorker(reg);
             void resumeReloadHandoff(reg);
+            void applyAutomaticUpdate();
         });
     }
     function watchRegistration(reg) {
@@ -184,15 +186,17 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     }
     function resumeReloadHandoff(reg=registration) {
         const marker=readReloadHandoff(),worker=reg?.waiting;
-        if (!marker || !worker || handoffPostedWorker===worker || !visible() || busy()) return Promise.resolve(false);
+        const automatic=automaticRelease === currentVersion() && !!serviceWorker?.controller;
+        if ((!marker && !automatic) || !worker || handoffPostedWorker===worker || !visible() || busy()) return Promise.resolve(false);
         if (handoffFlight) return handoffFlight;
         handoffFlight=(async()=>{
             if (await askWorkerVersion(worker)!==currentVersion() || reg.waiting!==worker) return false;
-            if (!readReloadHandoff()) return false;
             const receipt=await checkpoint(currentVersion(),true);
-            if (!handoffReceiptMatches(readReloadHandoff(),receipt) || reg.waiting!==worker) return false;
+            const current = marker ? handoffReceiptMatches(readReloadHandoff(),receipt)
+                : automaticRelease === currentVersion() && snapshotIsCurrent(receipt,currentVersion(),true);
+            if (!current || reg.waiting!==worker) return false;
             const build='AgData v'+currentVersion();
-            worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:'update-banner',snapshotId:receipt.snapshotId,targetBuild:build,build,version:build});
+            worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:marker?'update-banner':'update-auto',snapshotId:receipt.snapshotId,targetBuild:build,build,version:build});
             handoffPostedWorker=worker;
             return true;
         })().catch(error=>{reportUnexpected(error,'UPDATE_HANDOFF_FAILED');return false;}).finally(()=>{handoffFlight=null;});
@@ -215,17 +219,18 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     }
     async function fallbackBannerActivation(tap) {
         if (activation !== tap) return false;
+        if (tap.automatic) return finishActivation(tap,false);
         if (!snapshotIsCurrent(tap.receipt,tap.target)) return finishActivation(tap,false);
         const verified = await verifyShell(tap.target);
         if (activation !== tap) return false;
         if (!verified) applyMessage='Update unavailable — tap to retry';
         return finishActivation(tap,verified && navigate(tap.target,tap.receipt));
     }
-    function beginBannerActivation(target, receipt) {
+    function beginBannerActivation(target, receipt, automatic) {
         let resolve;
         const completion = new Promise(done => { resolve=done; });
         root.clearTimeout(activationTimer);
-        const tap = {worker:null, target, receipt, resolve, completion};
+        const tap = {worker:null, target, receipt, resolve, completion, automatic};
         activation = tap;
         activationTimer = root.setTimeout(() => {
             activationTimer = null;
@@ -233,19 +238,21 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
                 reportUnexpected(error,'UPDATE_ACTIVATION_FALLBACK_FAILED');
                 finishActivation(tap,false);
             });
-        }, 800);
+        }, automatic ? 2500 : 800);
         return tap;
     }
     function activateWaitingWorker(tap, worker) {
         const build = 'AgData v' + tap.target;
         tap.worker = worker;
-        try { worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:'update-banner',snapshotId:tap.receipt.snapshotId,targetBuild:build,build,version:build}); }
+        try { worker.postMessage({type:'SKIP_WAITING',protocol:'agdata-update-restore-v1',trigger:tap.automatic?'update-auto':'update-banner',snapshotId:tap.receipt.snapshotId,targetBuild:build,build,version:build}); }
         catch (error) { reportUnexpected(error,'UPDATE_ACTIVATION_MESSAGE_FAILED'); }
         return true;
     }
-    function offerInstalledBannerWorker(reg) {
+    async function offerInstalledBannerWorker(reg) {
         const tap=activation,worker=reg.waiting;
         if (!tap?.shellVerified || !worker || tap.worker || !snapshotIsCurrent(tap.receipt,tap.target)) return;
+        if (tap.automatic && await askWorkerVersion(worker) !== tap.target) return;
+        if (activation !== tap || reg.waiting !== worker || tap.worker || !snapshotIsCurrent(tap.receipt,tap.target)) return;
         activateWaitingWorker(tap,worker);
     }
     function finishBannerActivation(worker, version) {
@@ -263,23 +270,44 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         if (!snapshotIsCurrent(tap.receipt,tap.target)) return finishActivation(tap,false);
         tap.shellVerified=true;
         if (reg?.installing && !reg.waiting) return tap.completion;
+        if (tap.automatic && serviceWorker?.register) {
+            const worker = reg?.waiting || serviceWorker.controller;
+            if (await askWorkerVersion(worker) !== tap.target || worker !== (reg?.waiting || serviceWorker.controller)
+                || activation !== tap || !snapshotIsCurrent(tap.receipt,tap.target)) return finishActivation(tap,false);
+        }
         if (!reg?.waiting) return finishActivation(tap,navigate(tap.target,tap.receipt));
         return activateWaitingWorker(tap,reg.waiting);
     }
-    async function applyTappedTarget(target) {
-        prepareExplicitUpdate?.();
+    async function applyTarget(target, automatic = false) {
         const receipt = await checkpoint(target);
         if (!receipt) return false;
-        const tap = beginBannerActivation(target,receipt);
+        const tap = beginBannerActivation(target,receipt,automatic);
         const preparing = prepareBannerActivation(tap).catch(error => {
             reportUnexpected(error,'UPDATE_ACTIVATION_PREPARATION_FAILED');
             return finishActivation(tap,false);
         });
         return Promise.race([preparing,tap.completion]);
     }
+    function applyAutomaticUpdate() {
+        if (!targetVersion || automaticRelease !== targetVersion || !visible() || busy() || reloading || applyFlight || activation) return false;
+        applyFlight = applyTarget(targetVersion,true).catch(error => {
+            reportUnexpected(error,'UPDATE_AUTO_APPLY_FAILED');
+            return false;
+        }).finally(finishUpdateTap);
+        return applyFlight;
+    }
+    function onUpdateRuntimeReady(prepare) {
+        restoreReady = true;
+        prepareExplicitUpdate = prepare;
+        void retryPendingRestore();
+        void resumeReloadHandoff();
+        void applyAutomaticUpdate();
+        void askWorkerVersion(serviceWorker?.controller).then(() => announceCurrentShell());
+    }
     function applyBannerTap() {
         if (reloading || !restoreReady || !visible() || !newer(targetVersion,currentVersion())) return false;
         if (applyFlight || activation) return false;
+        prepareExplicitUpdate?.();
         if (busy()) {
             applyMessage = pauseMessage;
             finishUpdateTap();
@@ -288,7 +316,7 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
         userRequestedUpdateApply = true;
         applyMessage=pauseMessage;
         renderPill('Applying v' + targetVersion + '…');
-        applyFlight = applyTappedTarget(targetVersion).catch(error => {
+        applyFlight = applyTarget(targetVersion).catch(error => {
             reportUnexpected(error,'UPDATE_APPLY_FAILED');
             return false;
         }).finally(finishUpdateTap);
@@ -323,8 +351,13 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
                 manifest = await deadline(readUpdateManifest(controller.signal));
             } catch (error) {reportUnexpected(error,'UPDATE_MANIFEST_RESPONSE_FAILED');} finally {controller.abort();}
             updateManifestBackoff(manifest);
-            if(manifest)rememberTarget(manifest.version || manifest.release);
-            if(targetVersion) {void ensureRegistration(true);renderPill();return true;}
+            if(manifest) {
+                const release = manifest.version || manifest.release;
+                automaticRelease = manifest.autoApply === true ? normalize(release) : '';
+                rememberTarget(release);
+                void resumeReloadHandoff();
+            }
+            if(targetVersion) {void ensureRegistration(true).then(() => applyAutomaticUpdate());renderPill();return true;}
             return false;
         })().finally(()=>{inFlightCheck=null;});return inFlightCheck;
     }
@@ -390,9 +423,9 @@ if (!(typeof window !== 'undefined' ? window : globalThis).GncLiveAppUpdate) {
     const resumed=reason=>{if(visible())void checkForLiveAppUpdate(reason,{force:true});};
     doc.addEventListener('visibilitychange',()=>resumed('visible'),{passive:true});
     root.addEventListener('online',()=>resumed('online'));root.addEventListener('pageshow',()=>resumed('pageshow'));root.addEventListener('focus',()=>resumed('focus'));
-    root.addEventListener('agdata:update-work-settled',()=>{void resumeReloadHandoff();});
+    root.addEventListener('agdata:update-work-settled',()=>{void resumeReloadHandoff();void applyAutomaticUpdate();});
     root.checkForLiveAppUpdate=checkForLiveAppUpdate;root.requestLiveAppUpdate=requestLiveAppUpdate;
-    root.GncLiveAppUpdate=Object.freeze({start,runtimeReady(prepare){restoreReady=true;prepareExplicitUpdate=prepare;void retryPendingRestore();void resumeReloadHandoff();void askWorkerVersion(serviceWorker?.controller).then(()=>announceCurrentShell());},check:checkForLiveAppUpdate,request:requestLiveAppUpdate,requestApply:()=>applyFlight || Promise.resolve(false),scheduleApply:showPendingUpdate,ensureRegistration,
+    root.GncLiveAppUpdate=Object.freeze({start,runtimeReady:onUpdateRuntimeReady,check:checkForLiveAppUpdate,request:requestLiveAppUpdate,requestApply:()=>applyFlight || Promise.resolve(false),scheduleApply:showPendingUpdate,ensureRegistration,
         getState:()=>({targetVersion,currentVersion:currentVersion(),busy:busy(),checking:!!inFlightCheck,applying:userRequestedUpdateApply,userRequestedUpdateApply,reloading,lastShellProof})});
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',start,{once:true});else start();
 }
