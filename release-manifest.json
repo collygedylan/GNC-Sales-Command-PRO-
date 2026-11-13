@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "aebbab26bd3ef6b50a202124b09da50f64ca24c3",
+  "commit": "2816389755690f1e3f4625d7725a7e88f3a70dc8",
   "release": "AgData v3.0.85",
   "files": [
     {
@@ -1541,17 +1541,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "5f5e943c64a9a3b1480db57f58eaf24a05322c9ee465bd2a8700da342d463928"
+      "sha256": "87ba7db944878d0086d9d02c3facaf1efd5d00076236d79378f0e5851192bc8d"
     },
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "5f5e943c64a9a3b1480db57f58eaf24a05322c9ee465bd2a8700da342d463928"
+      "sha256": "87ba7db944878d0086d9d02c3facaf1efd5d00076236d79378f0e5851192bc8d"
     },
     {
       "path": "deployments/131ba96c0cc55ba74f29616d0ed802f64ab40167.json",
       "bytes": 187,
       "sha256": "9f9c09fbb7517c3a73d6ebb84e4046e3c00d3a6f419a7c29ab05bc705625d37b"
+    },
+    {
+      "path": "deployments/2816389755690f1e3f4625d7725a7e88f3a70dc8.json",
+      "bytes": 187,
+      "sha256": "87ba7db944878d0086d9d02c3facaf1efd5d00076236d79378f0e5851192bc8d"
     },
     {
       "path": "deployments/68aff1b3b1af5758c3d2e79f5380746b7d0f2030.json",
@@ -1596,7 +1601,7 @@
     {
       "path": "index.html",
       "bytes": 433774,
-      "sha256": "5797b6452c69e3dac027a585a023e0cf5a0361893995e6fdfc5268767498848a"
+      "sha256": "5cb0d311bf202cb6ae41229cf6df925a793b3c302a8528a808000bd462b79347"
     },
     {
       "path": "manifest.json",
@@ -1651,7 +1656,7 @@
     {
       "path": "sw.js",
       "bytes": 41676,
-      "sha256": "c5b5b63d2e6f75942a20c7ab6be57f2a22b1374fe1bfd3d49acd1fc9b1b8880c"
+      "sha256": "63fae2a833c74d07727cd0c6d9b31ab29150d5189429c700d1576e84b1ef6677"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -2081,12 +2086,12 @@
     {
       "path": "version-parity.json",
       "bytes": 132,
-      "sha256": "1304913d22687ee0ca1cd5e03661beecb0475132a8805085c032cfe4beb6eb48"
+      "sha256": "0123592fed80d2ddc2b58ba8ffa76e565282ae74d2609686ad7e78164ee4a01e"
     },
     {
       "path": "version.json",
       "bytes": 134,
-      "sha256": "a0579b07912310c2b24ed234f7f4a2c18323bc0422c7ae097a87a3cd1771e214"
+      "sha256": "8c08b80e917abc003cbe0d463233a0524bc947a482a42e32957435ac326c77a3"
     }
   ]
 }
