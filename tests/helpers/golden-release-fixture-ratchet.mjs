@@ -5,6 +5,7 @@ import {assertPlantingDrillUsesExactLocationPlans} from './golden-planting-drill
 import {assertGoldenFixtureOwnership} from './golden-fixture-ownership-contract.mjs';
 import {assertPhotoTransportDeadline} from './photo-field-lifecycle-contract.mjs';
 import {runtimeSyntaxCounts} from './runtime-extraction-syntax.mjs';
+import {prepareToolingBrowser} from '../../scripts/prepare-tooling-browser.mjs';
 
 test('Invariant 661 (Explicitly cleared exact Suspend owners override stale projections while zone overrides retain precedence)', assertClearedSuspendDefaultOwner);
 test('Invariant 662 (Planting drill cards use the selected exact bay without leaking neighboring plans)', assertPlantingDrillUsesExactLocationPlans);
@@ -15,4 +16,30 @@ test('Invariant 664 (Release fixtures preserve nested diagnostics and bound phot
   assert.deepEqual(runtimeSyntaxCounts('fixture.js',current),{declarations:2,emptyCatches:0});
   assert.deepEqual(runtimeSyntaxCounts('fixture.js',current.replace('report()','')),{declarations:2,emptyCatches:1});
   await assertPhotoTransportDeadline();
+});
+
+test('Invariant 665 (Browser preparation installs missing Chromium and verifies its executable)', async () => {
+  const executable = '/fixture/chromium-headless-shell';
+  const events = [];
+  let ready = true;
+  const options = {executable,print(){},
+    exists(file) {
+      assert.equal(file,executable);
+      events.push('verify');
+      return ready;
+    },
+    async install() {
+      events.push('install');
+      ready = true;
+    },
+  };
+  await prepareToolingBrowser(options);
+  assert.deepEqual(events.splice(0),['verify']);
+  ready = false;
+  await prepareToolingBrowser(options);
+  assert.deepEqual(events.splice(0),['verify','install','verify']);
+  const failure = new Error('Chromium installation failed');
+  ready = false;
+  await assert.rejects(prepareToolingBrowser({...options,async install(){throw failure;}}),error=>error === failure);
+  await assert.rejects(prepareToolingBrowser({...options,async install(){}}),/TOOLING_CHROMIUM_EXECUTABLE_MISSING/);
 });

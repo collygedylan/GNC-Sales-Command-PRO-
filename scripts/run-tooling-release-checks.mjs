@@ -272,5 +272,7 @@ export function runToolingReleaseChecks({ spawn = spawnSync, now = () => perform
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { prepareToolingBrowser } = await import('./prepare-tooling-browser.mjs');
+  await prepareToolingBrowser();
   process.exitCode = runToolingReleaseChecks().exitCode;
 }

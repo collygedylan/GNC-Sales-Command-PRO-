@@ -14,7 +14,7 @@ import { goldenRegistrationOrder } from './helpers/golden-registration-ratchet.m
 import { previousRuntimeSources, runtimeSyntaxCounts } from './helpers/runtime-extraction-syntax.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const MIN_GOLDEN_INVARIANTS = 664;
+export const MIN_GOLDEN_INVARIANTS = 665;
 const sourceCache = new Map();
 const read = file => {
   if (!sourceCache.has(file)) sourceCache.set(file, file === generatedDatabaseTypesPath
