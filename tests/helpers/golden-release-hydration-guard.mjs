@@ -66,9 +66,9 @@ export function invariant561({ read }) {
 export function invariant562({ read }) {
   const source = read('docs/architecture/agdata-symbol-index.json');
   assert.equal(transformVersionSurface('docs/architecture/agdata-symbol-index.json', source,
-    '3.0.84', '3.0.84'), source);
+    '3.0.85', '3.0.85'), source);
   const compact = '{\n  "release": "AgData v3.0.37",\n  "assets": ["a", "b"]\n}\n';
   const updated = transformVersionSurface('docs/architecture/agdata-symbol-index.json', compact,
-    '3.0.84', '3.0.37');
-  assert.equal(updated, compact.replace('3.0.37', '3.0.84'));
+    '3.0.85', '3.0.37');
+  assert.equal(updated, compact.replace('3.0.37', '3.0.85'));
 }

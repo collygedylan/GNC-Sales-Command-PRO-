@@ -11,7 +11,9 @@ function finalizeFixture(failureCount) {
     supabase: { rpc: async name => {
       assert.equal(name, 'fast_commit_erp_stage_swap_v1');
       commits++;
-      return commits <= failureCount ? {error:{code:'55P03',message:'lock timeout'}} : {data:{ok:true}};
+      if (commits <= failureCount) return {error:{code:'55P03',message:'lock timeout'}};
+      return {data:{ok:true,stage_commit:'canonical_atomic_import',file_name:'drive.xlsx',
+        dataset_key:'ph_master_inventory',staged_rows:9450,source_rows:9450}};
     } },
     fetcher:async()=>({ok:true,json:async()=>({parents:['drop']})}), token:'fixture',
     file:{id:'file',name:'drive.xlsx',parents:['drop']}, dataset:'drive_around', stageKey:'drive',

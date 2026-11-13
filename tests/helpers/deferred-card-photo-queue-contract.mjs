@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { normalizeStoragePublicUrlFixture } from './deferred-queue-storage-fixture.mjs';
 
 const queueSource = readFileSync(new URL('../../src/views/deferred-card-photo-queue.js', import.meta.url), 'utf8')
     .replace(/^export /gm, '');
@@ -15,7 +16,8 @@ export function installDeferredCardPhotoQueue(context, candidate = queueSource) 
 }
 
 function photo(id, immediate = true) {
-    return { id, isConnected: true, dataset: { src: `${id}.jpg`, photoHydrateNow: immediate ? '1' : '' }, getAttribute: () => null };
+    return { id, isConnected: true, dataset: { src: `${id}.jpg`, photoHydrateNow: immediate ? '1' : '' },
+        getAttribute: () => null, addEventListener() {}, classList: { add() {}, remove() {} } };
 }
 
 function photoRoot(id, photos, avCards = false) {
@@ -24,6 +26,12 @@ function photoRoot(id, photos, avCards = false) {
         querySelectorAll() { return photos.filter(img => img.dataset.photoHydrated !== '1' && img.dataset.photoObserved !== '1'); },
         querySelector(selector) { return selector === '.app-av-catalog-card' ? (avCards ? this : null) : this.querySelectorAll()[0] || null; }
     };
+}
+
+function observePhotoSources(root, hydrated) {
+    for (const img of root.querySelectorAll()) {
+        Object.defineProperty(img,'src',{set() { hydrated.push(img.id); }});
+    }
 }
 
 function createQueueFixture(candidate) {
@@ -35,14 +43,16 @@ function createQueueFixture(candidate) {
         deferredCardPhotoHydrationRoots: new Set(), deferredCardPhotoHydrationFrame: 0,
         deferredCardPhotoHydrationIdleTimer: 0, avCardPhotoHydrationTimer: 0,
         getAdaptiveImageHydrationScanLimit: () => 2, isTouchConstrainedDevice: () => false,
+        normalizeStoragePublicUrl: normalizeStoragePublicUrlFixture,
+        getDeferredCardPhotoFallbackSrc: () => '',
         getDeferredCardPhotoObserver: () => ({ observe: img => observed.push(img.dataset.photoObservedSrc) }),
-        hydrateDeferredCardPhoto(img) { img.dataset.photoHydrated = '1'; hydrated.push(img.id); },
         hydrateVisibleAvCardPhotos: scope => avPasses.push(scope.id),
         requestAnimationFrame(callback) { frames.push(callback); return frames.length; },
         clearTimeout: id => timers.delete(id),
         window: { setTimeout(callback) { timers.set(++timerId, callback); return timerId; } }
     });
     installDeferredCardPhotoQueue(context, candidate);
+    observePhotoSources(av,hydrated);
     return { av, context, hydrated, observed, avPasses, frames, timers };
 }
 
@@ -56,6 +66,7 @@ function runQueueTimer(timers) {
 export function assertEagerPhotoQueueContinues(candidate) {
     const { av, context, hydrated, frames, timers } = createQueueFixture(candidate);
     const prior = photoRoot('prior-content', ['first', 'second', 'third'].map(id => photo(id)));
+    observePhotoSources(prior,hydrated);
     context.scheduleDeferredCardPhotoHydration(prior);
     context.scheduleDeferredCardPhotoHydration(av);
     assert.equal(frames.length, 1);
@@ -102,7 +113,9 @@ function assertLazyFallbackUsesBoundedBatches() {
     context.getAdaptivePerformanceLevel = () => 0;
     context.getDeferredCardPhotoObserver = () => null;
     const photos = Array.from({ length: 9 }, (_, index) => photo(`fallback-${index}`, false));
-    context.scheduleDeferredCardPhotoHydration(photoRoot('drive-content', photos));
+    const drive = photoRoot('drive-content', photos);
+    observePhotoSources(drive,hydrated);
+    context.scheduleDeferredCardPhotoHydration(drive);
     frames.shift()();
     assert.equal(hydrated.length, 8);
     runQueueTimer(timers);

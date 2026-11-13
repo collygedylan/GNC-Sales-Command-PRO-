@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "3.0.84",
+  "version": "3.0.85",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -226,7 +226,7 @@
     "buildReclassInquiryReportText_"
   ],
   "frontendOnlyRelease": {
-    "version": "3.0.83",
-    "appApiVersion": "3.0.80"
+    "version": "3.0.85",
+    "appApiVersion": "3.0.84"
   }
 }

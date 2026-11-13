@@ -77,7 +77,9 @@ function suspendOwnerFromRow(row) {
 
 function resolveSuspendOwnerFallback(code, state, projected) {
     const defaults = state.itemcodeDefaultOwners || state.defaultOwnersByCode;
-    const direct = suspendOwnerFromRow(defaults?.get(code));
+    const exactDefault = defaults?.get(code);
+    if (defaults?.has(code) && (exactDefault === null || exactDefault?.assignedto === null)) return 'Unassigned';
+    const direct = suspendOwnerFromRow(exactDefault);
     if (direct) return direct;
     const { exact } = getCardEvalOwnerIndex(state, true);
     const indexed = validSuspendOwner(exact.get(code));

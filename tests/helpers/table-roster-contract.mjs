@@ -41,7 +41,15 @@ export function avDisplayContinuityContract(){
  c.productionDisplayMasterReceipt.readScope='account-b';assert.equal(c.hasProgressiveViewDataForContext(context),false);
  assert.match(source,/if \(completeMasterDisplay\) \{/);
  assert.doesNotMatch(source,/if \(completeMasterDisplay && hasCompletePreview\)/);
- const nav=vm.createContext({fullInventory:rows,isDatasetLoaded:()=>true});vm.runInContext(fn('shouldRenderViewSynchronouslyOnSwitch'),nav);assert.equal(nav.shouldRenderViewSynchronouslyOnSwitch('av'),true);
+ const nav=vm.createContext({fullInventory:rows,avOpenInventory:[],activeAVTab:'open',isDatasetLoaded:()=>true,
+   canAccessView:()=>true,hasConfirmedCurrentAccountRevocation:()=>false,getSupabaseReadIdentityScope:()=> 'account-a',
+   isTouchConstrainedDevice:()=>false,isIOSDevice:()=>false,
+   warmAvInventoryOwners:new Map([[rows,'account-a']])});
+ vm.runInContext(fn('canRenderWarmAvInventory')+'\n'+fn('shouldRenderViewSynchronouslyOnSwitch'),nav);
+ assert.equal(nav.shouldRenderViewSynchronouslyOnSwitch('av'),true);
+ nav.warmAvInventoryOwners.set(rows,'other-account');
+ nav.isDatasetLoaded=()=>false;
+ assert.equal(nav.shouldRenderViewSynchronouslyOnSwitch('av'),false);
 }
 
 export function avPreparationAndAuraProbeContract(){

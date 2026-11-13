@@ -2,14 +2,14 @@ import { getDockOrderBusinessKey } from '../../src/core/dock-order-domain.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { indexReleaseDeclarations } from './release-gems-declarations.mjs';
 const read = name => readFileSync(new URL('../../' + name, import.meta.url), 'utf8');
 const runtime = read('assets/app-runtime.js'), workflow = read('assets/row-workflow-functions.js');
+const saveDomain = read('assets/suspend-detail-save-domain.js');
+const membership = read('assets/request-queue-membership.js');
 function install(ctx, source, names) {
-    for (const name of names) {
-        const fn = source.match(new RegExp('^( *)((?:async )?function ' + name + '\\([^]*?^\\1})','m'));
-        assert.ok(fn, name);
-        vm.runInContext(fn[2],ctx);
-    }
+    const lookup = indexReleaseDeclarations(source);
+    vm.runInContext(names.map(lookup).join('\n'),ctx);
 }
 
 export async function closeUnreviewedContract() {
@@ -27,7 +27,8 @@ export async function closeUnreviewedContract() {
         invalidateResolvedViewStateCaches(){},serializeSuspendTagRowWrite:(...args)=>args[1](),
         refreshLocalDockSuspendDcRequestState(){},showToast(){},suspendTagErrorMessage:String
     });
-    install(ctx,runtime,['closeDockSuspendDcRequestFromCard','runSuspendTagRowCommand']);
+    install(ctx,runtime,['closeDockSuspendDcRequestFromCard']);
+    install(ctx,saveDomain,['runSuspendTagRowCommand','runSerializedSuspendCommand','removePendingSuspendCloseRows','restorePendingSuspendCloseRows']);
     const coordinator=ctx.runSuspendTagRowCommand;
     ctx.runSuspendTagRowCommand=(...args)=>args[4]?.serialized ? (events.push(args[0]),new Promise(r=>{settle=r;})) : coordinator(...args);
     const done=ctx.closeDockSuspendDcRequestFromCard('tag');
@@ -60,8 +61,9 @@ export async function confirmedLocationContract() {
         suspendTagApi:(op,payload)=>{receipts.push([op,payload]);return new Promise(r=>{finish=r;});},
         showToast(){},suspendTagErrorMessage:String,scheduleRequestRender(){}
     });
-    install(ctx,workflow,['isSuspendPullItemMatch','isFalseBlockLocation','previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation']);
-    install(ctx,runtime,['applySuspendCandidateRows']);
+    install(ctx,workflow,['isSuspendPullItemMatch','isFalseBlockLocation','confirmSuspendLocationChange']);
+    install(ctx,saveDomain,['changeSuspendPullLocation','prepareSuspendPullLocation','commitSuspendPullLocation',
+        'stageSuspendPullRemoval','readCommittedFinalSuspendPull']);
     assert.equal(ctx.isSuspendPullItemMatch('084871.031.1',source.ITEMCODE),false);
     assert.ok(ctx.isSuspendPullItemMatch(target.ITEMCODE,source.ITEMCODE));
     await ctx.changeSuspendPullLocation('tag','master','replace_location');
@@ -69,7 +71,7 @@ export async function confirmedLocationContract() {
     confirm=true;const changed=ctx.changeSuspendPullLocation('tag','master','replace_location');await new Promise(setImmediate);
     assert.equal(prompts[1][1].title,'Confirm Final Pull Location');assert.match(prompts[1][0],/Pull Order From: F.14.000/);assert.match(prompts[1][0],/FALSE BLOCK/);
     assert.match(prompts[1][0],/Dock 7 · Drop 2/);
-    assert.deepEqual([queue.LOCATIONCODE,dock.LOCATIONCODE,target.PTRREVIEWED,av.PTRREVIEWED],['F.14.000','F.14.000','5','5']);
+    assert.deepEqual([queue.LOCATIONCODE,dock.LOCATIONCODE,target.PTRREVIEWED,av.PTRREVIEWED],['0.00.111','0.00.111','2','2']);
     assert.equal(receipts[0][0],'replace_location');assert.equal(receipts[0][1].inventoryIds[0],'master');
     finish({ok:true,finalPull:true,rows:[{unique_id:'tag',date_completed:'2026-11-04',suspend:null,locationcode:'F.14.000',lotcode:'27.F1',dock:'7',stopnumber:'2'}]});await changed;
 }
@@ -85,6 +87,7 @@ export function activeSocContract() {
         normalizeEvalAssignableUser:v=>v||''});
     install(ctx,runtime,['getDockSuspendDcSourceRows','getSuspendTagRequestItems']);
     install(ctx,workflow,['uniquePhysicalSuspendTags','getPhysicalSuspendTagKey']);
+    install(ctx,membership,['normalizeSuspendQueueOwner']);
     install(ctx,read('assets/suspend-exact-owner.js'),["normalizeSuspendOwnerCode","validSuspendOwner","suspendOwnerFromRow","resolveSuspendOwnerFallback","collectSuspendOwnerCandidates","resolveSuspendOwner","resolveExactSuspendOwner"]);
     const source=ctx.getDockSuspendDcSourceRows();assert.equal(source,ctx.socInventory);
     assert.equal(ctx.getSuspendTagRequestItems(ctx.uniquePhysicalSuspendTags([...source,...source])).length,88);

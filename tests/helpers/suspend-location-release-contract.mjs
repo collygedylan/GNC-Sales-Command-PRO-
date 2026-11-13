@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {parseExpressionAt} from 'acorn';
+import { installAssignedPlantGroupFixture } from './assigned-items-hydration-contract.mjs';
 
 const read = file => readFileSync(new URL('../../'+file,import.meta.url),'utf8');
 function bind(file, name, context) {
@@ -29,14 +30,23 @@ export async function suspendSelectionContract() {
 }
 export function assignmentKeypadContract() {
     const ui={}, inv=[{ITEMCODE:'008125.031.1',GENUSNAME:'Buddleia',plantgroupcode:'SHRUB'}];
-    const enrich=bind(fragment,'enrichManagerAssignedPlantGroups',{getManagerAssignedColumnState:()=>ui,fullInventory:inv,buildManagerEvalAssignmentKey:v=>String(v||''),getCropRollPlantGroup:r=>r.plantgroupcode||''});
-    const [row]=enrich([{ITEMCODE:'008125.081.1'}]);assert.equal(row.GENUSNAME,'Buddleia');assert.equal(row.PLANTGROUPCODE,'SHRUB');
+    const context = vm.createContext({getManagerAssignedColumnState:()=>ui,fullInventory:inv,
+        buildManagerEvalAssignmentKey:v=>String(v||''),firstNonEmptyValue:(...values)=>values.find(Boolean)});
+    installAssignedPlantGroupFixture(context);
+    const [row]=context.enrichManagerAssignedPlantGroups([{ITEMCODE:'008125.081.1'}]);assert.equal(row.GENUSNAME,'Buddleia');assert.equal(row.PLANTGROUPCODE,'SHRUB');
     const runtime='assets/app-runtime.js';
     const columns=bind(runtime,'getManagerAssignedColumnDefinitions',{})();
     assert.deepEqual(Array.from(columns.slice(0,9),c=>c[0]),['ASSIGNEDTO','DEFAULT_ASSIGNEDTO','WAREHOUSEI','LOCATIONCODE','ITEMCODE','CONTSIZE','COMMONNAME','GENUSNAME','PLANTGROUPCODE']);
     const input={value:'',dataset:{detailKeypadCursorStart:'0',detailKeypadCursorEnd:'0'}};
     const selection=bind(fragment,'getDetailMeasurementKeyboardSelection',{detailMeasurementKeyboardType:'spec'});
-    const press=bind(runtime,'pressDetailMeasurementKeyboardKey',{detailMeasurementKeyboardType:'spec',detailMeasurementKeyboardTarget:input,detailMeasurementKeyboardChoiceOpen:'',triggerDetailKeyboardHaptic(){},getDetailMeasurementKeyboardSelection:selection,updateDetailMeasurementKeyboardTargetValue:value=>input.value=value});
+    const insertion = bind('assets/detail-keypad-insertion.js','resolveDetailKeypadInsertion',{});
+    const press=bind(runtime,'pressDetailMeasurementKeyboardKey',{detailMeasurementKeyboardType:'spec',
+        detailMeasurementKeyboardTarget:input,detailMeasurementKeyboardChoiceOpen:'',triggerDetailKeyboardHaptic(){},
+        resolveDetailKeypadInsertion:insertion,getDetailMeasurementKeyboardSelection:selection,
+        updateDetailMeasurementKeyboardTargetValue(value,cursor) {
+            input.value=value;
+            input.dataset.detailKeypadCursorStart=input.dataset.detailKeypadCursorEnd=String(cursor);
+        }});
     for(const token of ['1','2','-','1','4','"']) press(token);
     assert.equal(input.value,'12-14"');press('__backspace');assert.equal(input.value,'12-14');
 }

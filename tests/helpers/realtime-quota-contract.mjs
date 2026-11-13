@@ -59,9 +59,9 @@ export async function assertPhotoTargetContract() {
   const ctx = {self:{},OffscreenCanvas:Canvas,Blob,Uint8Array};
   vm.runInNewContext(fs.readFileSync(new URL('../../assets/image-optimize-worker-v2026090401.js',import.meta.url),'utf8'),ctx);
   const result=await ctx.encodePhotoSet({width:3840,height:2160},'image/jpeg');
-  assert.deepEqual(calls[0],{width:1920,height:1080,quality:0.90});
+  assert.deepEqual(calls[0],{width:1920,height:1080,quality:0.85});
   assert.ok(result.display.blob.size<=204800);assert.equal(result.thumbnail144.width,144);assert.equal(result.thumbnail320.width,320);
   calls.length=0;await ctx.encodePhotoSet({width:100,height:80},'image/jpeg',true);
-  assert.deepEqual(calls[0],{width:100,height:80,quality:0.90});
+  assert.deepEqual(calls[0],{width:100,height:80,quality:0.85});
   assert.equal(fs.existsSync(new URL('../../test/index.html',import.meta.url)),false,'retired app is not restored');
 }

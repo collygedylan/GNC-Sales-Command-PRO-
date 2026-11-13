@@ -9,7 +9,7 @@ const workflow='pages-static.yml';
 const shaPattern=/^[a-f0-9]{40}$/;
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 export function isTransientWorkflowFailure(run,logs='') {
-  if(/not ok \d|AssertionError|RELEASE_[A-Z_]*MISMATCH|error TS\d|TypeError:|SyntaxError:/.test(logs))return false;
+  if(/not ok (?:\d|\{)|AssertionError|RELEASE_[A-Z_]*MISMATCH|error TS\d|TypeError:|SyntaxError:/.test(logs))return false;
   return run.conclusion==='startup_failure'||/runner (?:has )?lost communication|runner failed to start|failed to acquire a runner|GitHub Actions service.*(?:unavailable|503)|infrastructure failure/i.test(logs);
 }
 export async function recoverVerifiedPublication({sha,version,runs,readLive,hasFrontendDiff,isAncestor,dispatch,rerun,failureLogs,wait=pause,now=Date.now,assertMain=async()=>{},finalize,progress=()=>{},maxPolls=180}) {

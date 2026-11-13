@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import {parseExpressionAt, parse} from 'acorn';
 import {analyze} from 'eslint-scope';
 import {createHash} from 'node:crypto';
+import {verifiedRowSession} from './golden-verified-row-session.mjs';
 
 const read = file => readFileSync(new URL('../../'+file,import.meta.url),'utf8');
 export const cardOwners = ['inventory-card-context','av-inventory-card','request-inventory-card','workflow-inventory-card'];
@@ -74,10 +75,11 @@ function fixturePhotoUrls(value) {
 }
 
 export function assertCanonicalEvidenceExtraction() {
-    const code = read('assets/canonical-inventory-evidence.js')+'\n'+declaration(read('assets/row-workflow-functions.js'),'resolveCanonicalInventoryRow');
+    const code = [read('assets/canonical-inventory-evidence.js'), read('assets/confirmed-evaluation-ui.js'),
+        declaration(read('assets/row-workflow-functions.js'),'resolveCanonicalInventoryRow')].join('\n');
     const now = Date.now(), fresh = new Date(now-86400000).toISOString();
     const master = {UNIQUE_ID:'one',ITEMCODE:'sku',LOCATIONCODE:'A.01',LOTCODE:'27.F1',PTRONHAND:7,PTRAVAILABLE:0,MATCH:50};
-    const note = {master_unique_id:'sibling',ITEMCODE:'sku',LOCATIONCODE:'A.01',LOTCODE:'27.F1',PHOTO_LINK:'https://fixture/new.jpg',PHOTO_DATE:fresh,SPEC:'Location spec'};
+    const note = {master_unique_id:'one',ITEMCODE:'sku',LOCATIONCODE:'A.01',LOTCODE:'27.F1',PHOTO_LINK:'https://fixture/new.jpg',PHOTO_DATE:fresh,SPEC:'Location spec'};
     let scope = 'account';
     const context = {masterInventoryById:new Map([['one',master]]),masterInventoryByItemCode:new Map([['SKU',[master]]]),
         getManagerAssignedColumnState:()=>({noteScope:'account',locationSalesNotes:new Map([['SKU',[note]]])}),
@@ -90,6 +92,9 @@ export function assertCanonicalEvidenceExtraction() {
     assert.equal(resolve().UNIQUE_ID,'one');assert.equal(resolve().PTRONHAND,7);assert.equal(resolve().AVAILABLE,0);
     assert.equal(resolve().SNAPSHOT.PTRONHAND,7);assert.equal(resolve().SNAPSHOT.OPEN_STOCK,undefined);
     assert.equal(resolve().SPEC,'Location spec');assert.equal(resolve().LOC_PHOTO_MATCH,4);
+    note.master_unique_id = 'sibling';
+    assert.equal(resolve().SPEC,undefined);assert.equal(resolve().PHOTO_LINK,undefined);
+    note.master_unique_id = 'one';
     scope = 'other';assert.equal(resolve().PHOTO_LINK,undefined);assert.equal(resolve().SPEC,undefined);
     scope = 'account';master.LOC_PHOTO_MATCH = 0;
     assert.equal(resolve().PHOTO_LINK,undefined);assert.equal(resolve().LOC_PHOTO_MATCH,0);
@@ -98,15 +103,22 @@ export function assertCanonicalEvidenceExtraction() {
 }
 
 export async function assertPublicationBranchExtraction() {
-    const code = read('assets/row-publication-branches.js')+'\n'+declaration(read('assets/row-workflow-functions.js'),'publishRowEvaluationToMasterAndNotes');
+    const code = [read('assets/row-publication-branches.js'), read('assets/row-access-policy.js'),
+        read('assets/confirmed-evaluation-ui.js'), read('assets/canonical-inventory-evidence.js'),
+        declaration(read('assets/row-workflow-functions.js'),'publishRowEvaluationToMasterAndNotes')].join('\n');
     let scope = 'account', rollbacks = 0, confirmations = 0, projections = 0;
-    const master = {UNIQUE_ID:'master'}, item = {UNIQUE_ID:'request',MASTER_ID:'master'};
-    const context = {getSupabaseReadIdentityScope:()=>scope,nativeAuthRecoveryEpoch:1,findLinkedMasterRow:()=>master,
+    const master = {UNIQUE_ID:'master'}, item = {UNIQUE_ID:'request',MASTER_ID:'master',assignedto:'fixture_editor'};
+    const context = {...verifiedRowSession(), getSupabaseReadIdentityScope:()=>scope,nativeAuthRecoveryEpoch:1,findLinkedMasterRow:()=>master,
+        isDockSuspendDcRequestMirrorRow:()=>false,
         buildRequestMasterUpdatePayloadFromSave:()=>({}),
         staleSupabaseReadScopeError:()=>Error('STALE_SCOPE'),hasRequestCompletionState:row=>row.completed === true,
-        reconcileConfirmedDriveEvidence:()=>{projections++;},parsePhotoCsvValues:value=>String(value||'').split(','),
+        parsePhotoCsvValues:value=>String(value||'').split(','),
         queueVisibleDatasetCatchup:()=>{},reportHandledRuntimeIssue:()=>{}};
     vm.createContext(context);vm.runInContext(code,context);
+    context.reconcileConfirmedDriveEvidence = result => {
+        assert.equal(result.row.unique_id,master.UNIQUE_ID);
+        projections++;
+    };
     context.beginRowEvaluationMemoryPublication=()=>()=>{rollbacks++;};
     const receipt = {ok:true,lifecycle_state:'completed_history',active:false,row:{unique_id:'request',master_id:'master',completed:true},master_row:{unique_id:'master'}};
     const publish = (result, extra={}) => context.publishRowEvaluationToMasterAndNotes(item,{},

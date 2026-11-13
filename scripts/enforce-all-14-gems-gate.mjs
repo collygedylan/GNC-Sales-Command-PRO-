@@ -4,7 +4,6 @@ import {depletionContract,completionLockContract,optimisticCompletionContract,fi
 import { assertVersionParity } from './sync-all-version-surfaces.mjs';
 import vm from 'node:vm';
 import * as acorn from 'acorn';
-import * as walk from 'acorn-walk';
 import * as scope from 'eslint-scope';
 import { readComposedRuntimeSource } from './composed-app-source.mjs';
 import test from 'node:test';
@@ -14,6 +13,8 @@ import { assertBunchOptimisticContract } from '../tests/helpers/bunch-note-appro
 import fs from 'node:fs';
 import {requestVisibilityContract} from '../tests/helpers/request-visibility-contract.mjs';
 import {queueOwnerContract} from '../tests/helpers/queue-owner-contract.mjs';
+import { assertSharedSquareMedia, assertErpProgress } from '../tests/helpers/release-gems-ui.mjs';
+import { indexReleaseDeclarations } from '../tests/helpers/release-gems-declarations.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -104,10 +105,10 @@ test('Table Management skill registers ten catalog entries and strict archive wr
 });
 
 const mutationSql=read('supabase/migrations/20261031010000_agdata_v23119_access_matrix_and_publication.sql');
-let lockFunctions;
+let findLockFunction;
 function lockedFunction(name) {
-  if(!lockFunctions){lockFunctions=new Map();walk.simple(acorn.parse(runtime,{ecmaVersion:'latest',sourceType:'script'}),{FunctionDeclaration(node){if(node.id)lockFunctions.set(node.id.name,runtime.slice(node.start,node.end));}});}
-  assert.ok(lockFunctions.has(name),name);return lockFunctions.get(name);
+  findLockFunction ||= indexReleaseDeclarations(runtime);
+  return findLockFunction(name);
 }
 function lockContext(names,values={}){const ctx=vm.createContext(values);vm.runInContext(names.map(lockedFunction).join('\n'),ctx);return ctx;}
 test('Permanent Lock 1: masterUid identifiers always have lexical declarations',()=>{
@@ -122,35 +123,39 @@ test('Permanent Lock 2: committed exact-row receipts preserve full AV Note and e
 });
 test('Permanent Lock 3: positive stock honors one-for-one Available depletion',()=>{
   depletionContract();
- const ctx=lockContext(['getEditorLocMatchQtyValue','firstNonEmptyValue','parseAppNumber'],{findLinkedMasterRow:()=>null});
+ let linked = null;
+ const ctx=lockContext(['getEditorLocMatchQtyValue','calculateCanonicalLocPhotoMatch','canonicalAvLotNumber','canonicalInventoryValue'],{findLinkedMasterRow:()=>linked});
  assert.equal(ctx.getEditorLocMatchQtyValue({PTRONHAND:0,on_hand:51},80),0,'canonical zero stock must not fall back to a stale alias');
  assert.equal(ctx.getEditorLocMatchQtyValue({on_hand:51},80),41);
+ linked = { ptronhand: 20 };
+ assert.equal(ctx.getEditorLocMatchQtyValue({on_hand:51},80),16);
+ assert.equal(ctx.getEditorLocMatchQtyValue({on_hand:51},101),null);
 });
 test('Permanent Lock 4: shared square media keeps the date outside its border',()=>{
- const css=read('assets/app-shell-style-05.css');assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);assert.match(css,/height:84px!important/);assert.match(css,/object-fit:cover!important/);assert.match(lockedFunction('ensurePhotoTakenDateBadges'),/insertAdjacentHTML|insertAdjacentElement|insertBefore|append|after/);assert.match(runtime,/avQuantityRowHtml[^]*avSpecHtml[^]*avNoteCatalogHtml/);
+ assertSharedSquareMedia(read, lockContext);
 });
 test('Permanent Lock 5: super-admin is supreme while Y/N matrix and synchronous rep roster honor aliases and denials',()=>{
  rosterParityContract();
  requestVisibilityContract();
 queueOwnerContract();
  const source=read('assets/user-access-control.js'),css=read('assets/user-access-control.css');assert.match(source,/data-access-edit-mode/);assert.match(source,/saveAccessPermission/);assert.match(css,/position:sticky;left:0/);assert.match(css,/position:sticky;top:0/);assert.doesNotMatch(css,/#fff(?:fff)?(?:[;}])/i);
- const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
+ const ctx=vm.createContext({});vm.runInContext(read('assets/access-matrix-policy.js')+'\n'+source,ctx);const access=ctx.GncUserAccessControl;
   assert.equal(access.isSuperAdminRole('super-admin'),true);assert.equal(access.isSuperAdminRole('SUPER_ADMIN'),true);assert.equal(access.isSuperAdminRole('admin'),false);assert.match(source,/super_admin:\s*\['SUPER-ADMIN'/);assert.match(lockedFunction('getRoleAccessState'),/isSuperAdmin/);
   access.setAccessMatrixRows([{username:'dylan_collyge',role:'super-admin',manage_user_access:'Y',use_weather_hold_risk_tools:'Y',use_aura_assistant:'Y',view_permissions:{view_smart_moves:'Y',view_nursery_command_tables:'Y'}}]);const supreme=access.resolveUserAccessMatrix('dylan_collyge');assert.equal(supreme.manage_user_access,'Y');assert.equal(supreme.use_weather_hold_risk_tools,'Y');assert.equal(supreme.use_aura_assistant,'Y');assert.equal(supreme.view_nursery_command_tables,'Y');assert.equal(access.isAuraOwner('dylan_collyge'),true);
   assert.match(lockedFunction('isAuthenticatedExecutiveUser'),/isSuperAdminRoleValue[^]*matrixValue === 'Y'/);assert.doesNotMatch(lockedFunction('isAuraProfileCandidate'),/dylan_collyge/);assert.doesNotMatch(lockedFunction('canUseWeatherHoldRiskTools'),/Dylan|dylan_collyge/);
  assert.equal(access.getAccessSalesReps().filter(rep=>rep.label==='Chance Alldredge').length,1);assert.equal(access.getAccessSalesReps().filter(rep=>/South TX/i.test(rep.label)).length,0);assert.equal(access.normalizeSalesRepKey('Alldredge, Chance - South TX'),'chance_alldredge');
- for(const username of ['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','nally_aguilar','morgan_anderson']){const matrix=access.resolveUserAccessMatrix(username);assert.equal(matrix.edit_any_row,'Y');assert.equal(matrix.flyer_folder_access,'Y');}
+ const entitled = ['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson'];
+ for (const username of entitled.slice(1)) assert.equal(access.resolveUserAccessMatrix(username).edit_any_row,'N',username);
+ access.setAccessMatrixRows(entitled.slice(1).map(username => ({username,edit_any_row:'Y',flyer_folder_access:'Y'})));
+ for (const username of [...entitled,'nally_aguilar']) {
+   const matrix=access.resolveUserAccessMatrix(username);
+   assert.equal(matrix.edit_any_row,'Y',username);
+   assert.equal(matrix.flyer_folder_access,'Y',username);
+ }
  access.setAccessMatrixRows([{username:'nelly_aguilar',make_request:'N',can_make_request:'N'}]);assert.equal(access.canRequestSalesRep(access.resolveUserAccessMatrix('Nally Aguilar'),'Abbey Burka'),false);assert.ok(access.getAccessSalesReps().length>0);assert.match(lockedFunction('resolveRequestRepSelectionForCurrentUser'),/canRequestSalesRep/);assert.doesNotMatch(lockedFunction('filterRepList'),/Loading active users/);assert.doesNotMatch(lockedFunction('openRequestModal'),/await getRequestSubmissionController/);
 });
 test('Permanent Lock 6: Home Print and Run Script retain the centered progress dialog',()=>{
- assert.match(read('index.html'),/Print/);assert.match(runtime,/Run Script/);const ui=read('assets/erp-sync-ui-functions.js');assert.match(ui,/erp-sync-progress-modal/);assert.match(ui,/sourceProgress|progress/);assert.match(read('index.html'),/id="erp-sync-progress-modal" class="modal hidden"/);assert.match(read('assets/erp-sync-progress.css'),/#erp-sync-progress-modal[^}]*align-items:center;justify-content:center/);
- const cards=vm.runInNewContext(lockedFunction('erpSyncProgressCards')+';erpSyncProgressCards')({stageResults:['drive','cav','reserves','soc','hl_po_parsed'].map(key=>({key,outcome:'UP_TO_DATE'})),sourceProgress:{order_history:{percent:0}}});
- assert.deepEqual(Array.from(cards,card=>card.key),['drive','cav','reserves','soc','hl_po']);assert.equal(cards.filter(card=>card.key==='order_history').length,0);assert.equal(cards.reduce((sum,card)=>sum+card.percent,0)/5,100);
- assert.match(read('assets/erp-sync-progress.css'),/width:min\(94vw,480px\);max-width:100%;margin:0 auto;box-sizing:border-box/);
- const context=vm.createContext({});vm.runInContext(lockedFunction('erpSyncProgressCards')+'\n'+lockedFunction('completeOperationalErpSyncStatus'),context);
- const partial=context.completeOperationalErpSyncStatus({active:true,status:'running',startedAt:'2020-01-01',sourceProgress:{drive:{fileName:'exact.xlsx',publishedFileName:'exact.xlsx',publicationConfirmed:true,rowsPublished:9498,percent:95,stage:'downloading'}}});
- assert.equal(partial.active,true);assert.notEqual(partial.status,'complete');assert.equal(partial.percent,20);const partialCards=context.erpSyncProgressCards(partial);assert.equal(partialCards[0].percent,100);assert.equal(partialCards[0].stage,'published');assert.equal(partialCards.slice(1).every(card=>card.percent===0),true);
- assert.doesNotMatch(ui,/state.percent === 100 \? 100/);assert.match(ui,/Checked Drive — Up to date in App/);
+ assertErpProgress(read, lockedFunction);
 });
 test('Permanent Lock 7: local weekday colors and Suspend canonical inventory publication remain intact',()=>{
  assert.match(lockedFunction('saveDockSuspendDcRequestMirrorData'),/publishRowEvaluationToMasterAndNotes\(row,patch,/);assert.doesNotMatch(lockedFunction('saveDockSuspendDcRequestMirrorData'),/runSuspendTagRowCommand\([^\n]*'complete'/);
@@ -176,20 +181,29 @@ test('Permanent Lock 10: selection shares visible filters and explicit owners up
   const context={};vm.runInNewContext(read('assets/nursery-command-model.js'),context);const defs=JSON.parse(read('supabase/migrations/20261102020000_v23134_bunch_note_historical_identities.sql').split('$bunch_catalog$')[1]);
   for(const def of defs){const row=context.GncNurseryModel.resolveBunchNoteExceptionRowIdentity(def,[],[]);for(const key of ['unique_id','locationcode','itemcode','lotcode','commonname','contsize'])assert.ok(row[key],def.plan_id+': '+key);assert.match(row.locationcode,/^[A-L]\.[0-9]{2}\.000$/);}
   await assertBunchOptimisticContract();
-  const bunch=read('assets/nursery-command-tables.js');for(const control of ['data-bunch-subview="table"','data-bunch-subview="issues"','data-bunch-subview="rules"','INACCURATE BUNCH NOTE REASON','Approve &amp; Create New Bunch Note','ph_dylan_decisions_store'])assert.ok(bunch.includes(control),control);const nursery={};vm.runInNewContext(read('assets/nursery-command-model.js'),nursery);assert.equal(nursery.GncNurseryModel.BUNCH_RULES.length,13);assert.equal(typeof nursery.GncNurseryModel.evaluateBunchNoteRowAndIssues,'function');
+  const render = read('assets/nursery-table-render.js');
+  const controller = read('assets/nursery-table-controller.js');
+  const model = read('assets/nursery-command-model.js');
+  for (const view of ['table','issues','rules']) assert.ok(render.includes(`data-bunch-subview="${view}"`),view);
+  for (const control of ['INACCURATE BUNCH NOTE REASON','Approve &amp; Create New Bunch Note']) assert.ok(controller.includes(control),control);
+  assert.ok(model.includes('ph_dylan_decisions_store'),'Bunch Notes use the canonical decisions relation');
+  const nursery={};vm.runInNewContext(model,nursery);assert.equal(nursery.GncNurseryModel.BUNCH_RULES.length,13);assert.equal(typeof nursery.GncNurseryModel.evaluateBunchNoteRowAndIssues,'function');
  assert.match(lockedFunction('renderManagerModulePicker'),/filter\(option => !getManagerTableManagementKey\(option.id\)\)/);
  const tableWorkspace=read('assets/manager-table-workspace.js');
  assert.match(tableWorkspace,/data-table-directory/);
  assert.match(tableWorkspace,/data-table-all/);
  assert.match(tableWorkspace,/data-table-switch/);
  assert.doesNotMatch(tableWorkspace,/table-management-pills/);
+ const workspaceFunction = indexReleaseDeclarations(tableWorkspace);
  const directoryContext=lockContext(['renderManagerTableManagementWorkspace'],{
    getManagerTableManagementItems:()=>[
      {id:'assigned-items',label:'Assigned Items'},
      {id:'company-directory',label:'Company Directory'}
    ],esc:String
  });
- vm.runInContext(tableWorkspace,directoryContext);
+ const renderers = ['renderManagerTableWorkspaceMarkup','managerTableDirectoryItems','renderManagerTableOption',
+   'renderManagerTableDirectoryMarkup','renderManagerTableChoice'];
+ vm.runInContext(renderers.map(workspaceFunction).join('\n'),directoryContext);
  const directory=directoryContext.renderManagerTableManagementWorkspace('EDITOR','');
  assert.match(directory,/data-manager-table-card/);
  assert.doesNotMatch(directory,/EDITOR|data-table-workspace/);

@@ -4,12 +4,15 @@ import vm from 'node:vm';
 import {parse} from 'acorn';
 import {readComposedRuntimeSource} from '../../scripts/composed-app-source.mjs';
 import {extractGoldenFunction} from '../../src/core/golden-function-extractor.mjs';
+import {verifiedRowSession} from './golden-verified-row-session.mjs';
 
 export const suspendRoutingFunctions = [
     'normalizeSuspendOwnerCode','validSuspendOwner','suspendOwnerFromRow','resolveSuspendOwnerFallback','collectSuspendOwnerCandidates','resolveExactSuspendOwner','resolveSuspendOwner','getAssignedQueueOwner',
-    'queueAccessScope','getQueueScopeFilter','getSuspendEvalUserFilter','isQueueOwnerVisible',
-    'buildSuspendEvalUserFilter','setSuspendEvalUserFilter','applySuspendEvalUserFilter',
+    'queueAccessScope','getQueueScopeFilter','getSuspendEvalUserFilter','isQueueOwnerVisible','normalizeSuspendQueueOwner',
+    'buildSuspendEvalUserFilter','setSuspendEvalUserFilter','applySuspendEvalUserFilter','suspendQueueRowsForOwner','useAllSuspendOwnersIfPersonalEmpty',
     'canCurrentUserViewDockSuspendDcRequests','canCurrentUserWorkRequestItem',
+    'canEditDockMirrorEvidence','normalizeEvidenceActor','verifiedEvidenceActor','evidenceModuleAllowed',
+    'requestActionDeniedByReceipt','resolveInventoryRowOwner',
     'getLatestSocSuspendTagSourceRows','getSuspendTagRequestItems',
     'getDockSuspendDcSourceRows',
     'resolveManagerAssignedOwnerEvidence','isManagerEvalZoneAssignment',
@@ -37,14 +40,23 @@ export function createSuspendRoutingFixture() {
         getSupabaseReadIdentityScope:()=> 'fixture',suspendTagInventoryScope:'fixture',socRawSourceRows:[],
         getCurrentVisibleViewId:()=> 'request',socRawSourceRowsReady:true,socInventory:[{unique_id:'stale-soc'}],
         getDatasetState:()=>({rowCompleteness:'complete'}),
+        nativeAuthSessionActive:true,nativeAuthSessionUserId:'fixture-profile',
+        resolveUserAccessMatrix:()=>suspendRoutingAuthority(context),
         getWarehouseAssignedRowForItem:row=>row.LOCATIONCODE === 'C.06.001'
             ? {assignedto:'zoe_green',default_assignedto:'worker_a',zone_override_active:true,assignment_reason:'zone_zoe'} : null,
     });
+    Object.defineProperty(context, 'nativeAuthProfile', { get: () => ({ id:'fixture-profile',username:context.currentUser,active:true }) });
     vm.runInContext(suspendRoutingSource(),context);
     const rows = Array.from({length:90},(_,index)=>({unique_id:'tag-'+index,DOCK_SUSPEND_DC_REQUEST:true,
         itemcode:index<45?'111111.030.':'222222.030.1',LOCATIONCODE:index===0?'C.06.001':'G.12.001',lotcode:'27.F1',
-        suspend:'SUSPEND',suspend_to:['dc','ms','mk','unknown',''][index%5],assignedto:'stale_erp_owner'}));
+        suspend:'SUSPEND',suspend_to:['dc','ms','mk','unknown',''][index%5],assignedto:'stale_erp_owner',
+        effective_worker:index===0?'zoe_green':index<45?'worker_a':'worker_b'}));
     return {context,state,rows};
+}
+
+function suspendRoutingAuthority(context) {
+    const admin = /admin/i.test(context.currentRole);
+    return { verified:true,profile_id:'fixture-profile',view_que:'Y',edit_any_row:admin?'Y':'N',edit_assigned_rows_only:admin?'N':'Y' };
 }
 
 export function assertSuspendAssignedRouting() {
@@ -117,13 +129,16 @@ export function assertSuspendSourceTurnover() {
 }
 
 export async function assertSuspendPhotoAccountProof({runFunctions,functionSource}) {
-  let owner='one';const item={UNIQUE_ID:'tag',suspend_tag_status:'awaiting_rep'};
+  let owner='one';const item={UNIQUE_ID:'tag',suspend_tag_status:'awaiting_rep',assignedto:'fixture_editor'};
   const ctx=runFunctions('assets/app-runtime.js',['loadCurrentSuspendTagPhotoRow','isCurrentSuspendTagPhotoProof','canCurrentUserWorkRequestItem'],{
-    suspendTagPhotoProofs:new WeakSet(),AbortController,getDockSuspendDcRequestSourceUid:()=> 'tag',isDockSuspendDcRequestMirrorRow:()=>true,
+    ...verifiedRowSession(),
+    suspendTagPhotoProofs:new WeakSet(),AbortController,getDockSuspendDcRequestSourceUid:row=>row.UNIQUE_ID,isDockSuspendDcRequestMirrorRow:()=>true,
     canCurrentUserViewDockSuspendDcRequests:()=>true,getProductionLiveSyncContext:()=>({scope:owner,dataPermissionVersion:'p'}),
     findDockSuspendDcRequestSourceRow:()=>item,getSuspendTagWriteVersion:()=>0,getSupabaseReadIdentityScope:()=>owner
   });
   const proof=await ctx.loadCurrentSuspendTagPhotoRow(item);assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof,item),true);
+  assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof,{...item,UNIQUE_ID:'other-tag'}),false);
+  await assert.rejects(ctx.loadCurrentSuspendTagPhotoRow({...item,assignedto:'other_editor'}),/SUSPEND_TAG_FORBIDDEN/);
   owner='two';assert.equal(ctx.isCurrentSuspendTagPhotoProof(proof,item),false);
   assert.doesNotMatch(functionSource('assets/app-runtime.js','loadCurrentSuspendTagPhotoRow'),/supabaseRpc|suspendTagApi|REVIEW_LOCKED/);
 }

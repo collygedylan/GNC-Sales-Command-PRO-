@@ -2,22 +2,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { readComposedRuntimeSource } from '../../scripts/composed-app-source.mjs';
+import { indexReleaseDeclarations } from './release-gems-declarations.mjs';
 
 const read = path => fs.readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
-const runtime = readComposedRuntimeSource();
-function declaration(name) {
-    const start = runtime.indexOf('function ' + name + '(');
-    assert.ok(start >= 0, `missing ${name}`);
-    const indent = runtime.slice(runtime.lastIndexOf('\n', start) + 1, start);
-    const end = runtime.indexOf('\n' + indent + '}', start);
-    assert.ok(end > start, `unterminated ${name}`);
-    return runtime.slice(start, end + indent.length + 2);
-}
+const declaration = indexReleaseDeclarations(readComposedRuntimeSource());
 
 function createQueueOwnerContext() {
+    const queueState = { dataEpoch: 1 };
     const ctx = vm.createContext({
-        GLOBAL_LIVE_CHANGE_USER_KEYS: new Set(['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson']),
         currentUser: 'chris_fisher', currentUserDisplay: 'Chris Fisher', currentRole: 'EVAL', safeRole: 'EVAL',
+        nativeAuthSessionActive: true, nativeAuthSessionUserId: 'profile-id',
+        nativeAuthProfile: { id: 'profile-id', username: 'chris_fisher' },
         activeReqTab: 'pending', isDockSuspendDcRequestMirrorRow:()=>false, requestsInventory: [], requestScopedItemsCacheKey: '', requestScopedItemsCache: null,
         resolvedViewStateEpoch: 1, getDatasetLoadSignature: () => 'fixture', incrementInternalPerfCounter: () => {},
         warehouseAssignedItemsInventory: [], rebuildWarehouseAssignedItemIndexes: () => {},
@@ -33,7 +28,7 @@ function createQueueOwnerContext() {
         getRequestCapabilities: () => ({ canViewQueue: true, scope: 'global' }),
         canViewAllRequests: () => false,
         getRequestAssignedItemcodeScope: () => new Set(['A']),
-        getManagerAssignedColumnState: () => ({dataEpoch:1}),
+        getManagerAssignedColumnState: () => queueState,
         getSuspendEvalUserFilter: () => ctx.currentUser,
         getAssignedQueueOwner: row => row.ITEMCODE === 'A' ? 'test_eval' : 'someone_else',
         resolveInventoryRowOwner: row => ctx.resolveSuspendOwner(row),
@@ -44,9 +39,13 @@ function createQueueOwnerContext() {
         normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase().replaceAll(' ', '_'),
         getActiveAssignedQueueCounts: () => ({ pending: 0, 'suspend-tag': 7, moves: 12, recount: 4, 'shear-list': 5, 'eval-work': 2, 'bunch-notes': 3, 'bunch-count-review': 1 })
     });
+    vm.runInContext(read('assets/row-access-policy.js'), ctx);
+    vm.runInContext('resolveInventoryRowOwner = fixtureResolveInventoryRowOwner', Object.assign(ctx, {
+        fixtureResolveInventoryRowOwner: row => ctx.resolveSuspendOwner(row)
+    }));
     vm.runInContext([
-        'isRowAssignedToUser', 'canUserMakeLiveChangesOnRow','resolveCanonicalRowAccess','canUserEditRow','isQueueOwnerVisible',
-        'queueAccessScope','getQueueScopeFilter','canUseRequestSuspendTagAssignedToFilter', 'getScopedRequestItems',
+        'isRowAssignedToUser', 'canUserMakeLiveChangesOnRow','canUserEditRow','isQueueOwnerVisible',
+        'queueAccessScope','getQueueScopeFilter','normalizeSuspendQueueOwner','canUseRequestSuspendTagAssignedToFilter', 'getScopedRequestItems',
         'getRequestQueueAlertCount'
     ].map(declaration).join('\n'), ctx);
     return ctx;
@@ -74,6 +73,8 @@ export function queueOwnerContract() {
     ctx.getManagerAssignedItemsDisplayRows = () => [{ ITEMCODE: 'A', effective_worker: 'test_eval' }];
     ctx.requestsInventory = rows;
     ctx.requestScopedItemsCacheKey = '';
+    assert.equal(ctx.getQueueScopeFilter('pending'), 'ALL', 'evaluators start with all pending Requests');
+    ctx.getManagerAssignedColumnState().queueScopeFilters.pending.value = 'test_eval';
     assert.deepEqual(Array.from(ctx.getScopedRequestItems(rows, { strictQueueVisibility: true }), item => item.UNIQUE_ID), ['assigned']);
     assert.equal(ctx.getRequestQueueAlertCount(), 7, 'non-admin badge counts only owned Request and Suspend rows');
     assert.equal(ctx.canUseRequestSuspendTagAssignedToFilter(), false, 'non-admins cannot switch the queue owner');

@@ -1,13 +1,26 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
+import { indexReleaseDeclarations } from './release-gems-declarations.mjs';
 const read = file => readFileSync(new URL('../../'+file,import.meta.url),'utf8');
 const runtime = read('assets/app-runtime.js'), workflow = read('assets/row-workflow-functions.js');
 function install(ctx, src, names) {
-    for(const name of names) {
-        const fn=src.match(new RegExp('^( *)((?:async )?function '+name+'\\([^]*?^\\1})','m'));
-        assert.ok(fn,name);vm.runInContext(fn[2],ctx);
+    const lookup = indexReleaseDeclarations(src);
+    vm.runInContext(names.map(lookup).join('\n'),ctx);
+}
+
+function installPhotoIdentity(ctx, inventory) {
+    const byId = new Map(inventory.map(row=>[row.UNIQUE_ID,row]));
+    const byItem = new Map();
+    for (const row of inventory) {
+        if (!byItem.has(row.ITEMCODE)) byItem.set(row.ITEMCODE,[]);
+        byItem.get(row.ITEMCODE).push(row);
     }
+    Object.assign(ctx,{masterInventoryById:byId,masterInventoryByItemCode:byItem});
+    install(ctx,read('assets/inventory-photo-domain.js'),['strictInventoryPhotoLocationKey']);
+    install(ctx,read('assets/canonical-inventory-evidence.js'),['canonicalInventorySameLot','canonicalInventorySameLocation',
+        'resolveCanonicalInventoryTarget','canonicalInventoryValue','canonicalInventoryLot','normalizeCanonicalInventoryPart',
+        'canonicalInventoryRowUid','canonicalInventoryLinkedUid']);
 }
 export function mediaParity() {
     const master=(name,item,location,count)=>({UNIQUE_ID:item+'@'+location,COMMONNAME:name,ITEMCODE:item,LOCATIONCODE:location,LOTCODE:'27.F1',PRIORITY:1,PHOTO_DATE:'2026-11-03',PHOTOS:[...Array(count).keys()].map(i=>'https://fixture/'+item+'/'+i)});
@@ -18,6 +31,7 @@ export function mediaParity() {
         getPhotoUrlList:v=>Array.isArray(v)?v:v?String(v).split(','):[],resolveCanonicalInventoryRow:r=>inventory.find(item=>item.UNIQUE_ID===r.UNIQUE_ID)||r,resolveAndFormatPhotoDate:(row,url)=>{if(row.PHOTO_DATE)dates.set(url,row.PHOTO_DATE);return dates.get(url);},
         isPhotoEntryExpired:()=>false,getRequestPhotoLinkCsv:()=>'',getDockOwnedPhotoLinkCsv:()=>''});
     install(ctx,workflow,['inventoryPhotoLocationKey','getInventoryLocationPhotos','getAvRowPhotoUrls']);
+    installPhotoIdentity(ctx,inventory);
     install(ctx,runtime,['resolveCanonicalPhotoUrls','avItemHasPhotos','getDetailPhotoGalleryGroups']);
     for (const [i,n] of [[0,4],[1,3]]) {
         const m=inventory[i],row={UNIQUE_ID:m.UNIQUE_ID,ITEMCODE:m.ITEMCODE.toLowerCase(),LOCATIONCODE:' '+m.LOCATIONCODE.toLowerCase()+' ',PRIORITY:'-',LOTCODE:'27.F1'};
@@ -66,7 +80,13 @@ export function interactionParity() {
     for(const style of ['light','medium','success'])ctx.triggerHaptic(style);assert.deepEqual(JSON.parse(JSON.stringify(vibrations)),[8,15,[12,30,18]]);
     ctx.getMainAreaScrollTop=()=>453;ctx.rememberDetailReturnPosition('request');assert.equal(ctx.detailReturnState.scrollTop,453);
     assert.equal(ctx.escapeQueueNoteText('5'+String.fromCharCode(92)+"' H"),"5' H");
-    assert.match(workflow,/refreshLocalRequestViewState\('row-completion-pending'/);assert.match(runtime,/applyConfirmedRequestCompletionReceipt\(itemToSave,receipt,requestSaveIdentityScope\)/);assert.ok(runtime.includes('compact ? 1600'));assert.ok(!runtime.toLowerCase().includes('saved; inventory refresh pending'));
+    const refreshed = [];
+    ctx.refreshLocalRequestViewState = (reason, options) => refreshed.push([reason,options]);
+    install(ctx,read('assets/confirmed-evaluation-ui.js'),['refreshPendingCompletionViews']);
+    ctx.refreshPendingCompletionViews();
+    assert.deepEqual(JSON.parse(JSON.stringify(refreshed)),[['row-completion-pending',{forceRender:true,preferImmediate:true,userAction:true}]]);
+    assert.ok(runtime.includes('applyConfirmedRequestCompletionReceipt(itemToSave,receipt,requestSaveIdentityScope)'));
+    assert.ok(runtime.includes('compact ? 1600'));assert.ok(!runtime.toLowerCase().includes('saved; inventory refresh pending'));
 }
 export async function watchdogParity() {
     const mod={exports:{}};vm.runInNewContext(read('assets/runtime-watchdog-panel.js'),{module:mod,Date});
@@ -100,6 +120,7 @@ export async function avNameParity() {
         formatFetchedRows:rows=>rows,buildSearchIndex:r=>r,scheduleAVRender:()=>renders.push('av'),fullInventory:[],avOpenInventory:[],
         inventoryDomIdLookupCacheVersion:1,queueCardInventoryRenderVersion:1,resolveCanonicalInventoryRow:r=>r,getSharedAppPhotoLinkCsvRaw:r=>r.PHOTOS.join(','),getPhotoUrlList:s=>Array.isArray(s)?s:String(s).split(','),isPhotoEntryExpired:()=>false,resolveAndFormatPhotoDate:()=>''});
     install(ctx,workflow,['inventoryPhotoLocationKey','getInventoryLocationPhotos','rememberInventoryLocationPhotoRows','getAvNamePhotoSearchRows','getAvRowPhotoUrls']);
+    installPhotoIdentity(ctx,[]);
     install(ctx,runtime,['avItemHasPhotos']);
     assert.equal(ctx.getAvNamePhotoSearchRows('taylor').length,0);assert.equal(ctx.getAvNamePhotoSearchRows('taylor').length,0);assert.equal(timers.length,1);
     await timers[0]();assert.deepEqual(renders,['av']);
@@ -107,8 +128,9 @@ export async function avNameParity() {
     assert.equal(rows.filter(r=>ctx.avItemHasPhotos(r))[0].ITEMCODE,row.ITEMCODE);
     assert.equal(ctx.getInventoryLocationPhotos({UNIQUE_ID:row.UNIQUE_ID,ITEMCODE:row.ITEMCODE,LOCATIONCODE:row.LOCATIONCODE,LOTCODE:row.LOTCODE,PRIORITY:'-'}).length,4);
     assert.equal(ctx.getInventoryLocationPhotos({ITEMCODE:row.ITEMCODE,LOCATIONCODE:row.LOCATIONCODE,PRIORITY:'-'}).length,0);
-    assert.match(runtime,/const eligible = getAvSalesRowsForBucket\(activeAvSalesBucket,extra\)/);
-    assert.match(runtime,/applyAvColumnFiltersToItems\(photos\)\.filter\(createAvTopFilterPredicate\(\)\)/);
+    const avLots = read('assets/av-lot-cards.js');
+    assert.ok(/const eligible = getAvSalesRowsForBucket\(activeAvSalesBucket,extra\)/.test(avLots),'named media joins the active AV cohort');
+    assert.ok(/applyAvColumnFiltersToItems\(photos\)\.filter\(createAvTopFilterPredicate\(\)\)/.test(avLots),'column and top filters apply after media hydration');
 }
 
 function fixtureClassList(flags) {

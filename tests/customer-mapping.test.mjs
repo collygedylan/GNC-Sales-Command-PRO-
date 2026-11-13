@@ -1,30 +1,19 @@
-import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
-import { mappingBrowserBundle, requestMappingFunctions, requestMappingSetup, mappingFixtureRow as row } from './helpers/customer-mapping-fixture.mjs';
+import { mappingBrowserBundle, requestMappingFunction, requestMappingFunctions, requestMappingSetup, mappingFixtureRow as row } from './helpers/customer-mapping-fixture.mjs';
 import { agdataV23102DirectoryCanonicalKeysMigrationName, agdataV23102LegacyPairScopeMigrationName, agdataV2397CustomerMappingCrudMigrationName, migrationContractQuery, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
 
 const requestSubmissionSource = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');
 const requestSubmissionSandbox = { window: {} };
 vm.runInNewContext(requestSubmissionSource, requestSubmissionSandbox);
 const requestSubmissionApi = requestSubmissionSandbox.window.AgMetricRequestSubmission;
-const appSource = readComposedAppSource();
 const appApiSource = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 
-function extractAppFunction(name) {
-  const start = appSource.indexOf(`        function ${name}(`);
-  assert.ok(start >= 0, `expected ${name} in index.html`);
-  const tail = appSource.slice(start);
-  const end = tail.slice(20).search(/\n        (?:async )?function /);
-  assert.ok(end >= 0, `expected a function boundary after ${name}`);
-  return tail.slice(0, end + 20);
-}
-
 function addAppFunction(context, name) {
-  vm.runInContext(extractAppFunction(name), context);
+  vm.runInContext(requestMappingFunction(name), context);
 }
 
 function resolveMappedPayload(context) {

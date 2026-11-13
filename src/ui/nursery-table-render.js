@@ -34,7 +34,7 @@ export function nurseryTable_drawBunchDrill(context, data){
       let body='',actions='';
       const rowButton=(attrs,title,detail)=>'<button class="bunch-drill-card app-drive-compact-card" '+attrs+'><strong>'+context.escape(title)+'</strong><span>'+context.escape(detail)+'</span><b aria-hidden="true">›</b></button>';
       publishNurseryDrillExcelSnapshot(context, rows, planting ? rows.filter(row => row.location === context.state.location) : cards, planting, level, q);
-      ({body, actions} = nurseryTable_drillProjection(context, all, q, level, planting, rows, locations, cards, rowButton));
+      ({body, actions} = nurseryTable_drillProjection(context, all, q, level, planting, plans, rows, locations, cards, rowButton));
       const top=tabs+crumbs+actions+(level==='alpha'?'<input type="search" data-nursery-search aria-label="Search blocks, locations or plants" placeholder="Search blocks, locations or plants" value="'+context.escape(context.state.q)+'">':'');
       context.commitBunchMarkup(top,body||'<p>No matching rows.</p>',level);
     }
@@ -74,7 +74,7 @@ headers=context.president;rows=data.visible;render=p=>[context.escape(p.plan_id)
     return {rows, headers, render};
 }
 
-export function nurseryTable_drillProjection(context, all, q, level, planting, rows, locations, cards, rowButton) {
+export function nurseryTable_drillProjection(context, all, q, level, planting, plans, rows, locations, cards, rowButton) {
     let body = '', actions = '';
     if (['issues','rules'].includes(context.state.subview)) {
 body=context.bunchPanel(all)

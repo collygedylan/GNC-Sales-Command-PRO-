@@ -61,13 +61,14 @@ export async function ownerAndSuspendContract(){
    ...Array(8).fill({ITEMCODE:'003521.070.1',default_owner:'mitch_kaiser'})];
  state.fullInventory=inventory;
  const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','buildEvalOwnerBadge',
-   'firstDockNonEmpty','firstDockValue','normalizeDockViewDockKey','normalizeDockSuspendRequestValue','getDockSuspendValue','isDockSuspendDcRequestMirrorRow','queueAccessScope','getQueueScopeFilter','getSuspendEvalUserFilter','applySuspendEvalUserFilter','getAssignedQueueOwner','isQueueOwnerVisible','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
+   'firstDockNonEmpty','firstDockValue','normalizeDockViewDockKey','normalizeDockSuspendRequestValue','getDockSuspendValue','isDockSuspendDcRequestMirrorRow','getSuspendEvalUserFilter','getAssignedQueueOwner','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
    getManagerAssignedColumnState:()=>state, fullInventory:inventory, getSupabaseReadIdentityScope:()=>'session:'+c.currentUser,
    buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(), EVAL_TASK_USER_ALIASES:{charlie_robertson:'charley_robertson',kayla_knapp:'kayla_knepp',abigail_vasquez:'abigail_vazquez'},
    isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', getDockSuspendToValue:r=>r?.suspend_to,
    currentUser:'dylan_collyge', activeReqTab:'suspend-tag', requestSuspendEvalUserFilter:'ALL', suspendEvalFilterScope:'', SUSPEND_EVAL_ROSTER:SUSPEND_ROSTER_FIXTURE,
    isAuthenticatedExecutiveUser:()=>false, canAccessView:()=>true, escapeHtml:String, markViewDirty(){},renderRequest(){},paintFooterRequestBadgeOnly(){},requestScopedItemsCacheKey:''});
  vm.runInContext(readFileSync(new URL('../../assets/suspend-exact-owner.js',import.meta.url),'utf8'),c);
+ vm.runInContext(readFileSync(new URL('../../assets/request-queue-membership.js',import.meta.url),'utf8'),c);
  const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
  for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
    [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],
@@ -80,7 +81,7 @@ export async function ownerAndSuspendContract(){
    c.currentUser=actor;
    c.currentRole=SUSPEND_ROSTER_FIXTURE.slice(0,3).includes(actor)?'ADMIN':'EVAL';
    assert.equal(c.canReadSuspendQueue(),true);
-   assert.equal(c.getSuspendEvalUserFilter(),c.currentRole==='ADMIN'?'ALL':actor);
+   assert.equal(c.getSuspendEvalUserFilter(),actor==='jd_jones'?'ALL':actor);
    c.setSuspendEvalUserFilter('ALL');
    if(SUSPEND_ROSTER_FIXTURE.slice(0,3).includes(actor)) {
      assert.equal(c.getSuspendEvalUserFilter(),'ALL');
@@ -107,8 +108,8 @@ export function rowCapabilityInitializationContract(){
  const c=context(['canUserMakeLiveChangesOnRow','canUserEditRow'],{resolveUserAccessMatrix:()=>matrix,currentUser:'dylan_collyge',currentUserDisplay:'Dylan',currentRole:'super-admin',nativeAuthSessionActive:true,nativeAuthSessionUserId:'profile',nativeAuthProfile:{id:'profile',username:'dylan_collyge'}});
  vm.runInContext(readFileSync(new URL('../../assets/row-access-policy.js',import.meta.url),'utf8'),c);
  assert.equal(c.canUserMakeLiveChangesOnRow('dylan_collyge',{UNIQUE_ID:'one'}),true);
- matrix.edit_any_row='N';c.currentUser=c.nativeAuthProfile.username='rep';assert.equal(c.canUserMakeLiveChangesOnRow('rep',{UNIQUE_ID:'one'}),false);
- matrix.edit_assigned_rows_only='Y';c.currentUser=c.nativeAuthProfile.username='eval';c.resolveInventoryRowOwner=r=>r.UNIQUE_ID==='one'?'eval':'other';
+ matrix.edit_any_row='N';c.currentRole='REP';c.currentUser=c.nativeAuthProfile.username='rep';assert.equal(c.canUserMakeLiveChangesOnRow('rep',{UNIQUE_ID:'one'}),false);
+ matrix.edit_assigned_rows_only='Y';c.currentRole='EVAL';c.currentUser=c.nativeAuthProfile.username='eval';c.resolveInventoryRowOwner=r=>r.UNIQUE_ID==='one'?'eval':'other';
  assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'one'}),true);assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'two'}),false);
 }
 
@@ -167,12 +168,15 @@ export function liveQueueAssignmentContract() {
     ['004110.020.1', {assignedto:'dylan_collyge'}], ['002000.010.1', {assignedto:'chris_fisher'}]
   ])};
   const c = context(['firstDockNonEmpty','firstDockValue','normalizeDockViewDockKey','normalizeDockSuspendRequestValue','getDockSuspendValue','isDockSuspendDcRequestMirrorRow','getCardEvalOwnerIndex','getAssignedQueueOwner','resolveSuspendOwner','resolveExactSuspendOwner','buildSuspendEvalUserFilter',
+    'normalizeSuspendOwnerCode','validSuspendOwner','suspendOwnerFromRow','resolveSuspendOwnerFallback',
+    'collectSuspendOwnerCandidates','normalizeSuspendQueueOwner',
     'resolveRequestCardQuantity','isRequestPendingVisible','compareAssignedItemCodes'], {
     getManagerAssignedColumnState:()=>state, fullInventory:[{itemcode:'001111.010.1',assignedto:'jd_jones'}],
     normalizeEvalAssignableUser:v=>String(v||'').trim().toLowerCase(), buildManagerEvalAssignmentKey:v=>String(v||'').trim().toUpperCase(),
     isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', getDockSuspendToValue:r=>r?.suspend_to, canUseRequestSuspendTagAssignedToFilter:()=>true,
     getSuspendEvalUserFilter:()=>'ALL', queueAccessScope:()=>({all:true}), escapeHtml:String, isRequestVisibleForCurrentUser:()=>false,
-    isMoveRequestRow:()=>false,hasConfirmedRequestCompletion:r=>!!r.receiptConfirmed,isTruthishHistoryValue:Boolean,hasCompletionDateValue:r=>!!r.date_completed,
+    isMoveRequestRow:()=>false,hasConfirmedRequestCompletion:r=>!!r.receiptConfirmed,
+    isOptimisticallyCompletedRow:r=>!!r.optimisticallyCompleted,isTruthishHistoryValue:Boolean,hasCompletionDateValue:r=>!!r.date_completed,
     normalizeRequestStatus:v=>v,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!=='')||''
   });
   const tags=[' 004110.020.1 ','004110.070.','001111.010.1'].map(itemcode=>({suspend:'SUSPEND',itemcode,assignedto:'jd_jones'}));
@@ -183,31 +187,41 @@ export function liveQueueAssignmentContract() {
   const row={REQUEST_ACTIVE:true,REQ_STATUS:'Pending',ITEMCODE:'004110.070.1'};
   assert.ok(c.isRequestPendingVisible(row)); assert.ok(!c.isRequestPendingVisible({...row,REQ_STATUS:'Complete'}));
   assert.ok(!c.isRequestPendingVisible({...row,receiptConfirmed:true}));
+  assert.ok(!c.isRequestPendingVisible({...row,optimisticallyCompleted:true}));
   for (const qty of [0,null,'  ']) assert.equal(String(c.resolveRequestCardQuantity({qty})), '0');
   assert.equal(String(c.resolveRequestCardQuantity({qty:'',req_qty:8})), '8');
   assert.deepEqual(['009000.001.1',' 000105.001.1','000110.001.1'].map(ITEMCODE=>({ITEMCODE})).sort(c.compareAssignedItemCodes).map(r=>r.ITEMCODE.trim()),['000105.001.1','000110.001.1','009000.001.1']);
 }
 
 export async function firstAssignedFrameContract() {
-  const state = {}, host = {innerHTML:'',querySelector:()=>slot}, slot = {innerHTML:''}, frames = [], jobs = [];
+  const state = { viewModule: Promise.resolve() }, host = {innerHTML:''}, frames = [], jobs = [];
   const input = Array.from({length:205}, (_,i)=>({ITEMCODE:String(205-i).padStart(6,'0'),UNIQUE_ID:String(i)}));
-  let reads = 0, renders = 0;
-  const c = context(['openAssignedItemsFirstFrame','compareAssignedItemCodes'], {
-    document:{getElementById:()=>host},renderManagerTableManagementWorkspace:html=>html,
+  const reads = [];
+  let renders = 0, prepared = null;
+  const c = context(['openAssignedItemsFirstFrame','finishAssignedItemsFirstFrame','prewarmAssignedItems','compareAssignedItemCodes'], {
+    document:{getElementById:()=>host},renderManagerTableManagementWorkspace:(html,view)=>view === 'assigned-items' ? 'Assigned Items: '+html : '',
     requestAnimationFrame:fn=>frames.push(fn),setTimeout:fn=>jobs.push(fn),getManagerAssignedColumnState:()=>state,
     activeHomeTab:'assigned',MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW:'assigned',isViewVisible:()=>true,canViewAssignedItemsExport:()=>true,
     fullInventory:input,warehouseAssignedItemsInventory:[],getManagerAssignedDisplaySignature:()=>'same',
     getManagerItemLowStockTargetsState:()=>({revision:1}),buildManagerEvalAssignmentKey:v=>v,
-    getFilteredManagerAssignedItemsExportRows:rows=>rows,getManagerAssignedItemsDisplayRows:batch=>{reads++;assert.ok(batch.length <= (reads === 1 ? 150 : 100));return batch;},
+    getManagerAssignedItemsDisplayRows(batch) {
+      reads.push(batch?.length ?? input.length);
+      return [...(batch || input)].sort(c.compareAssignedItemCodes);
+    },
+    rememberManagerAssignedColumnLabels:rows=>{prepared=rows;},
     renderManagerAssignedFallbackRows:rows=>rows.length+' preview rows',renderManagers:()=>renders++
   });
   c.openAssignedItemsFirstFrame(state);
-  assert.match(host.innerHTML,/Assigned Items/); assert.equal(reads,0);
-  frames.shift()(); assert.equal(slot.innerHTML,'150 preview rows');
-  const preparation=jobs.shift()();
-  while(jobs.length){jobs.shift()(); await new Promise(resolve=>setImmediate(resolve));}
-  await preparation;
-  assert.equal(reads,4);assert.equal(renders,1);assert.equal(state.displayCache.rows.length,205);
-  assert.equal(state.displayCache.rows[0].ITEMCODE,'000001');
+  assert.equal(host.innerHTML,'Assigned Items: 100 preview rows');
+  assert.deepEqual(reads,[100]);assert.equal(prepared,null);
+  frames.shift()();jobs.shift()();
+  assert.deepEqual(reads,[100,205]);assert.equal(renders,1);assert.equal(prepared.length,205);
+  assert.equal(prepared[0].ITEMCODE,'000001');
+  c.openAssignedItemsFirstFrame(state);
+  frames.shift()();
+  c.activeHomeTab = 'different-tab';
+  jobs.shift()();
+  assert.deepEqual(reads,[100,205,100]);
+  assert.equal(renders,1);
 }
 

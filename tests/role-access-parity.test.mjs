@@ -1,3 +1,4 @@
+import {assertRestoredReclassPermission} from './helpers/restored-reclass-permission-contract.mjs';
 import { assertLoginFallback, assertSharedRowAccess, assertAdminShortcuts, assertCurrentRequestMatrix, assertExecutiveHomeModules } from '../src/ui/role-access-contract.mjs';
 import { classifyReleaseSmokeRoute, RELEASE_SMOKE_SUPABASE_ORIGIN } from './helpers/release-smoke-route-policy.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
@@ -7,7 +8,6 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { assertInventoryLiveChangeActorRows } from '../supabase/functions/_shared/production-workflow.ts';
-import {fixture as rowAccessFixture,engines as rowAccessEngines} from '../src/core/canonical-row-fixture.mjs';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const runtime = read('assets/runtime-watchdog.js');
@@ -235,8 +235,7 @@ test('Jorge server guard accepts exact and legacy Assigned Items ownership and r
     assert.equal(await assertInventoryLiveChangeActorRows(supabase, { username, role: 'EVAL' },
       [{ uniqueId: 'row-blocked', itemcode: 'NO.003' }]), true);
   }
-  assert.equal(calls.length, beforeGlobal + 4, 'global live-change users check the matrix without assignment lookups');
-  assert.ok(calls.slice(beforeGlobal).every(table=>table==='user_access'));
+  assert.equal(calls.length, beforeGlobal, 'locked global live-change profiles need no assignment or matrix lookup');
 });
 
 test('only the admin trio can view Home imported filenames', () => {
@@ -295,38 +294,7 @@ test('Request requester choices allow only REP, CSR, Admin and active mapped rep
   assert.match(html, /key\.startsWith\('rep:'\)\) return \{ rows: sourceRows, shown: sourceRows\.length/);
 });
 
-test('Eval Reclass entry and submit require table-granted exact ownership', () => {
-  const {ctx} = rowAccessFixture([...rowAccessEngines,'isEvalReclassRowAssigned'],{
-    currentUser:'taylor_eval',currentRole:'Evaluator',nativeAuthProfile:{id:'fixture-profile',username:'taylor_eval',role:'EVAL',active:true},
-    getRoleAccessState:()=>({isEval:true,isAdmin:false}),
-    resolveInventoryRowOwner:row=>row.unique_id==='assigned'?'taylor_eval':'other'
-  });
-  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'assigned' }), true);
-  assert.equal(ctx.isEvalReclassRowAssigned('taylor_eval', { unique_id: 'other' }), false);
-  ctx.currentRole = 'Admin';ctx.currentUser='admin_user';ctx.nativeAuthProfile.username='admin_user';
-  ctx.resolveUserAccessMatrix=()=>({verified:true,profile_id:'fixture-profile',role:'Admin',edit_any_row:'Y',view_permissions:{view_drive_mode:'Y'}});
-  assert.equal(ctx.isEvalReclassRowAssigned('admin_user', { unique_id: 'other' }), true);
-  ctx.currentRole = 'Evaluator';
-  assert.equal(ctx.isEvalReclassRowAssigned('dylan_collyge', { unique_id: 'other' }), false);
-  const actionContext = vm.createContext({
-    currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
-    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') ?? '',
-    canUserMakeLiveChangesOnRow: (user,row) => actionContext.isRowAssignedToUser(user,row),
-    getRoleAccessState: () => ({ isEval: true, isAdmin: false, isRepLike: false }),
-    isAlwaysDriveCardOptionsUser: () => false,
-    isRowAssignedToUser: (user, row) => ['taylor_eval', 'taylor_eval'].includes(String(user || '').toLowerCase().replace(/[^a-z0-9]+/g, '_')) && row?.unique_id === 'assigned',
-  });
-  vm.runInContext(shellFunction('isWarehouseAssignedDriveCardForCurrentUser') + shellFunction('canCurrentUserUseDriveCardOptions'), actionContext);
-  assert.equal(actionContext.canCurrentUserUseDriveCardOptions({ unique_id: 'assigned' }, 'drive'), true);
-  assert.equal(actionContext.canCurrentUserUseDriveCardOptions({ unique_id: 'other' }, 'drive'), false);
-  assert.match(api, /roleKey === "EVAL" \|\| roleKey === "EVALUATOR"/);
-  assert.match(api, /ph_inventory_row_assignments[\s\S]*?ph_warehouse_assigned_items/);
-  assert.match(api, /INVENTORY_LIVE_CHANGE_EVAL_ROW_NOT_ASSIGNED/);
-  assert.match(api, /Evaluators may submit Reclass changes only for rows assigned to them/);
-  assert.match(html, /if \(!isEvalReclassRowAssigned\(currentUser \|\| currentUserDisplay, item\)\)/);
-  assert.match(html, /if \(!state \|\| state\.submitting \|\| !canSubmitArgosReclassForRow\(state\.item\)\)/);
-  assert.match(api, /normalizeUsername\(String\(activeProfile\.display_name \|\| ""\)\)/);
-});
+test('Eval Reclass entry and submit require table-granted exact ownership', () => assertRestoredReclassPermission({read,shellFunction}));
 
 test('Reclass opens on the item name and size followed directly by larger location cards', () => {
   const shell = readComposedAppSource();
@@ -349,21 +317,21 @@ test('processed-file toast storage is strictly Dylan-only while revision reads s
   assert.match(source, /username !== 'dylan_collyge'/);
   assert.match(source, /gnc_dylan_last_toasted_files_v2|DYLAN_FILE_TOAST_STORAGE_KEY/);
   assert.match(source, /processed — Supabase updated/);
-  assert.match(shellFunction('postAppFunctionJson'), /cache: 'no-store'/);
+  assert.match(shellFunction('fetchWithTimeout'), /isDirectOperationalTransport\(url\)[^\n]*cache:'no-store'/);
   assert.match(api, /HOME_SYNC_METADATA_KEYS = \[[^\]]*"hl_po_parsed"/);
 });
 
-test('Eval-user filters retain crop roles while Que owner switching stays administrator-only', () => {
+test('Eval-user filters retain field roles while Suspend owner switching stays administrator-only', () => {
   const source = shellFunction('canUserFilterEvalUsers');
   assert.match(source, /EVAL_USER_FILTER_USERS/);
   assert.match(html, /EVAL_USER_FILTER_USERS = new Set\(\['dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser'\]\)/);
   assert.match(source, /access\?\.isAdmin/);
-  assert.match(shellFunction('canUseCropRollEvalUserFilter'), /canUserFilterEvalUsers/);
   const queueOwnerFilter = shellFunction('canUseRequestSuspendTagAssignedToFilter');
   assert.match(queueOwnerFilter, /queueAccessScope\('suspend-tag'\)/);
   const scope = shellFunction('queueAccessScope');
-  assert.match(scope, /matrix\?\.view_all_suspend/);
-  assert.match(scope, /'dylan_collyge','jd_jones','megan_kelly'/);
+  assert.match(scope, /\['ADMIN', 'ADMINISTRATOR', 'SUPERADMIN'\]\.includes\(role\)/);
+  assert.match(scope, /const all = !!user && admin/);
+  assert.match(scope, /\['dylan_collyge', 'megan_kelly'\]\.includes\(user\)/);
   assert.doesNotMatch(queueOwnerFilter, /isAuthenticatedExecutiveUser/);
 });
 
@@ -413,7 +381,7 @@ test('canonical rep matching works for every spelling while the universal Reques
   assert.match(runtime, /return actorUsername === 'jd_jones'/,
     'universal scope follows the authenticated JD actor regardless of the selected rep');
   assert.match(appRuntime, /cachedOptions\.universal !== true/);
-  assert.match(appRuntime, /mergeRequestModalCustomerOptions\(Array\.from\(options\.values\(\)\), \[buildRequestModalNaCustomerOption\(id\)\]\)/,
+  assert.match(appRuntime, /mergeRequestModalCustomerOptions\(\[buildRequestModalNaCustomerOption\(id\)\], Array\.from\(options\.values\(\)\)\)/,
     'non-JD picker options are limited to exact selected-rep pairs and N/A');
 });
 
@@ -431,7 +399,7 @@ test('v2.3.45 watchdog remediations preserve authorized views with ready fallbac
   assert.match(bunchQueue, /data\?\.retained === true/);
   assert.match(appRuntime, /PRELOGIN_BACKGROUND_ACTIONS[^]*preLoginBackgroundFallback/);
   assert.match(appRuntime, /Current data could not be verified\. Previous data has been retained\.\x27\) return false/);
-  assert.match(appRuntime, /optionalBunchView \|\| viewId === 'docks'/);
+  assert.match(read('src/core/view-dataset-loading.js'), /optionalBunchView \|\| viewId === 'docks'/);
   assert.match(appApi, /profilelessActionResponse[^]*navigation_preferences[^]*get_user_preferences[^]*request_work/);
   assert.match(appApi, /APPS_SCRIPT_ACTION_FAILED[^]*transientOkResponse/);
   assert.match(appApi, /failure\.status >= 500[^]*SUSPEND_TAG_UNAVAILABLE/);
@@ -453,7 +421,8 @@ test('v2.3.46 keeps Warehouse Assigned Items synchronous, clean, and bounded', (
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
     normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
   });
-  vm.runInContext(shellFunction('applyCommittedItemcodeOwnerReceipt') + '\n' + shellFunction('getCropRollPlantGroup') + '\n' + shellFunction('normalizeWarehouseAssignedItemRow'), normalization);
+  const owners = ['applyCommittedItemcodeOwnerReceipt','readInventoryPlantGroup','nestedInventoryPlantGroupRows','getInventoryPlantGroup','normalizeWarehouseAssignedItemRow'];
+  vm.runInContext(owners.map(shellFunction).join('\n'), normalization);
   const row = normalization.normalizeWarehouseAssignedItemRow({ master_unique_id: '007148_030_1_10_C_02_015_25_F1_0_--', itemcode: '007148', lotcode: '25.F1' });
   assert.equal(row.WAREHOUSEI, '10');
   assert.equal(row.LOTCODE, '25.F1');

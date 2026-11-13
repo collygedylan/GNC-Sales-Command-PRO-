@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toolingModularAgentManifests, toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
+import { indexReleaseDeclarations } from './helpers/release-gems-declarations.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const cache = new Map();
@@ -127,13 +128,22 @@ test('static census retains complete declared categories and honest snapshot met
 
 test('source links resolve and the Back diagnosis preserves Home, modal and non-Home distinctions', () => {
   const lineCounts = new Map();
-  for (const match of map.matchAll(/\]\(\.\.\/\.\.\/([^\s)#]+)(?:#L(\d+))?\)/g)) {
-    const [, file, line] = match;
+  const historicalRuntimeAnchors = new Map([
+    ['renderReserves', '158136'],
+    ['renderAdvertisement', '160542'],
+    ['saveAdvertisementExportToSupabase', '160221'],
+    ['sendAdvertisementEmail', '160396']
+  ]);
+  for (const match of map.matchAll(/\[([^\]]+)\]\(\.\.\/\.\.\/([^\s)#]+)(?:#L(\d+))?\)/g)) {
+    const [, label, file, line] = match;
     assert.ok(fs.statSync(path.join(root, file)).isFile(), file);
-    if (line) {
-      if (!lineCounts.has(file)) lineCounts.set(file, read(file).split('\n').length);
-      assert.ok(Number(line) <= lineCounts.get(file), `${file}:${line}`);
+    if (!line) continue;
+    if (file === 'assets/app-runtime.js' && historicalRuntimeAnchors.get(label) === line) {
+      indexReleaseDeclarations(read(file))(label);
+      continue;
     }
+    if (!lineCounts.has(file)) lineCounts.set(file, read(file).split('\n').length);
+    assert.ok(Number(line) <= lineCounts.get(file), `${file}:${line}`);
   }
   for (const name of ['getVisibleSecondaryBack', 'syncGlobalModalBack', 'global-back-btn', 'global-header-inline-back']) {
     assert.ok(map.includes(name));

@@ -10,9 +10,11 @@ import { parse } from 'parse5';
 import { toolingModularAgentManifests, toolingSkillManifests } from '../scripts/run-tooling-release-checks.mjs';
 import { findDuplicateGlobalFunctionDeclarations, INDEX_HTML_BUDGET, inspectSourceBudget } from '../scripts/code-health-governance.mjs';
 import { generatedDatabaseTypesPath, readGeneratedDatabaseTypes } from '../scripts/database-type-parts.mjs';
+import { verifyRegisteredSymbol } from './helpers/release-gems-symbol-ownership.mjs';
+import { goldenRegistrationOrder } from './helpers/golden-registration-ratchet.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const MIN_GOLDEN_INVARIANTS = 525;
+export const MIN_GOLDEN_INVARIANTS = 663;
 const sourceCache = new Map();
 const read = file => {
   if (!sourceCache.has(file)) sourceCache.set(file, file === generatedDatabaseTypesPath
@@ -194,15 +196,29 @@ test('release instructions lock zero-approval and forward-only workspace rules',
 });
 
 test('golden invariant ratchet stays active, contiguous, and release-wired', () => {
-  const golden = read('tests/golden-invariants.test.mjs');
-  const invariants = [...golden.matchAll(/\btest\(\s*['"`]Invariant (\d+)\b/g)].map(match => Number(match[1]));
+  const invariants = goldenRegistrationOrder(read);
   assert.ok(invariants.length >= MIN_GOLDEN_INVARIANTS, `${invariants.length} active invariants`);
   assert.deepEqual(invariants, Array.from({ length: invariants.length }, (_, index) => index + 1));
-  assert.doesNotMatch(golden, /\btest\.(?:skip|todo)\s*\(|\b(?:skip|todo)\s*:\s*true/);
   const tooling = read('scripts/run-tooling-release-checks.mjs');
   assert.match(tooling, /['"]tests\/golden-invariants\.test\.mjs['"]/);
   const pkg = JSON.parse(read('package.json'));
   assert.equal(pkg.scripts['test:golden'], 'node --test tests/golden-invariants.test.mjs');
+});
+
+test('golden ratchet reads registered modules in order and rejects inactive tests', () => {
+  const cases = new Map([
+    ['tests/golden-invariants.test.mjs', "test('Invariant 1', check); await import('../src/core/golden-final-polish.mjs'); test('Invariant 4', check);"],
+    ['src/core/golden-final-polish.mjs', "test('Invariant 2', check); await import('../../tests/erp-drive-post-upsert.test.mjs');"],
+    ['tests/erp-drive-post-upsert.test.mjs', "test('Invariant 3', {skip:false}, check);"],
+  ]);
+  const source = file => cases.get(file);
+  assert.deepEqual(goldenRegistrationOrder(source),[1,2,3,4]);
+  for (const inactive of ["test.skip('Invariant 3', check)", "test('Invariant 3', {todo:true}, check)", "test.only('Invariant 3', check)"]) {
+    cases.set('tests/erp-drive-post-upsert.test.mjs',inactive);
+    assert.throws(()=>goldenRegistrationOrder(source),/inactive or exclusive|inactive invariant options/);
+  }
+  cases.set('src/core/golden-final-polish.mjs',"test('Invariant 2', check);");
+  assert.throws(()=>goldenRegistrationOrder(source),/missing invariant registration import/);
 });
 
 test('skills, Step 0, and the +1 ratchet remain mandatory', () => {
@@ -234,12 +250,7 @@ test('canonical symbol index resolves every registered domain symbol', () => {
   for (const file of index.sourceLayers) assert.ok(read(file).length, file);
   const runtime = readComposedRuntimeSource();
   const verify = (file, symbols) => {
-    if (!symbols.length) return;
-    const source = file === 'assets/app-runtime.js' ? runtime : read(file);
-    for (const symbol of symbols) {
-      const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      assert.match(source, new RegExp(`\\b${escaped}\\b`), `${file}:${symbol}`);
-    }
+    for (const symbol of symbols) verifyRegisteredSymbol(file, symbol, read, runtime);
   };
   for (const [file, symbols] of Object.entries(index.sharedAssets || {})) verify(file, symbols);
   for (const { supportingFiles, ...files } of Object.values(index.domains)) {

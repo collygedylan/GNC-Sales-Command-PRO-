@@ -3,15 +3,28 @@ import { getDockOrderBusinessKey } from '../../src/core/dock-order-domain.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { JSDOM } from 'jsdom';
+import { indexReleaseDeclarations } from './release-gems-declarations.mjs';
 const read = name => readFileSync(new URL('../../' + name, import.meta.url), 'utf8');
 const runtime = read('assets/app-runtime.js');
 const row = read('assets/row-workflow-functions.js');
+const suspend = read('assets/suspend-detail-save-domain.js');
+const suspendReceipt = read('assets/suspend-receipt-domain.js');
+const membership = read('assets/request-queue-membership.js');
+const header = read('assets/que-header.js');
+const assignedDataset = read('assets/assigned-items-dataset.js');
+const routing = read('assets/manager-tab-routing.js');
 const component = read('components/assigned-items/AssignedItems.jsx');
 function install(context, source, names) {
+    const lookup = source !== component ? indexReleaseDeclarations(source) : null;
     for (const name of names) {
         if (name === 'suspendTagApi') {
             context.suspendTagReceiptMatchesSource = suspendTagReceiptMatchesSource;
             install(context, source, ['currentSuspendSourceSnapshot', 'suspendSourceSnapshotChanged', 'sendSuspendTagTransport', 'suspendTagRetryDecision', 'retrySuspendTagTransport']);
+        }
+        if (lookup) {
+            vm.runInContext(lookup(name), context);
+            continue;
         }
         const match = source.match(new RegExp('^( *)(?:export )?((?:async )?function ' + name + '\\([^]*?^\\1})', 'm'));
         assert.ok(match, name);
@@ -30,7 +43,8 @@ export async function suspendCloseRetryContract() {
             postAppFunctionJson: async (...args) => {
                 const body = args[1];
                 commands.push(body.commandId);
-                if (commands.length > failures) return {ok:true, data:{confirmed:true,row:{unique_id:'tag-a'}}};
+                if (commands.length > failures) return {ok:true, data:{confirmed:true,row:{unique_id:'tag-a',
+                    date_completed:'2026-11-04T14:00:00Z',suspend:null,suspend_to:null}}};
                 if (commands.length % 2) throw new Error('SUSPEND_TAG_DATABASE_55P03');
                 return {ok:false, code:'lock_not_available'};
             }
@@ -63,7 +77,8 @@ async function suspendClosePaintContract() {
         invalidateResolvedViewStateCaches(){}, serializeSuspendTagRowWrite:(...args)=>args[1](),
         refreshLocalDockSuspendDcRequestState(){}, showToast(){}, suspendTagErrorMessage:String
     });
-    install(ctx, runtime, ['closeDockSuspendDcRequestFromCard','runSuspendTagRowCommand']);
+    install(ctx, runtime, ['closeDockSuspendDcRequestFromCard']);
+    install(ctx, suspend, ['runSuspendTagRowCommand','runSerializedSuspendCommand','removePendingSuspendCloseRows','restorePendingSuspendCloseRows']);
     const command = ctx.runSuspendTagRowCommand;
     ctx.runSuspendTagRowCommand = (...args) => {
         if (!args[4]?.serialized) return command(...args);
@@ -95,10 +110,13 @@ export function queuePillAndTextContract() {
     assert.equal(ctx.formatRequestTabCount(125), '125');
     const panel = {};
     Object.assign(ctx, {document:{getElementById:()=>panel}, currentRole:'REP',
+        GLOBAL_LIVE_CHANGE_USER_KEYS:new Set(['dylan_collyge','megan_kelly','jd_jones']),
+        GncUserAccessControl:{resolveUserAccessMatrix:user=>({role:user==='other'?'REP':'ADMIN'})},
         normalizeEvalAssignableUser:String, buildSuspendEvalUserFilter:(...args)=>args[1],
         requestCategoryToolbarMarkupByNode:new WeakMap(), syncRequestChromeMarkup:(node,id)=>{node.id=id;}});
     install(ctx, runtime, ['canUseRequestSuspendTagAssignedToFilter']);
-    install(ctx, row, ['queueAccessScope','renderQueueOwnerFilterPanel']);
+    install(ctx, membership, ['queueAccessScope']);
+    install(ctx, row, ['renderQueueOwnerFilterPanel']);
     for (ctx.currentUser of ['dylan_collyge','megan_kelly','jd_jones','other']) {
         for (const [tab,id] of [['pending','request-eval-user-filter'],['suspend-tag','request-suspend-tag-assigned-filter']]) {
             ctx.renderQueueOwnerFilterPanel(tab, []);
@@ -114,37 +132,48 @@ export function queuePillAndTextContract() {
     queueCountContract();
 }
 export function queueTabContract() {
-    const toolbar = {dataset:{}};
+    const { window } = new JSDOM('<div id="request-filter-toolbar"><div class="request-category-options"></div></div>');
+    const { document } = window;
+    const toolbar = document.getElementById('request-filter-toolbar');
     const ctx = vm.createContext({
         getRoleAccessState: () => ({}), isFullAppAdministrator:()=>true, getRequestCapabilities: () => ({canViewQueue:true}),
         canAccessView: () => true, isSuspendTabAvailable:()=>true, REQUEST_TAB_LABELS: Object.fromEntries(tabs.map(tab => [tab,tab])),
         requestSalesRepsManagerMode: false, requestArchiveUndo: {}, escapeHtml:String, formatRequestTabCount:String,
-        document:{getElementById:id => id === 'request-filter-toolbar' ? toolbar : null},
-        syncQueueCategoryToolbarMarkup:(...args) => { toolbar.markup = args[1]; }
+        document, requestCategoryToolbarMarkupByNode:new WeakMap(),
+        queueAccessScope:()=>({all:true}), getCurrentVisibleViewId:()=> 'request'
     });
-    install(ctx, runtime, ['getAuthorizedRequestCategories','normalizeRequestTabValue','renderRequestCategoryToolbar']);
+    install(ctx, runtime, ['getAuthorizedRequestCategories','normalizeRequestTabValue','syncRequestChromeMarkup']);
+    install(ctx, header, ['renderRequestCategoryToolbar','syncQueCategoryButtons','syncQueCategorySelect',
+        'syncQueOwnerFallback','syncQueHeaderLayout','syncQueActiveCategory']);
     for (ctx.currentUser of ['megan_kelly','dylan_collyge','jd_jones','chris_fisher']) {
         for (const tab of tabs) {
             ctx.activeReqTab = ctx.normalizeRequestTabValue(tab);
             ctx.renderRequestCategoryToolbar({});
-            assert.deepEqual([...toolbar.markup.matchAll(/data-request-category="([^"]+)"/g)].map(m => m[1]), tabs);
-            assert.ok(toolbar.markup.includes('data-request-category="' + tab + '" aria-pressed="true"'));
+            const buttons = [...toolbar.querySelectorAll('[data-request-category]')];
+            const select = toolbar.querySelector('#que-view-select');
+            assert.deepEqual([...buttons.map(button=>button.dataset.requestCategory),
+                ...Array.from(select.options,option=>option.value).filter(Boolean)], tabs);
+            if (tabs.indexOf(tab) < 2) assert.equal(toolbar.querySelector('[aria-pressed="true"]').dataset.requestCategory,tab);
+            else assert.equal(select.value,tab);
         }
     }
     const never = () => new Promise(() => {});
     const painted = [];
-    Object.assign(ctx, {window:{}, resetQueueReadCooldowns(){}, unsubscribeEvalWorkRealtime(){},
+    Object.assign(ctx, {window:{}, navTransitionSeq:1, resetQueueReadCooldowns(){}, unsubscribeEvalWorkRealtime(){},
         forcePendingRequestRoot(){ctx.activeReqTab='pending';}, syncRequestTabButtons(){},
-        isViewVisible:()=>true, renderViewContent:()=>painted.push(ctx.activeReqTab),
-        runDirectTrackedNavigation:()=>true, scheduleRequestRenderSideData(){},
+        isViewVisible:()=>true,
+        runDirectTrackedNavigation:(_view,key)=>{painted.push([key,ctx.activeReqTab]);return true;},
+        scheduleRequestRenderSideData(){}, runAfterShellInteractive(){},
         loadDatasetTargetsWithLimit:never, forceRefreshRequestsForView:never});
     install(ctx,runtime,['setReqTab']);
+    install(ctx,membership,['activateQueCategory','scheduleQueCategoryRefresh']);
     for (ctx.currentUser of ['megan_kelly','dylan_collyge','jd_jones','chris_fisher']) {
         ctx.setReqTab('suspend-tag'); ctx.setReqTab('pending');
-        assert.deepEqual(painted.splice(0), ['suspend-tag','pending']);
+        assert.deepEqual(painted.splice(0), [['request-tab:suspend-tag','suspend-tag'],['request-tab:pending','pending']]);
     }
     const shell = read('index.html').split('id="request-filter-toolbar"')[1].split('</div></div>')[0];
-    assert.equal((shell.match(/data-request-category=/g) || []).length, 8);
+    assert.ok(shell.includes('request-category-options'));
+    window.close();
 }
 
 export function queueCountContract() {
@@ -199,7 +228,7 @@ export async function assignedOwnerContract() {
         ITEMCODE: 'I' + (i % 3352), COMMONNAME:'Test plant', PLANTGROUPCODE:'Tree',
         ASSIGNEDTO:'previous', DEFAULT_ASSIGNEDTO:'previous', MASTER_UNIQUE_ID:'row-'+i
     }));
-    const state = {filters:{},labels:new Map(),fullInventory:rows,itemcodeDefaultOwners:new Map()};
+    const state = {filters:{},labels:new Map(),fullInventory:rows,itemcodeDefaultOwners:new Map(),viewMode:'unique'};
     const selected = new Set(), toolbar = {value:'megan_kelly'};
     let confirm;
     const calls = [];
@@ -215,7 +244,10 @@ export async function assignedOwnerContract() {
         applyAcknowledgedEvalAssignmentResults(){},mirrorConfirmedItemcodeOwners:async()=>{},getSupabaseReadIdentityScope:()=>'test',
         reloadWarehouseAssignmentsAfterMutation:async()=>{},showToast(){},reportSemanticHealthEvent(){}
     });
-    install(ctx,runtime,['getFilteredManagerAssignedItemsExportRows','sortManagerAssignedColumnRows','assignEvalItemcodes','assignSelectedEvalItemcodes',
+    install(ctx,assignedDataset,['getFilteredManagerAssignedItemsExportRows']);
+    install(ctx,routing,['getManagerAssignedFilterCandidates','appendManagerAssignedCandidateGroup','addManagerAssignedColumnCandidates',
+        'getManagerAssignedTermPositions','groupManagerAssignedLocations']);
+    install(ctx,runtime,['sortManagerAssignedColumnRows','assignEvalItemcodes','assignSelectedEvalItemcodes',
         'normalizeSearchValue','tokenizeSearchValue','getManagerAssignedColumnValue','getManagerAssignedColumnDefinitions','rememberManagerAssignedColumnLabels','getAssignedLocationTokens','matchesManagerAssignedColumnFilters']);
     install(ctx,row,['getManagerAssignedSelectionSnapshot','selectAllFilteredManagerAssignedItems','assignManagerCheckedItemcodes','applyOptimisticItemcodeOwners','getCardEvalOwnerIndex']);
     assert.equal(ctx.getFilteredManagerAssignedItemsExportRows().length,3352);
@@ -268,6 +300,7 @@ export async function confirmedPullLocationContract() {
         findDockSuspendDcRequestMirrorRowByUniqueId:()=>tag,findDockSuspendDcRequestSourceRow:()=>tag,
         getRequestItemCodeOptionItemCode:r=>r.ITEMCODE||r.itemcode,getRequestItemCodeOptionRows:()=>[target],getRequestItemCodeOptionMasterId:r=>r.UNIQUE_ID,
         getDockSuspendDcRequestSourceUid:()=>'tag',resolveCanonicalRowAccess:()=>({canManageLocations:true}),
+        paintFooterRequestBadgeOnly(){},
         getDockSuspendDcRequestGroupParts:()=>({dock:'40',drop:'40',consignee:'Nursery'}),getDockOrderedQtyDisplay:()=>'8',
         masterInventoryById:new Map([['master',inventory[0]]]),avOpenInventory:av,parseAppNumber:Number,
         isFalseBlockLocation:s=>s==='0.00.111',showAppConfirm:(body,opts)=>{prompts.push([body,opts]);return accept;},
@@ -283,13 +316,18 @@ export async function confirmedPullLocationContract() {
         fetchWithTimeout:async(url,opts)=>{const body=JSON.parse(opts.body),payload=body.p_payload;assert.ok(url.endsWith('/rpc/select_final_suspend_location_v23163'));assert.equal(payload.finalPull,true);assert.deepEqual([...payload.inventoryIds],['master']);
             writes++;commands.push(body.p_command_id);if(rejectWrite)throw new Error('SUSPEND_TAG_FORBIDDEN');
             if(writes===1)throw new Error('SUSPEND_TAG_DATABASE_55P03');
-            assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,'F.14.000');
+            assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,'0.00.111');
+            assert.equal(inventory[0].SPEC,'old');
+            assert.equal(av[0].SPEC,'old');
             const rows=[{...picked,unique_id:'tag',suspend:null,suspend_candidate_state:'approved',date_completed:'2026-11-04'}, {...picked,suspend:null,suspend_candidate_state:'replaced',date_completed:'2026-11-04'}];
-            return {ok:true,json:async()=>({ok:true,finalPull:true,rows,inventoryRows:[{unique_id:'master',locationcode:target.LOCATIONCODE,itemcode:tag.ITEMCODE,spec:target.SPEC}]})};
+            return {ok:true,json:async()=>({ok:true,finalPull:true,originUid:'tag',rows,inventoryRows:[{unique_id:'master',locationcode:target.LOCATIONCODE,itemcode:tag.ITEMCODE,spec:target.SPEC}]})};
         }
     });
     install(ctx,runtime,['applySuspendCandidateRows','serializeSuspendTagRowWrite']);
-    install(ctx,row,['isFalseBlockLocation','previewSuspendPullAllocation','confirmSuspendLocationChange','changeSuspendPullLocation','suspendTagApi','applySuspendTagInventoryReceipt']);
+    install(ctx,row,['isFalseBlockLocation','confirmSuspendLocationChange','suspendTagApi','applySuspendTagInventoryReceipt']);
+    install(ctx,suspend,['changeSuspendPullLocation','commitSuspendPullLocation','prepareSuspendPullLocation',
+        'stageSuspendPullRemoval','readCommittedFinalSuspendPull']);
+    install(ctx,suspendReceipt,['matchesFinalSuspendPullReceipt','refreshConfirmedSuspendQueueBadges']);
     await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
     assert.equal(prompts[0][1].title,'Confirm Final Pull Location');
     for(const text of ['008111.031.1','Dock 40','Drop 40','Qty 8','0.00.111','F.14.000','Nursery'])assert.ok(prompts[0][0].includes(text),text);
@@ -302,7 +340,7 @@ export async function confirmedPullLocationContract() {
     assert.equal(inventory[0].SPEC,target.SPEC);assert.equal(av[0].SPEC,target.SPEC);
     rejectWrite=true;ctx.socInventory.splice(0,ctx.socInventory.length,{...old},other);
     await ctx.changeSuspendPullLocation(tag.UNIQUE_ID,'master','replace_location');
-    assert.equal(events.at(-1)[2],true);assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').LOCATIONCODE,'0.00.111');
+    assert.equal(events.at(-1)[2],true);assert.equal(ctx.socInventory.find(r=>r.unique_id==='tag').locationcode,'0.00.111');
     assert.equal(ctx.socInventory.find(r=>r.unique_id==='sibling'),other);
 }
 export async function serializedQueueInteractionContract() {

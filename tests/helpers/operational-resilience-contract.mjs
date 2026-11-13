@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
 import {readComposedRuntimeSource} from '../../scripts/composed-app-source.mjs';
 import {patchAppsScriptFunctions} from '../../scripts/apps-script-function-patch.mjs';
+import { prepareAppsScriptPublication } from '../../src/services/apps-script-publication-preparation.mjs';
 const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 const source=process.env.GNC_OPERATIONS_BASELINE==='1'?execFileSync('git',['show','HEAD:assets/app-runtime.js'],{encoding:'utf8',maxBuffer:32*1024*1024}):readComposedRuntimeSource();
 function fn(name,text=source){const start=text.search(new RegExp('(?:async )?function '+name+'\\('));assert.ok(start>=0,name);const indent=text.slice(text.lastIndexOf('\n',start)+1,start);const end=text.indexOf('\n'+indent+'}',start);assert.ok(end>start,name);return text.slice(start,end+indent.length+2);}
@@ -15,14 +16,18 @@ export function requestContract(){
  assert.equal(c.reconcileIncomingRequestRows([]).length,1,'a later empty read must retain the acknowledged pending request');
  c.optimisticCompletedRowIds.add('REQ-1');assert.equal(c.reconcileIncomingRequestRows([]).length,0);
 }
-export function emailContract(){
+export async function emailContract(){
  const code=read('Code.gs'),c=vm.createContext({REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_:['dylan','kayla','jd','megan','nelly'],dedupeEmailAddresses_:values=>[...new Set(values.flat(Infinity).filter(Boolean))]});
+ const remote=code+'\nfunction productionOnlyRoute(){return 137;}\n';
+ const script={projects:{getContent:async()=>({data:{files:[{name:'Code',type:'SERVER_JS',source:remote}]}})}};
+ const manifest={appsScriptPatchFunctions:['REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_','buildRequestDeliveryEmailPayload_','requestDeliveryRest_']};
+ const {source:patched,companionFiles}=await prepareAppsScriptPublication({script,source:code,manifest,applyFingerprint:value=>value});
+ assert.deepEqual(companionFiles.map(file=>file.name),['PhotoArchiveReceiver','RequestCompletion']);
+ vm.runInContext(companionFiles.find(file=>file.name==='RequestCompletion').source,c);
  vm.runInContext(fn('buildRequestDeliveryEmailPayload_',code),c);
  const payload=c.buildRequestDeliveryEmailPayload_({event_type:'request_created',payload:{recipientEmails:['extra']}},[{unique_id:'REQ-1',req_customer:'N/A',consigneename:'N/A',recipient_emails:['selected'],request_selected_rep_email:'wes',request_created_by_email:'actor'}]);
  assert.deepEqual(plain(payload.internalRecipients),['dylan','kayla','jd','megan','nelly','extra','selected']);assert.equal(payload.requestCreator.selectedRepEmail,'wes');assert.equal(payload.submittedByEmail,'actor');assert.equal(payload.customer,'N/A');
- const remote=code+'\nfunction productionOnlyRoute(){return 137;}\n';
- const patched=patchAppsScriptFunctions({remoteSource:remote,localSource:code,functionNames:['REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_','buildRequestDeliveryEmailPayload_','requestDeliveryRest_']});
- const out=typeof patched==='string'?patched:patched.source||patched.content||patched.patchedSource;assert.ok(out?.includes('function productionOnlyRoute(){return 137;}'));
+ assert.ok(patched.includes('function productionOnlyRoute(){return 137;}'));
 }
 export function aliasContract(){
  const c=vm.createContext({currentUser:'nelly_aguilar'});vm.runInContext(fn('getRequestCapabilityUsernameKey'),c);
@@ -31,7 +36,10 @@ export function aliasContract(){
 export function photoContract(){
  const c=vm.createContext({getExpandedImageUrl:v=>v,resolveAndFormatPhotoDate:()=>'',getPendingPhotoPreviewEntries:()=>[{url:'blob:failed',status:'Save failed'}],getRowPhotoLink:r=>r.photos});vm.runInContext(fn('getPhotoUrlList')+'\n'+fn('resolveCanonicalPhotoUrls'),c);
  const row={photos:JSON.stringify(['blob:expired','https://example.test/two.jpg','https://example.test/three.jpg'])};
- assert.deepEqual(plain(c.resolveCanonicalPhotoUrls(row,'drive')),['https://example.test/two.jpg','https://example.test/three.jpg']);assert.deepEqual(plain(c.resolveCanonicalPhotoUrls(row,'av')),plain(c.resolveCanonicalPhotoUrls(row,'drive')));assert.deepEqual(plain(c.getPhotoUrlList('data:image/png;base64,AAAA')),['data:image/png;base64,AAAA']);
+ const durable = ['https://example.test/two.jpg','https://example.test/three.jpg'];
+ assert.deepEqual(plain(c.resolveCanonicalPhotoUrls(row,'drive')),[...durable,'blob:failed']);
+ assert.deepEqual(plain(c.resolveCanonicalPhotoUrls(row,'av')),durable);
+ assert.deepEqual(plain(c.getPhotoUrlList('data:image/png;base64,AAAA')),['data:image/png;base64,AAAA']);
 }
 export function touchContract(){
  let press=0;const c=vm.createContext({Date,window:{PointerEvent:function(){}},isIOSDevice:()=>true,shouldPreferDetailMeasurementKeyboard:()=>true,detailMeasurementKeyboardLastPointerToken:'',detailMeasurementKeyboardLastPointerAt:0,detailMeasurementKeyboardLastPointerType:'',markDetailMeasurementKeyboardInteraction:()=>{},pressDetailMeasurementKeyboardToken:()=>{press++;},startDetailMeasurementKeyboardRepeat:()=>{},detailMeasurementKeyboardChoiceOpen:''});

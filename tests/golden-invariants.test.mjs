@@ -1,36 +1,52 @@
+import {invariant554} from './helpers/golden-restored-inventory-preview-guard.mjs';
+import {invariant237,invariant274,invariant291,invariant297,invariant301} from './helpers/golden-restored-owner-invariants.mjs';
+import {invariant312,invariant327,invariant330,invariant332} from './helpers/golden-restored-manager-invariants.mjs';
+import {invariant238,invariant463,invariant464} from './helpers/golden-restored-request-transport-invariants.mjs';
+import {invariant240} from './helpers/golden-restored-av-media-invariant.mjs';
+import {invariant290,invariant469,invariant471,invariant472,invariant496} from './helpers/golden-restored-photo-invariants.mjs';
+import {invariant182} from './helpers/golden-restored-read-retention.mjs';
+import {invariant157,invariant163,invariant180,invariant209} from './helpers/golden-restored-session-invariants.mjs';
+import {invariant246,invariant269,invariant273,invariant283,invariant286} from './helpers/golden-restored-assignment-invariants.mjs';
+import {assertExactRowEvaluationContract} from './helpers/golden-restored-row-evaluation.mjs';
+import {assertDocksSuspendIntegrity} from './helpers/golden-restored-docks-integrity.mjs';
+import {assertSocSuspendMembership} from './helpers/golden-restored-suspend-membership.mjs';
+import {assertSuspendRoutingAndDefaults} from './helpers/golden-restored-suspend-routing.mjs';
+import {invariant93,invariant96,invariant113} from './helpers/golden-restored-access-invariants.mjs';
+import {invariant186,invariant193,invariant202,invariant204} from './helpers/golden-restored-evidence-invariants.mjs';
+import {invariant212,invariant213,invariant214,invariant216,invariant217} from './helpers/golden-restored-reads-invariants.mjs';
+import { invariant83, invariant155, invariant158, invariant232, invariant257 } from './helpers/golden-restored-erp-invariants.mjs';
+import {invariant12,invariant13,invariant17,invariant33} from './helpers/golden-restored-navigation.mjs';
 import {withGoldenReclassAuthority,assertGoldenEvalReclassBoundaries,assertGoldenReclassExplanations} from './helpers/golden-reclass-authority.mjs';
-import { buildColdHydrationJoinFixture } from '../src/core/golden-cold-hydration-fixture.mjs';
 import {assertAuthenticatedTransientGateway} from '../src/core/golden-fail-open-contract.mjs';
 import {assertEvidenceLifecycle} from '../src/core/golden-evidence-lifecycle.mjs';
 import { boundedPilotIdleChecks } from '../src/core/pilot-idle-contract.mjs';
 import { assertSourceGitWorktreeIsolation } from '../src/core/git-worktree-invariant.mjs';
 import { assertWarmOwnerBenchmarkContract } from '../src/core/golden-warm-owner-contract.mjs';
-import { assertExactRowEvaluationContract, assertDocksSuspendIntegrity, assertCurrentSocDockContract,
-  assertCompletionCardsContract, assertErpFilenameAndWatchdogContract, assertSocSuspendMembership,
-  assertSuspendRoutingAndDefaults } from '../src/core/golden-extracted-contracts.mjs';
-import { sharePasskeyContract } from '../src/core/golden-share-contract.mjs';
-import {invariant208, invariant492, invariant502, invariant523} from '../src/core/golden-boot-contract.mjs';
-import { requestPhotoNavigationContract } from '../src/core/golden-request-photo-navigation.mjs';
-import {invariant67, invariant78, invariant211, invariant218, invariant248, invariant322} from '../src/core/golden-shell-contract.mjs';
-import { escapedTextContract } from '../src/core/golden-request-text.mjs';
+import { assertCurrentSocDockContract,
+  assertCompletionCardsContract, assertErpFilenameAndWatchdogContract } from '../src/core/golden-extracted-contracts.mjs';
+import { sharePasskeyContract } from './helpers/golden-share-contract.mjs';
+import {invariant208, invariant492, invariant502, invariant523} from './helpers/golden-boot-contract.mjs';
+import { requestPhotoNavigationContract } from './helpers/golden-restored-request-photo-navigation.mjs';
+import {invariant67, invariant78, invariant211, invariant218, invariant248, invariant322} from './helpers/golden-shell-contract.mjs';
+import { escapedTextContract } from './helpers/golden-restored-request-text.mjs';
 import { invariant241, invariant306, invariant525 } from '../src/core/golden-request-access-contract.mjs';
 import { badgeConnectionContract } from '../src/core/golden-badge-fixture.mjs';
-import { monotonicProgressContract, slowMetadataContract, completedCheckpointContract, productionScheduleContract } from '../src/core/golden-erp-progress.mjs';
-import { requestLifecycleContract } from '../src/core/golden-request-lifecycle.mjs';
-import { erpXlsxCommitContract } from '../src/core/golden-erp-xlsx.mjs';
-import {invariant41, invariant42, invariant51, invariant476, invariant522} from '../src/core/golden-update-policy.mjs';
+import { monotonicProgressContract, productionScheduleContract } from '../src/core/golden-erp-progress.mjs';
+import { requestLifecycleContract } from './helpers/golden-restored-request-lifecycle.mjs';
+import { erpXlsxCommitContract } from './helpers/golden-restored-erp-xlsx.mjs';
+import {invariant41, invariant42, invariant51, invariant476, invariant522} from './helpers/golden-update-policy.mjs';
 import { boundedShellInstallation, networkFirstShell, staleUpdateNavigation, upgradeOpenWindows } from './helpers/pwa-shell-upgrade-contract.mjs';
-import {invariant97, invariant115, invariant124} from '../src/core/golden-asset-contract.mjs';
-import { erpApiAuthorizationContract, erpApiContinuationContract, emptyCloudCompletionContract } from '../src/core/golden-erp-api.mjs';
+import {invariant97, invariant115, invariant124} from './helpers/golden-asset-contract.mjs';
+import { erpApiAuthorizationContract, erpApiContinuationContract, emptyCloudCompletionContract } from './helpers/golden-restored-erp-api.mjs';
 import { socXlsxContract } from '../src/core/golden-soc-xlsx.mjs';
 import { reclassSeasonContract, reclassDestinationContract } from '../src/core/golden-reclass-fixtures.mjs';
-import { photoParityContract } from '../src/core/golden-photo-parity.mjs';
-import { workerActivationContract } from '../src/core/golden-worker-activation.mjs';
+import { photoParityContract } from './helpers/golden-restored-photo-parity.mjs';
+import { workerActivationContract } from './helpers/golden-restored-worker-activation.mjs';
 import { loginBootstrapContract } from '../src/core/golden-login-fixture.mjs';
-import { foregroundDriverContract, continuationDelayContract, foregroundRestartContract, largeSocChunkContract, folderDiscoveryContract, manualSyncStartContract, operationalSourcesContract, busyStageContract, sealedPublicationContract } from '../src/core/golden-erp-driver.mjs';
+import { foregroundDriverContract, continuationDelayContract, foregroundRestartContract, largeSocChunkContract, folderDiscoveryContract, manualSyncStartContract, operationalSourcesContract, busyStageContract, sealedPublicationContract } from './helpers/golden-restored-erp-driver.mjs';
 import { watchdogDatesContract, progressStyleContract, weekdayContract, weekdaySerialContract, requestPublicationContract, facetRetirementContract, requestCompletionContract, managerSyncContract } from '../src/core/golden-support-contract.mjs';
 import { bloomRoleActionContract, bloomProjectContract } from '../src/core/golden-bloom-role.mjs';
-import { cloudContinuationContract, socIngestionContract, socYearContract, busyLeaseContract, privateRecoveryContract } from '../src/core/golden-cloud-continuation.mjs';
+import { cloudContinuationContract, socIngestionContract, socYearContract, busyLeaseContract, privateRecoveryContract } from './helpers/golden-restored-cloud-continuation.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import {root,read,syntax,functionSource,expectedAppApiVersion,runFunctions,locationContext,plain} from './helpers/golden-test-environment.mjs';
 import assert from 'node:assert/strict';
@@ -152,58 +168,8 @@ test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () =>
   assert.deepEqual(table.rows[0][4].proposals, []);
   assert.doesNotMatch(JSON.stringify(table.columns), /Action(?: Details)?/);
 });
-test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const styles = read('assets/app-styles.css');
-  const pilotStyles = read('assets/ops-precision-pilot.css');
-  const start = runtime.indexOf('        const HOME_MODULE_REGISTRY = Object.freeze([');
-  const end = runtime.indexOf('        function normalizeRoleAccessToken', start);
-  assert.ok(start >= 0 && end > start);
-  const grid = { dataset: {}, innerHTML: '' };
-  const context = vm.createContext({
-    currentUser: 'dylan_collyge', nativeAuthSessionActive: true, nativeAuthSessionUserId: 'actor', nativeAuthProfile: { id: 'actor', username: 'dylan_collyge', role: 'super-admin' },
-    PRIVILEGED_MANAGER_USER_KEYS: ['dylan_collyge', 'megan_kelly', 'jd_jones'], window: { innerWidth: 390 },
-    document: { getElementById: () => grid }, buildFastInvokeAttrs: () => '', isAuthenticatedExecutiveUser: () => true,
-  });
-  vm.runInContext(runtime.slice(start, end) + '\n' + functionSource('assets/app-runtime.js', 'getHomeDesktopColumnCount'), context);
-  context.ensureHomeModuleRegistry();
-  assert.equal([...grid.innerHTML.matchAll(/data-home-module-view=/g)].length, 12);
-  assert.equal(context.getHomeDesktopColumnCount(12), 3);
-  assert.doesNotMatch(pilotStyles, /grid-template-rows:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
-  const mobileStart = styles.lastIndexOf('@media (max-width: 767px)');
-  const desktopStart = styles.indexOf('@media (min-width: 768px)', mobileStart);
-  assert.ok(mobileStart >= 0 && desktopStart > mobileStart);
-  const mobileStyles = styles.slice(mobileStart, desktopStart);
-  assert.match(mobileStyles, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important/);
-  assert.match(mobileStyles, /grid-auto-rows:\s*clamp\(/);
-  assert.match(mobileStyles, /gap:\s*8px\s*!important/);
-  assert.match(mobileStyles, /grid-template-rows:\s*none\s*!important/);
-  assert.match(mobileStyles, /grid-auto-rows:\s*clamp\(54px,\s*calc\(\(100dvh - 265px\) \/ 6\),\s*72px\)\s*!important/);
-  assert.match(mobileStyles, /\.home-module-tile\s*\{[^}]*min-height:\s*0\s*!important[^}]*height:\s*100%\s*!important[^}]*max-height:\s*100%\s*!important/);
-  for (const viewportHeight of [568, 667, 740, 844, 932]) {
-    const tileHeight = Math.min(72, Math.max(54, (viewportHeight - 265) / 6));
-    const rows = Array.from({ length: 6 }, (_, index) => ({ top: index * (tileHeight + 8), bottom: index * (tileHeight + 8) + tileHeight }));
-    assert.ok(rows.every(row => row.bottom - row.top >= 50 && row.bottom - row.top <= 72));
-    for (let index = 0; index < rows.length - 1; index += 1) assert.ok(rows[index + 1].top >= rows[index].bottom + 6);
-    assert.ok(rows[5].bottom + 185 <= viewportHeight);
-  }
-  assert.match(grid.innerHTML, /Production[^]*Smart Sales (?:&amp;|&) Move|Smart Sales (?:&amp;|&) Move[^]*Production/);
-});
-test('Invariant 13 (#view-smart-moves Immediate Hydration)', async () => {
-  const calls = [];
-  let rendered = 0;
-  const context = runFunctions('assets/app-runtime.js', ['warmSalesIntelligenceData'], {
-    currentUser: 'dylan_collyge', salesIntelligenceWarmPromise: null, salesIntelligenceWarmAttemptedAt: 0,
-    salesIntelligenceCache: { key: 'stale', model: {} }, fullInventory: [{ ITEMCODE: 'A' }],
-    selectAvSalesInventorySourceRows: () => [{ ITEMCODE: 'A' }], isDatasetLoaded: () => false,
-    ensureDatasetLoaded: async (key, mode, options) => { calls.push([key, mode, options.force]); return true; },
-    getCurrentVisibleViewId: () => 'smart-moves', renderSmartMovesIntelligence: () => { rendered += 1; }, Date, Promise,
-  });
-  await context.warmSalesIntelligenceData();
-  assert.deepEqual(calls.slice(0, 3), [['master', 'full', true], ['soc', 'full', true], ['reserves', 'full', true]]);
-  assert.equal(rendered, 1);
-  assert.match(functionSource('assets/app-runtime.js', 'switchView'), /smart-moves[^]*warmSalesIntelligenceData/);
-});
+test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', invariant12);
+test('Invariant 13 (#view-smart-moves Immediate Hydration)', invariant13);
 test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () => {
   const code = runFunctions('Code.gs', ['getManualSyncStageOrder_'], { MANUAL_SYNC_STAGE_ORDER_DEFAULT: ['drive', 'soc', 'reserves', 'cav'], String });
   assert.deepEqual(Array.from(code.getManualSyncStageOrder_('all')), ['drive', 'soc', 'reserves', 'cav']);
@@ -257,39 +223,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
   assert.equal([...storage.values()].some(value => String(value).includes('AgData v2.3.54')), false);
   assert.equal(reports.every(event => event.app_version === 'AgData v2.3.57'), true);
 });
-test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', () => {
-  const api = read('supabase/functions/app-api/index.ts');
-  const migration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
-  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
-  const uniformMigration = read('supabase/migrations/20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
-  const runtime = read('assets/app-runtime.js');
-  assert.match(api, /Promise\.resolve\(supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)\)[^]*runtime\.waitUntil\(reconciliationTask\)/);
-  assert.doesNotMatch(api, /await supabase\.rpc\("reconcile_active_requests_from_outbox_v1"\)/);
-  assert.match(migration, /scope','recent-outbox-cutoff-v2361/);
-  assert.match(migration, /jsonb_array_elements[^]*insert into public\.ph_active_request/);
-  assert.match(migration, /request_source[^]*customeridentityid[^]*consigneeidentityid/);
-  assert.match(migration, /perform private\.upsert_request_history[^]*pending_recovered/);
-  assert.match(runtime, /fetchAllSupabaseRows\(ACTIVE_REQUEST_TABLE, query, readOptions\)/);
-  assert.match(runtime, /fetchActiveRequestLiveRows:canonicalPending/);
-  assert.match(runtime, /homeSyncMetadata:\$\{table\}[^]*retained:\s*true/);
-  assert.match(runtime, /\['DRIVE', 'CAV', 'RESERVES', 'SOC'\]\.map/);
-  assert.match(runtime, /\['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import'\]/);
-  assert.match(runtime, /syncPanel\.open = true/);
-  assert.match(runtime, /syncPanel\.dataset\.viewportDefaultApplied = 'true'/);
-  assert.match(runtime, /clearPersistedManualSyncStartupState\(\)[^]*manualSyncStatusState = null/);
-  assert.match(functionSource('assets/app-runtime.js', 'renderHome'), /syncGoogleScriptButton\(\);[^]*updateDashboardSyncSummary\(\);/);
-  assert.match(api, /currentStage:"idle"[^]*message:"Connected • ready"/);
-  assert.match(migration, /stageIndex',0[^]*currentStage','idle'/);
-  assert.match(canonicalMigration, /table_schema='archive_backup'[^]*alter table archive_backup/);
-  assert.match(canonicalMigration, /MANUAL_SYNC_NOT_IDLE/);
-  assert.match(canonicalMigration, /when 'drive' then array\['public\.ph_master_inventory'\]/);
-  assert.match(canonicalMigration, /when 'request' then array\['public\.ph_requests_pending'\]/);
-  assert.match(uniformMigration, /ph_00_table_directory[^]*\(210, 'Walkie'/);
-  const malformedMiddleDot = String.fromCodePoint(0x00c3, 0x201a, 0x00c2, 0x00b7);
-  assert.equal(read('assets/request-sales-impact.js').includes(malformedMiddleDot), false);
-  assert.equal(runtime.includes(malformedMiddleDot), false);
-  assert.match(read('assets/request-sales-impact.js'), /final lines \\u2022/);
-});
+test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', invariant17);
 test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => badgeConnectionContract(runFunctions,functionSource,read));
 test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
   const migration = read('supabase/migrations/20261023234500_request_quantity_recovery_v3.sql');
@@ -694,19 +628,7 @@ test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', async () => {
   assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never block Customer\/Consignee selection on a full mapping download/);
 });
 
-test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const directSet = runtime.match(/const DIRECT_POSTGREST_READ_TABLES = new Set\(\[[^]*?\]\);/)?.[0] || '';
-  const context = vm.createContext({ normalizeAppTableName: value => String(value || '').trim().toLowerCase() });
-  vm.runInContext(`${directSet}\n${functionSource('assets/app-runtime.js', 'isDirectPostgrestReadTable')}`, context);
-  assert.equal(context.isDirectPostgrestReadTable('ph_active_suspend'), true);
-  assert.match(runtime, /suspendTag:\s*\{\s*table:\s*'ph_active_suspend',\s*sourceTable:\s*'ph_soc_master'/);
-  const refreshSource = functionSource('assets/app-runtime.js', 'refreshActiveRequestQueueSideData');
-  assert.match(refreshSource, /requestQueueSideRefreshPending\s*=\s*\{/);
-  assert.match(refreshSource, /refreshActiveRequestQueueSideData\(pending\.reason, pending\.options\)/);
-  assert.match(functionSource('assets/app-runtime.js', 'setReqTab'), /loadDatasetTargetsWithLimit\(\[\{ key: 'suspendTag', mode: 'full' \}, \{ key: 'soc', mode: 'full' \}\]/);
-  assert.match(read('.codex/skills/agdata-queue-and-reclass-specialist/SKILL.md'), /Never render `Que -> SUSPEND` from a synthetic API dataset/);
-});
+test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', invariant33);
 
 test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', async () => {
   const calls = [];
@@ -1496,51 +1418,7 @@ test('Invariant 82 (Bunch Worker Patch Reaches Apps Script HEAD Through the Scop
   assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /scoped merger allowlist and additive-function set/);
 });
 
-test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatches Work)', async () => {
-  let releaseHeaders;
-  const pendingHeaders = new Promise(resolve => { releaseHeaders = resolve; });
-  const writes = [];
-  const context = runFunctions('assets/app-runtime.js', ['runGoogleAppsScriptTrigger', 'refreshManualSyncStatus'], {
-    isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', currentUserDisplay: 'Dylan',
-    document: { hidden: false }, navigator: { onLine: true }, console,
-    manualSyncStatusState: null, manualSyncStatusPollInFlight: false, lastManualSyncStatusCheckedAt: 0,
-    MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'],
-    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, MANUAL_SYNC_STATUS_STALE_MS: 12000,
-    releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true,
-    hasActiveManualSync: () => false, syncGoogleScriptButton() {}, showToast() {},
-    getSupabaseReadIdentityScope: () => 'same-account', getNativeAuthRequestHeaders: () => pendingHeaders,
-    applyManualSyncStatus: status => status, firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== ''),
-    handleDeferredManualSyncStart: () => false,
-    APP_API_FUNCTION_URL: '/app-api', crypto: { randomUUID: () => 'sync-command' },
-    postAppFunctionJson: async (url, payload) => { writes.push(payload); return { ok: true, data: { active: false, status: 'complete' } }; },
-    fetchManualSyncStatusFromScript: async () => ({ active: false, currentStage: 'idle' })
-  });
-  const firstClick = context.runGoogleAppsScriptTrigger();
-  assert.equal(context.isRunScriptActive, true);
-  await context.runGoogleAppsScriptTrigger();
-  releaseHeaders({ Authorization: 'Bearer fixture-token' });
-  await firstClick;
-  assert.equal(writes.length, 1);
-  assert.equal(writes[0].action, 'erp_sync');
-  assert.equal(writes[0].operation, 'start');
-  assert.equal(writes[0].commandId, 'sync-command');
-  assert.equal(writes[0].maxAttemptsPerStage, 1);
-  assert.equal(writes[0].force, true);
-  assert.equal(context.isRunScriptActive, false);
-  await context.refreshManualSyncStatus(true);
-  await context.refreshManualSyncStatus(true);
-  assert.equal(writes.length, 1);
-  for (const name of ['applyManualSyncStatus', 'releaseStaleManualSyncClientStateIfNeeded']) {
-    assert.doesNotMatch(functionSource('assets/app-runtime.js', name), /postGoogleScriptJsonPayload|requestManualSyncServerStaleSweep|manual_continue/);
-  }
-  const hydration = runFunctions('assets/app-runtime.js', ['isDatasetFrozenDuringManualSync'], {
-    hasActiveManualSync: () => true, MANUAL_SYNC_FROZEN_DATASET_KEYS: new Set(['master', 'cav']),
-    manualSyncStatusState: { stageOrder: ['drive', 'cav', 'reserves', 'soc', 'hl_po_parsed'], stageIndex: 1 },
-    datasetLoadState: { master: { fullLoaded: true }, cav: { fullLoaded: true } }
-  });
-  assert.equal(hydration.isDatasetFrozenDuringManualSync('master', 'full'), false, 'published Drive data can hot-reload while later stages run');
-  assert.equal(hydration.isDatasetFrozenDuringManualSync('cav', 'full'), true, 'current CAV import retains its completed snapshot');
-});
+test('Invariant 83 (One Click Starts One Sync and Status Polling Never Dispatches Work)', () => invariant83(runFunctions, functionSource));
 
 test('Invariant 84 (Committed Reclass Receipt Advances and Persists the Matching Snapshot)', async () => {
   const source = ['reconcileArgosReclassMoveReceipt', 'publishArgosReclassMoveReceiptRows']
@@ -1757,22 +1635,7 @@ test('Invariant 92 (Apps Script Head-Only Receipts Prove Source and Preserve the
   assert.match(workflow, /path: \.gnc-local\/apps-script-recovery-evidence\.json\n\s+include-hidden-files: true/);
 });
 
-test('Invariant 93 (Jorge Live Changes Require Canonical Assigned-Row Proof at Every Write Layer)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const api = read('supabase/functions/app-api/index.ts');
-  const workflow = read('supabase/functions/_shared/production-workflow.ts');
-  const migration = read('supabase/migrations/20261028070752_agdata_v2392_jorge_assigned_live_changes.sql');
-  assert.match(runtime, /function canUserMakeLiveChangesOnRow\([\s\S]*SCOPED_LIVE_CHANGE_USER_KEY[\s\S]*isRowAssignedToUser/);
-  assert.match(runtime, /warmLiveChangeAssignmentsAfterLogin\(\);/);
-  assert.match(runtime, /Live changes are only enabled for rows assigned to you in the Assigned Items tab\./);
-  assert.match(workflow, /GLOBAL_INVENTORY_LIVE_CHANGE_USERS[\s\S]*mitch_kaiser/);
-  assert.match(workflow, /ph_inventory_row_assignments[\s\S]*ph_warehouse_assigned_items/);
-  assert.match(api, /handlePhotoUpload[\s\S]*authorize:\(activeSession,request,form,prefix\)=>authorizePhotoUpload/);
-  assert.match(read('src/services/photo-upload-handler.ts'), /protectedPrefixes\.has\(prefix\) \? await deps\.authorize\(session,request,form,prefix\)/);
-  assert.match(read('src/services/photo-upload-authorization.ts'), /await deps\.rpc\("authorize_photo_upload_v3074"/);
-  assert.match(migration, /require_drive_live_change_profile_v2392[\s\S]*save_drive_evidence_v3/);
-  assert.match(migration, /can_access_drive_mode[\s\S]*can_access_av[\s\S]*can_access_que[\s\S]*can_access_manager_tab[\s\S]*can_submit_reclass/);
-});
+test('Invariant 93 (Jorge Live Changes Require Canonical Assigned-Row Proof at Every Write Layer)', invariant93);
 
 test('Invariant 94 (Suspend Close, AV Options, Processed Toasts, and Eval Filters Stay Stable)', () => {
   const runtime = read('assets/app-runtime.js');
@@ -1817,20 +1680,7 @@ test('Invariant 95 (Bunch Note Multi-Select Choices Learn Per Field Without Repe
   assert.doesNotMatch(gas, /Default house plan: ' \+ \(r\.default_house_plan/);
 });
 
-test('Invariant 96 (Request and Assigned Items Always Paint Last-Known-Good Rows Before Refresh)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const requestRefresh = runtime.slice(runtime.indexOf('function refreshRequestViewInBackground'), runtime.indexOf('function renderRequest()'));
-  const requestSwitch = runtime.slice(runtime.indexOf('function shouldRenderViewSynchronouslyOnSwitch'), runtime.indexOf('function switchView'));
-  const assignedPanel = runtime.slice(runtime.indexOf('function renderManagerAssignedItemsExportPanel'), runtime.indexOf('function renderManagerEvalReportsPanel'));
-  const managerRender = runtime.match(/function renderManagers\(\)[\s\S]*?^        }/m)[0];
-  assert.match(runtime, /const REQUEST_VIEW_BACKGROUND_TIMEOUT_MS = 2500/);
-  assert.match(requestSwitch, /targetViewId === 'request'[\s\S]*!requestState\.initialized \|\| !!requestState\.dirty/);
-  assert.match(requestRefresh, /withTimeout\(getProductionLiveSyncCoordinator\(\)\.check\('queue-visible'\), REQUEST_VIEW_BACKGROUND_TIMEOUT_MS/);
-  assert.match(requestRefresh, /withTimeout\(loadDatasetTargetsWithLimit\(pending/);
-  assert.doesNotMatch(assignedPanel, /Loading AssignedTo rows/);
-  assert.match(managerRender, /activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender\('managers'\)/);
-  assert.match(runtime, /plainManagersHubEntry[\s\S]*activeHomeTab = 'dashboard'/);
-});
+test('Invariant 96 (Request and Assigned Items Always Paint Last-Known-Good Rows Before Refresh)', invariant96);
 
 test('Invariant 97 (Empty Assigned Items Full Marker Cannot Suppress Current Warehouse Hydration)', () => invariant97({read}));
 
@@ -2182,42 +2032,7 @@ test('Invariant 112 (User Lifecycle Keeps Credentials Write-Only and Updates Can
   assert.match(migration, /USER_ACCESS_ADMIN_ROLE_IMMUTABLE/);
 });
 
-test('Invariant 113 (Assigned Items Joins Full Master and Honors Exact Empty Ownership)', () => {
-  const assignments = new Map([
-    ['master-00001', { assignedto: '', default_assignedto: '', default_revision: 7 }],
-    ['master-00002', { assignedto: 'current_owner', default_assignedto: 'current_owner', default_revision: 8 }],
-  ]);
-  const fullInventory = Array.from({ length: 9552 }, (_, index) => ({
-    UNIQUE_ID: `master-${String(index + 1).padStart(5, '0')}`,
-    ITEMCODE: `ITEM-${String(index + 1).padStart(5, '0')}`,
-    COMMONNAME: `Plant ${index + 1}`, CONTSIZE: '#3', LOCATIONCODE: `A.${String(index % 100).padStart(2, '0')}.001`,
-    GENUSNAME: 'Rosa', WAREHOUSEI: '10', ASSIGNEDTO: 'stale_master_owner',
-  }));
-  const state = {};
-  const context = runFunctions('assets/app-runtime.js', [
-    'firstNonEmptyValue', 'applyCommittedItemcodeOwnerReceipt', 'normalizeWarehouseAssignedItemRow', 'getManagerUnassignedItemcodes',
-    'compareAssignedItemCodes', 'buildManagerEvalAssignmentKey', 'getManagerAssignedDisplaySignature', 'getManagerAssignedItemsDisplayRows', 'getManagerAssignedItemsExportRows', 'getManagerAssignedItemsAssigneeOptions',
-  ], {
-    fullInventory,
-    warehouseAssignedItemsInventory: [],
-    managerEvalReportSettings: { lowStockMaxSLts: 150 },
-    getManagerAssignedColumnState: () => state,
-    getDatasetLoadSignature: key => `${key}:revision-1`,
-    normalizeEvalAssignableUser: value => String(value || '').trim().toLowerCase(),
-    getWarehouseAssignedRowForItem: row => assignments.get(row.UNIQUE_ID) || null,
-    getManagerItemLowStockTarget: () => null,
-  }, false);
-  const displayed = context.getManagerAssignedItemsDisplayRows();
-  assert.equal(displayed.length, 9552, 'all master rows render when warehouse ownership is empty');
-  const exactEmpty = displayed.find(row => row.MASTER_UNIQUE_ID === 'master-00001');
-  assert.equal(exactEmpty.ASSIGNEDTO, '', 'the exact empty assignment overrides stale master ASSIGNEDTO');
-  assert.equal(exactEmpty.DEFAULT_ASSIGNEDTO, '');
-  assert.equal(displayed.find(row => row.MASTER_UNIQUE_ID === 'master-00002').ASSIGNEDTO, 'current_owner');
-  const options = context.getManagerAssignedItemsAssigneeOptions(displayed);
-  assert.deepEqual(Array.from(options, option => [option.key, option.count]), [['current_owner', 1]]);
-  assert.equal(options.some(option => option.key === 'stale_master_owner'), false);
-  assert.equal(context.getManagerUnassignedItemcodes(displayed).length, 9551);
-});
+test('Invariant 113 (Assigned Items Joins Full Master and Honors Exact Empty Ownership)', invariant113);
 
 test('Invariant 114 (Historical Archive Quick Access Waits for Owned Module Mount)', async () => {
   let currentView = 'managers';
@@ -3160,84 +2975,13 @@ test('Invariant 154 (JD Global Directory Retries After Same-Actor Ownership Refr
     'the authenticated JD actor keeps global customer pairs while another rep is selected');
 });
 
-test('Invariant 155 (Cloud ERP Retries Persist Bounded Rows Before Atomic Publication)', async () => {
-  const { stageFileContinuation } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  const lines=Array.from({length:1201},(_,index)=>`item-${index},Plant ${index},1`).join('\n');
-  const bytes=`itemcode,commonname,ptravailable\n${lines}\n`;
-  const file={id:'golden-erp-bounded',name:'Drive.csv',modifiedTime:'2026-10-29T12:00:00Z',parents:['drop-folder','shared-folder']};
-  const appended=[];let committed=0,archived=false;
-  const fetcher=async(input,init={})=>{
-    const url=new URL(input);
-    if(url.pathname.endsWith('/files/golden-erp-bounded')&&url.searchParams.get('alt')==='media')return new Response(bytes);
-    if(url.pathname.endsWith('/files/golden-erp-bounded')&&url.searchParams.has('fields')&&init.method!=='PATCH')
-      return Response.json({id:file.id,parents:file.parents});
-    if(url.pathname.endsWith('/files/golden-erp-bounded')&&init.method==='PATCH'){
-      assert.equal(url.searchParams.get('removeParents'),'drop-folder,shared-folder');archived=true;return Response.json({id:file.id});
-    }
-    throw new Error(`unexpected Drive request ${url}`);
-  };
-  const supabase={rpc:async(name,args)=>{
-    if(name==='check_erp_file_sync_needed_v1')return {data:{skip:false}};
-    if(name==='fast_erp_import_columns_v1')return {data:['unique_id','itemcode','commonname','ptravailable']};
-    if(name==='fast_begin_erp_stage_v1')return {data:{stage_id:'golden-stage',expected_rows:1201,staged_rows:0}};
-    if(name==='fast_append_erp_stage_batch_v1'){
-      appended.push(args.p_rows.length);return {data:{staged_rows:args.p_start_row+args.p_rows.length}};
-    }
-    if(name==='fast_commit_erp_stage_swap_v1'){committed+=1;return {data:{ok:true}};}
-    throw new Error(`unexpected ERP RPC ${name}`);
-  }};
-  let state=null,result;
-  for(let slice=0;slice<5;slice+=1){
-    result=await stageFileContinuation({supabase,fetcher,token:'fixture-token',file,dataset:'drive_around',stageKey:'drive',
-      parentId:'drop-folder',processedId:'processed-folder',status:async()=>{},state,maxRowsPerSlice:600});
-    if(result.done)break;
-    state=result.state;
-    assert.ok(state.processedRows<1201||state.phase==='finalize'||state.phase==='move');
-  }
-  assert.equal(result.done,true);
-  assert.deepEqual(appended,[600,600,1]);
-  assert.equal(committed,1);
-  assert.equal(archived,true);
-});
+test('Invariant 155 (Cloud ERP Retries Persist Bounded Rows Before Atomic Publication)', invariant155);
 
 test('Invariant 156 (Sales Rep Bloom Actions Expose Only Share and Request)', () => bloomRoleActionContract(runFunctions));
 
-test('Invariant 157 (Transient RUN SCRIPT Slice Failures Reduce Rows and Stop After Six Retries)', async () => {
-  const context = vm.createContext({ module: { exports: {} }, Date, Promise,
-    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 600000, APP_API_FUNCTION_URL: '/app-api',
-    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== ''),
-    applyManualSyncStatus() {}, setTimeout: callback => { callback(); return 0; } });
-  context.postAppFunctionJson = async (_url, body) => {
-    context.sliceRowLimits.push(body.maxRowsPerSlice);
-    if (context.sliceFailures-- > 0) throw Object.assign(new Error('worker limit'), { status: 546 });
-    return { ok: true, status: 'DONE', data: { runStatus: { active: false, runId: 'run-six-retries' } } };
-  };
-  context.sliceRowLimits = [];
-  context.sliceFailures = 6;
-  runFunctions('assets/app-runtime.js', ['getTransientManualErpSliceStatus','reduceManualErpSliceLimit','continueManualErpSync'], context);
-  const result = await context.continueManualErpSync({ runId: 'run-six-retries' });
-  assert.equal(result.active, false);
-  assert.deepEqual(plain(context.sliceRowLimits), [2500,1250,600,600,600,600,600]);
-});
+test('Invariant 157 (Transient RUN SCRIPT Slice Failures Reduce Rows and Stop After Six Retries)', invariant157);
 
-test('Invariant 158 (Secondary Cloud Imports Finalize Before Moving Actual Drive Parents)', async () => {
-  const {runSecondaryErpSyncStep,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
-  const stage=SECONDARY_ERP_STAGES.find(row=>row.key==='pikes'),calls=[];
-  const folders=Object.fromEntries(SECONDARY_ERP_STAGES.map(row=>[row.key,{files:[],listDurationMs:0}]));
-  folders.pikes.files=[{id:'source-file',name:'order.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}];
-  const db={rpc:async(name,args)=>{calls.push(name);if(name==='prepare_manager_order_import_v2')return {data:{status:'importing',batchId:'00000000-0000-4000-8000-000000000001'}};
-    if(name==='upsert_secondary_erp_delta_v23103'){assert.equal(args.p_rows.length,1);assert.match(args.p_rows[0].row_state_hash,/^[a-f0-9]{64}$/);return {data:{changed:1}};}
-    return {data:{status:'archive_pending'}};}};
-  const fetcher=async(url,options={})=>{const parsed=new URL(url);if(parsed.searchParams.get('alt')==='media')return new Response(new Uint8Array([1,2,3]));
-    if(options.method==='PATCH'){assert.ok(calls.includes('finalize_pikes_order_import'));assert.equal(parsed.searchParams.get('removeParents'),'actual-parent,pending-parent');assert.equal(parsed.searchParams.get('addParents'),stage.processed);calls.push('moved');return Response.json({id:'source-file'});}
-    return Response.json({parents:['actual-parent','pending-parent']});};
-  const first=await runSecondaryErpSyncStep({supabase:db,fetcher,accessToken:'fixture',env:()=>'',status:async()=>{},cursor:{secondaryFolders:folders},
-    parseWorkbook:async()=>[{name:'Order',rows:[['Item','Order Tot','Pick Notes'],['001','4','North']]}]});
-  assert.equal(first.done,false);assert.ok(calls.indexOf('moved')>calls.indexOf('finalize_pikes_order_import'));
-  assert.ok(calls.indexOf('mark_pikes_order_file_archived')>calls.indexOf('moved'));
-  const final=await runSecondaryErpSyncStep({supabase:db,fetcher:()=>{throw Error('No repeat download');},accessToken:'fixture',env:()=>'',status:async()=>{},cursor:first.cursor});
-  assert.equal(final.done,true);
-});
+test('Invariant 158 (Secondary Cloud Imports Finalize Before Moving Actual Drive Parents)', invariant158);
 
 test('Invariant 159 (HL PDF Drop Skips Historical Native Sheets Without Moving Them)', async () => {
   const {prefetchSecondaryFolders,SECONDARY_ERP_STAGES}=await import('../supabase/functions/_shared/erp-secondary-sync.mjs');
@@ -3357,36 +3101,7 @@ test('Invariant 162 (Docks Uses Exact Physical Pair to Hydrate the Canonical Dri
   assert.equal(context.getDockCardLiveInventoryDisplayRow(ambiguous), ambiguous, 'ambiguous canonical candidates do not hydrate another physical row');
 });
 
-test('Invariant 163 (Table Management Presents Five Editable Tables and Five Read-Only Archives)', async () => {
-  const access = { canViewAssignedItemsExport: true, canManageCustomerRepMappings: true, canManageAccessControl: true };
-  const managerItems = runFunctions('assets/app-runtime.js', ['getManagerTableManagementItems'], {
-    canUseHistoricalRequests: () => true, canOpenPhotoHistory: () => true,
-  }).getManagerTableManagementItems(access);
-  const editable = managerItems.filter(item => item.section === 'editable').map(item => item.id);
-  const archive = managerItems.filter(item => item.section === 'archive').map(item => item.id);
-  assert.deepEqual(plain(editable), ['assigned-items', 'company-directory', 'inquiry-coverage', 'customer-assignments', 'user-role-access']);
-  assert.deepEqual(plain(archive), ['historical-drive-mode', 'historical-soc-open-orders', 'historical-soc-reserves', 'historical-requests', 'photo-history']);
-
-  const { JSDOM } = await import('jsdom');
-  const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>', { url: 'https://agdata.invalid/' });
-  try {
-    dom.window.confirm = () => true;
-    vm.runInContext(read('assets/manager-table-management.js'), vm.createContext({ window: dom.window, document: dom.window.document,
-      Blob: dom.window.Blob, FormData: dom.window.FormData, URL: dom.window.URL, CSS: { escape: value => String(value) }, setTimeout, clearTimeout }));
-    const rootNode = dom.window.document.getElementById('root');
-    const view = dom.window.GncManagerTableManagement.mountManagerTableManagement(rootNode, {
-      tables: managerItems.map(item => item.id), request: async request => ({ rows: request.operation === 'users' ? [{ username: 'any_app_user', display_name: 'Any App User' }] : [], total: 487 }), openTable() {},
-    });
-    assert.equal(rootNode.querySelectorAll('[data-table-select]').length, 10);
-    assert.equal(rootNode.querySelectorAll('.tm-choice em').length, 10);
-    rootNode.querySelector('[data-table-select="inquiry-coverage"]').click();
-    await new Promise(resolve => setImmediate(resolve));
-    rootNode.querySelector('[data-add]').click();
-    assert.equal(rootNode.querySelector('[name="primary_user"] option[value="any_app_user"]')?.textContent.includes('Any App User'), true,
-      'coverage user options are supplied by the app-wide users read');
-    view.destroy();
-  } finally { dom.window.close(); }
-});
+test('Invariant 163 (Table Management Presents Five Editable Tables and Five Read-Only Archives)', invariant163);
 
 test('Invariant 164 (Photo Upload Retries Transient Failures and Detail Hero Keeps Saved Photos)', async () => {
   const retryContext = runFunctions('assets/app-runtime.js', ['postPhotoUploadWithTransientRetry'], {
@@ -3803,51 +3518,8 @@ test('Invariant 179 (Eval Redaction Preserves Safe Array Read Metadata)', async 
   assert.equal(rows.readMeta.search, undefined);
 });
 
-const createColdHydrationJoinFixture = (identity, getIdentity) => buildColdHydrationJoinFixture(runFunctions,identity,getIdentity);
 
-test('Invariant 180 (cold full hydration is shared across Home and coordinator callers)', async () => {
-  const homeContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
-  const homeFallback = homeContext.slice(homeContext.indexOf("if (view === 'home'"), homeContext.indexOf('const hasDataCohort'));
-  assert.match(homeFallback, /getProductionCoreLiveProjection\('master', view, foregroundContext\)/,
-    'Home fallback must use the canonical projection selector while a cold full master load is active');
-  assert.match(homeFallback, /createProductionCoreLiveAdapter\('master', projection/);
-
-  const loaderSource = functionSource('assets/app-runtime.js','getOwnedColdDatasetLoad');
-  assert.match(functionSource('assets/app-runtime.js','ensureDatasetLoaded'),/getOwnedColdDatasetLoad\(key,mode\)[\s\S]*?ensureCoordinatedDataset/);
-  assert.match(loaderSource, /coldSourceHydrations\.has\(key\)[\s\S]*?ownerIdentity !== owner[\s\S]*?state\.fullPromise\.then/,
-    'the coordinator path must join the same owner’s in-flight cold full promise before creating another adapter');
-  assert.match(functionSource('assets/app-runtime.js', 'hydrateColdSource'),
-    /Object\.defineProperty\(promise, 'ownerIdentity', \{ value: owner/,
-    'the cold promise must carry its identity owner for safe joining');
-
-  const sameOwner = createColdHydrationJoinFixture('account-a');
-  assert.equal(sameOwner.calls(), 0, 'same-owner cold full load joins without starting a coordinator request');
-  sameOwner.resolveFull(true);
-  assert.equal(await sameOwner.promise, true, 'joined caller receives the cold full result');
-
-  let currentOwner = 'account-a';
-  const stale = createColdHydrationJoinFixture('account-a',() => currentOwner);
-  currentOwner = 'account-c';
-  stale.resolveFull(true);
-  assert.equal(await stale.promise,false,'an identity change while awaiting the cold promise discards its result');
-  assert.equal(stale.calls(),0,'stale cold work is not replaced by a second coordinator fetch');
-
-  const assignmentReader = functionSource('assets/app-runtime.js', 'fetchAllSupabaseRows');
-  assert.match(assignmentReader, /identityScopedAssignmentRead = String\(table \|\| ''\)\.trim\(\) === WAREHOUSE_ASSIGNED_ITEMS_TABLE/,
-    'the physical assignment table must share its canonical full-snapshot query across callers');
-  const routed = [];
-  const routing = runFunctions('assets/app-runtime.js', ['fetchAllSupabaseRows'], {
-    REQUEST_HISTORY_TABLE: 'history', SALES_CREDIT_REQUESTS_TABLE: 'credits', WAREHOUSE_ASSIGNED_ITEMS_TABLE: 'ph_inventory_row_assignments',
-    runDedupeSupabaseRead: (_key, _task, options) => { routed.push(options); return Promise.resolve([]); },
-  });
-  const signal = new AbortController().signal;
-  await routing.fetchAllSupabaseRows('ph_inventory_row_assignments', 'select=*', { signal });
-  assert.equal(routed[0].signal, null); assert.equal(routed[0].retainOnGenerationChange, true);
-  await routing.fetchAllSupabaseRows('ph_soc_master', 'select=*', { signal, retainOnGenerationChange: true });
-  assert.equal(routed[1].signal, null); assert.equal(routed[1].retainOnGenerationChange, true);
-  await routing.fetchAllSupabaseRows('ph_soc_master', 'select=*', { signal });
-  assert.equal(routed[2].signal, signal); assert.equal(routed[2].retainOnGenerationChange, false);
-});
+test('Invariant 180 (cold full hydration is shared across Home and coordinator callers)', invariant180);
 
 test('Invariant 181 (Assigned History Shares Four Bounded Parallel Batches And Rejects Missing Codes)', async () => {
   let active = 0, peak = 0, calls = 0, omitCode = false;
@@ -3878,106 +3550,7 @@ test('Invariant 181 (Assigned History Shares Four Bounded Parallel Batches And R
   await assert.rejects(ctx.fetchManagerItemLowStockTargets(codes), /omitted 1 requested ItemCode summaries/);
 });
 
-test('Invariant 182 (cold reads and revision metadata survive view generations but remain identity fenced)', async () => {
-  const runtime = read('assets/app-runtime.js');
-  const coldLoader = functionSource('assets/app-runtime.js', 'hydrateColdSource');
-  assert.match(coldLoader, /retryOnCancellation: true,\s*retainOnGenerationChange: true/);
-  const datasetLoader = runtime.slice(runtime.indexOf('async function ensureDatasetLoaded'), runtime.indexOf('function queueDatasetLoad'));
-  assert.match(datasetLoader, /options\.retainOnGenerationChange === true \? \{ retainOnGenerationChange: true \} : \{\}/,
-    'explicit cold-read retention must reach generic full dataset fetches');
-  const genericReader = functionSource('assets/app-runtime.js', 'fetchAllSupabaseRows');
-  assert.match(genericReader, /signal: identityScopedAssignmentRead \|\| identityScopedOperationalRead \|\| opts\.retainOnGenerationChange === true \? null/,
-    'explicitly retained generic reads must detach their initiating view signal');
-
-  let owner = 'same-account';
-  let callCount = 0;
-  const transportSignals = [];
-  const dedupeOptions = [];
-  const ctx = runFunctions('assets/app-runtime.js', ['supabaseRpc'], {
-    APP_API_FUNCTION_URL: '/app-api',
-    assertEvalDataSourceAllowed() {},
-    getSupabaseReadIdentityScope: () => owner,
-    staleSupabaseReadScopeError: () => Object.assign(new Error('stale identity'), { code: 'STALE_SCOPE' }),
-    runDedupeSupabaseRead: async (key, task, options) => {
-      callCount += 1; dedupeOptions.push({ key, ...options });
-      return task({ signal: new AbortController().signal });
-    },
-    SUPABASE_URL: 'https://fixture.test', getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer native' }),
-    window: { GncDatabase: { fetchRpc: async (_url, _rpc, options) => {
-      transportSignals.push(options.signal);
-      return Response.json({ accepted: JSON.parse(options.body).p_dataset_keys });
-    } } },
-  });
-  const external = new AbortController();
-  const result = await ctx.supabaseRpc('get_my_dataset_revisions_v1', {
-    p_dataset_keys: [' ph_soc_master ', 'ph_master_inventory', 'ph_soc_master'],
-  }, { signal: external.signal });
-  assert.deepEqual(Array.from(result.accepted), ['ph_master_inventory', 'ph_soc_master']);
-  assert.equal(callCount, 1);
-  assert.equal(dedupeOptions[0].key, 'dataset-revisions:["ph_master_inventory","ph_soc_master"]');
-  assert.equal(dedupeOptions[0].signal, null, 'a view cancellation cannot abort the shared revisions transport');
-  assert.equal(dedupeOptions[0].retainOnGenerationChange, true, 'navigation/permission generation changes retain same-account metadata work');
-  assert.ok(transportSignals[0] instanceof AbortSignal);
-
-  const preAborted = new AbortController(); preAborted.abort();
-  await assert.rejects(ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master'] }, { signal: preAborted.signal }),
-    error => error?.code === 'REQUEST_ABORTED');
-  assert.equal(callCount, 1, 'an already-cancelled caller must not start the network request');
-
-  let releaseTransport;
-  const fenced = runFunctions('assets/app-runtime.js', ['supabaseRpc'], {
-    APP_API_FUNCTION_URL: '/app-api', assertEvalDataSourceAllowed: () => {},
-    getSupabaseReadIdentityScope: () => owner,
-    staleSupabaseReadScopeError: () => Object.assign(new Error('stale identity'), { code: 'STALE_SCOPE' }),
-    runDedupeSupabaseRead: (_key, task) => task({ signal: new AbortController().signal }),
-    SUPABASE_URL: 'https://fixture.test', getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer native' }),
-    window: { GncDatabase: { fetchRpc: () => new Promise(resolve => { releaseTransport = resolve; }) } },
-  });
-  const pending = fenced.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: ['ph_soc_master'] });
-  await new Promise(resolve => setImmediate(resolve));
-  owner = 'different-account';
-  releaseTransport(Response.json({ shouldNotEscape: true }));
-  await assert.rejects(pending, error => error?.code === 'STALE_SCOPE', 'a retained response cannot cross an account change');
-
-  let readOwner = 'owner-a';
-  let generation = 1;
-  let factoryCalls = 0;
-  let finishFirstRead;
-  const readCtx = runFunctions('assets/app-runtime.js', ['runDedupeSupabaseRead'], {
-    AbortController,
-    productionLiveSyncReadGeneration: generation,
-    getSupabaseReadIdentityScope: () => readOwner,
-    getSupabaseReadCooldownKey: (identity, key) => `${identity}:${key}`,
-    getSupabaseReadTerminalKey: (identity, key) => `${identity}:${key}`,
-    supabaseReadInFlight: new Map(), supabaseReadLatestByKey: new Map(),
-    supabaseReadTerminalDenials: new Map(), supabaseReadFailureCooldowns: new Map(),
-    incrementInternalPerfCounter() {},
-    runSupabaseReadTask: task => task(), runSupabaseReadWithBackoff: (_key, task) => task(),
-    redactEvalSensitiveData: value => value,
-    staleSupabaseReadScopeError: () => Object.assign(new Error('stale read'), { code: 'STALE_SCOPE' }),
-  });
-  const coldRead = readCtx.runDedupeSupabaseRead('all:ph_soc_master:select=*', () => {
-    factoryCalls += 1; return new Promise(resolve => { finishFirstRead = resolve; });
-  }, { retainOnGenerationChange: true });
-  generation += 1;
-  readCtx.productionLiveSyncReadGeneration = generation;
-  const coordinatorRead = readCtx.runDedupeSupabaseRead('all:ph_soc_master:select=*', () => {
-    factoryCalls += 1; return Promise.resolve('duplicate');
-  });
-  assert.equal(factoryCalls, 1, 'ordinary coordinator callers join a retained same-owner cold transport across generations');
-  finishFirstRead('shared');
-  assert.equal(await coldRead, 'shared');
-  assert.equal(await coordinatorRead, 'shared');
-
-  readOwner = 'owner-b';
-  let finishSecondRead;
-  const otherAccountRead = readCtx.runDedupeSupabaseRead('all:ph_soc_master:select=*', () => {
-    factoryCalls += 1; return new Promise(resolve => { finishSecondRead = resolve; });
-  });
-  assert.equal(factoryCalls, 2, 'a different account cannot join the previous owner’s retained result');
-  finishSecondRead('owner-b');
-  assert.equal(await otherAccountRead, 'owner-b');
-});
+test('Invariant 182 (cold reads and revision metadata survive view generations but remain identity fenced)', invariant182);
 
 test('Invariant 183 (Authenticated Inventory And Operational Reads Survive Caller Navigation)', async () => {
   let owner = 'account-a', finish, transportSignal, readCount = 0;
@@ -4041,14 +3614,7 @@ test('Invariant 185 (typed master CSV bridge validates before returning cached r
   assert.equal(await response.text(),'unique_id\nrow-1\n');
 });
 
-test('Invariant 186 (Drive and AV open LOCATION for reviewed negative and stopped rows)', () => {
-  const ctx=runFunctions('assets/app-runtime.js',['getPrimaryDetailTabForItemContext','formatInventoryHoldSince'],{
-    activeDetailSourceView:'',lastView:'',activeTaskTab:'',activeAVTab:'reserves',firstNonEmptyValue:(...values)=>values.find(v=>v!==undefined&&v!==null&&v!==''),Date
-  });
-  for(const source of ['drive','av']) for(const row of [{PTRREVIEWED:12,PTRAVAILABLE:-2,HOLDSTOPCODE:'S'},{DATE_COMPLETED:'2026-10-29',APP_TAB_ASSIGNMENT:'season'}]) assert.equal(ctx.getPrimaryDetailTabForItemContext(row,source),'location');
-  assert.equal(ctx.formatInventoryHoldSince(46259),'8/25/2026');
-  assert.equal(ctx.formatInventoryHoldSince('1/1/46259'),'8/25/2026');
-});
+test('Invariant 186 (Drive and AV open LOCATION for reviewed negative and stopped rows)', invariant186);
 
 test('Invariant 187 (Suspend photo proof survives navigation but never an account change)', () => assertSuspendPhotoAccountProof({runFunctions,functionSource}));
 
@@ -4097,16 +3663,7 @@ test('Invariant 192 (Suspend AV has one action and no nested Reclass card)', () 
     {id:'actor',username:'dylan_collyge',role:'Admin'}, {operation:'add_candidates',expectedVersion:0,payload:{sourceUid:'tag',sourceIdentity:{dock:'36'},inventoryIds:['master']}}).then(result=>assert.equal(result.ok,true));
 });
 
-test('Invariant 193 (Suspend edit receipts accept newer sources and concurrent photos without relaxing send confirmation)', () => {
-  const source = functionSource('assets/app-runtime.js', 'runSuspendTagRowCommand');
-  const receipt = source.slice(source.indexOf('const editableOperation ='), source.indexOf('const receiptRow ='));
-  const run = (operation, row, patch = {}) => vm.runInNewContext(receipt, { operation, result: {ok:true,row}, sourceUid:'old-source', expectedRevision:'old-revision', options:{}, photoOnly:Object.keys(patch).length>0, patch, getDockSuspendCompletionRevision:r=>r.last_updated });
-  const row = {unique_id:'current-source',last_updated:'current-revision',suspend_tag_version:4,suspend_tag_status:'pending',dock_photo_link:'old,new'};
-  assert.doesNotThrow(()=>run('save',row,{dock_photo_link:'new'}));
-  assert.throws(()=>run('save',{...row,dock_photo_link:'old'},{dock_photo_link:'new'}),/did not confirm/);
-  assert.throws(()=>run('send',row),/did not confirm/);
-  assert.doesNotThrow(()=>run('complete',{...row,suspend_tag_status:'completed',date_completed:'2026-10-29T12:00:00Z'}));
-});
+test('Invariant 193 (Suspend edit receipts accept newer sources and concurrent photos without relaxing send confirmation)', invariant193);
 
 test('Invariant 194 (Release migration transaction envelope is accepted by the canonical publisher)', async () => {
   const { migrationBody } = await import('../scripts/apply-item-low-stock-migration.mjs');
@@ -4221,37 +3778,7 @@ test('Invariant 201 (Opening Suspend AV paints once and never schedules a second
 });
 
 
-test('Invariant 202 (Hetzi evaluation saves and snapshots isolate every lot and source in Drive and AV)', () => {
-  const first=(...values)=>values.find(value=>value!==null&&value!==undefined&&value!=='');
-  const rows=['28.F1','28.S1','26.U3','27.U3','27.Y','28.Y','28.F1'].map((lot,i)=>({UNIQUE_ID:'row-'+i,ITEMCODE:'000180.008.1',LOCATIONCODE:'L.05.000',LOTCODE:lot,SOURCE:i===2||i===6?'HL':'LD',SOURCE_TABLE:'ph_master_inventory'}));
-  const av=rows.map(row=>({...row}));
-  const keys=['PHOTO_LINK','SPEC','MATCH','AV_NOTE'];
-  const api=runFunctions('assets/app-runtime.js',['applyRowSyncSnapshot','syncRowDataAcrossViews','getMasterInventoryExactKey','buildNcrCurrentCropInheritancePayload','inventoryPhotoLocationKey','findLinkedMasterRow'],{
-    fullInventory:rows,avOpenInventory:av,masterInventoryById:new Map(rows.map(row=>[row.UNIQUE_ID,row])),masterInventoryByExactKey:new Map(),masterInventoryByNormalizedItemLocation:new Map(),
-    window:{GncDatabase:{driveEvidenceRevision:()=>0}},firstNonEmptyValue:first,getMasterInventorySourceCode:row=>row.SOURCE||row.source||'',
-    isDockSuspendDcRequestMirrorRow:()=>false,bufferRowPatchUntilHydrated:()=>false,findItemByUniqueId:id=>rows.find(row=>row.UNIQUE_ID===id),findRequestRowByUniqueId:()=>null,
-    FLYER_FOLDER_ROWS_TABLE:'flyer',MASTER_EVIDENCE_SYNC_KEYS:keys,EXACT_ROW_SYNC_KEYS:keys,LINKED_ROW_SYNC_KEYS:[],
-    getInventoryCardItemLocationKey:()=>'',getCardPtrOnHandValue:()=>0,isRowScopedDesignationSyncKey:()=>false,
-    repairDisplayFieldsOnRow:()=>{},normalizeFlyerShadowFields:()=>{},normalizeRowPhotoFields:row=>row,syncSharedFlyerPhotoFields:()=>{},buildSearchIndex:row=>row,
-    isFlyerFolderRow:()=>false,syncMasterFieldsToRow:(from,to,fields)=>fields.forEach(key=>{to[key]=from[key];}),shouldIncludeMasterItemInAvSeasonView:()=>true,rebuildInventoryByIdMap:()=>new Map(),
-    lowStockInventory:[],managerReviewInventory:[],moveUpInventory:[],salesOfficeInventory:[],socInventory:[],reservesInventory:[],requestsInventory:[],flyerFolderInventory:[],activeItem:null
-  });
-  const patch={PHOTO_LINK:'f1-photo-1,f1-photo-2,f1-photo-3',SPEC:'16-18" H',MATCH:60,AV_NOTE:'F1 ONLY'};
-  assert.equal(api.applyRowSyncSnapshot({uniqueId:'row-0',masterUniqueId:'row-1',sourceTable:'ph_master_inventory',data:patch}),true);
-  for(const collection of [rows,av]) {
-    for(const key of keys) assert.equal(collection[0][key],patch[key]);
-    for(const sibling of collection.slice(1)) for(const key of keys) assert.equal(sibling[key],undefined);
-  }
-  for(const sibling of rows.slice(1)) assert.equal(api.buildNcrCurrentCropInheritancePayload(rows[0],sibling),null);
-  assert.equal(api.findLinkedMasterRow({...rows[1],MASTER_ID:'row-0'}).UNIQUE_ID,'row-1');
-  const sql=read('supabase/migrations/20261029230000_agdata_v23109_strict_row_evidence.sql');
-  assert.match(sql,/add primary key\(source_unique_id\)/);
-  assert.match(sql,/add primary key\(unique_id\)/);
-  assert.match(sql,/where m.unique_id=btrim\(p_master_uid\)/);
-  assert.match(sql,/where m.unique_id=new.unique_id/);
-  assert.match(sql,/on e.source_unique_id=m.unique_id/);
-  assert.match(read('scripts/apply-item-low-stock-migration.mjs'),/agdataV23109StrictRowEvidenceMigrationName/);
-});
+test('Invariant 202 (Hetzi evaluation saves and snapshots isolate every lot and source in Drive and AV)', invariant202);
 
 
 test('Invariant 203 (Reclass confirms exact rows and validated immutable submissions before dispatch)', () => {
@@ -4293,24 +3820,7 @@ test('Invariant 203 (Reclass confirms exact rows and validated immutable submiss
 });
 
 
-test('Invariant 204 (Bloom project and Reclass controls stay dark-emerald)', () => {
-  const runtime = read('assets/app-runtime.js');
-  const projectStart = runtime.indexOf('let bloomInventoryProjectDraft');
-  const projectEnd = runtime.indexOf('async function submitBloomInventoryProject', projectStart);
-  const project = runtime.slice(projectStart, projectEnd);
-  assert.ok(projectStart >= 0 && projectEnd > projectStart);
-  assert.doesNotMatch(project, /<\/?datalist\b|\blist=/i);
-  assert.match(project, /toggleBloomProjectPicker/);
-  assert.match(project, /normalizeRepDisplayOrder/);
-  assert.match(project, /setBloomProjectPickerOptions/);
-  assert.match(runtime, /toggleArgosReclassDestinationMenu/);
-  assert.match(runtime, /selectArgosReclassDestination/);
-  const shell = readComposedAppSource();
-  assert.match(shell, /bloom-picker-actions-list #batch-btn-request/);
-  assert.match(shell, /min-height:78px/);
-  assert.match(shell, /\.argos-reclass-confirmation::backdrop/);
-  assert.match(shell, /rgba\(255,255,255,\.06\)/);
-});
+test('Invariant 204 (Bloom project and Reclass controls stay dark-emerald)', invariant204);
 
 
 test('Invariant 205 (Seven operational datasets share identity-scoped in-flight reads and reject an old owner)', async () => {
@@ -4380,57 +3890,7 @@ test('Invariant 208 (Blocked origins preserve complete shells and verified nativ
 function rootPathForMirror() { return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'); }
 
 
-test('Invariant 209 (Signed detached relay owns active sync while browser start and foreground remain bounded)', async () => {
-  const tasks = [], calls = [];
-  const relay = runFunctions('supabase/functions/app-api/index.ts', ['dispatchCloudErpSync'], {
-    SUPABASE_URL: 'https://example.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'service', ERP_SYNC_CLOUD_WORKER_KEY: 'private-worker',
-    EdgeRuntime: { waitUntil: task => tasks.push(task) }, AbortSignal, Date, Promise,
-    setTimeout: callback => { callback(); return 0; }, recordHandledError() {},
-    fetch: async (url, options) => { calls.push({ url, ...options, body: JSON.parse(options.body) }); return { ok: true, json: async () => ({ claimed: true }) }; }
-  });
-  await relay.dispatchCloudErpSync({ runId: 'durable-run' }, 0); await Promise.all(tasks);
-  assert.equal(calls.length, 1); assert.equal(calls[0].url, 'https://example.supabase.co/functions/v1/app-api');
-  assert.deepEqual(plain(calls[0].body), { action: 'erp_sync', operation: 'continue', runId: 'durable-run', relayHop: 1 });
-  assert.equal(calls[0].headers.authorization, 'Bearer private-worker');
-  relay.dispatchCloudErpSync({ runId: 'durable-run' }, 40); assert.equal(calls.length, 1);
-  const { validateErpSyncCommand } = await import('../supabase/functions/_shared/erp-sync.mjs');
-  assert.equal(validateErpSyncCommand({ action: 'erp_sync', operation: 'status', autoRelay: false }).ok, true);
-  assert.equal(validateErpSyncCommand({ action: 'erp_sync', operation: 'status', autoRelay: 'false' }).ok, false);
-  let wakes = 0;
-  const status = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncAction'], {
-    validateErpSyncCommand, jsonObject: value => value, jsonResponse: value => value,
-    supabase: { rpc: async () => ({ data: { active: true, runId: 'durable-run' } }) }, dispatchCloudErpSync: () => { wakes++; }
-  });
-  await status.handleErpSyncAction({}, { operation: 'status', autoRelay: false }, {}); assert.equal(wakes, 0);
-  await status.handleErpSyncAction({}, { operation: 'status' }, {}); assert.equal(wakes, 1);
-  const auth = runFunctions('supabase/functions/app-api/index.ts', ['handleErpSyncContinuation'], {
-    ERP_SYNC_CLOUD_WORKER_KEY: 'private-worker', errorResponse: (_message, code) => ({ status: code })
-  });
-  assert.equal((await auth.handleErpSyncContinuation({ operation: 'continue' }, new Request('https://example.test', {headers:{authorization:'Bearer anon','x-agdata-internal-relay':'1'}}))).status, 401);
-  const writes = [], updates = [];
-  const client = runFunctions('assets/app-runtime.js', ['runGoogleAppsScriptTrigger', 'continueManualErpSync', 'refreshManualSyncOnForeground'], {
-    isRunScriptActive: false, window: {}, currentUser: 'dylan_collyge', document: { hidden: false }, navigator: { onLine: true },
-    releaseStaleManualSyncClientStateIfNeeded() {}, canRunManualInventoryImport: () => true, syncGoogleScriptButton() {}, showToast() {},
-    getSupabaseReadIdentityScope: () => 'same', getNativeAuthRequestHeaders: async () => ({ Authorization:'Bearer verified' }),
-    crypto: { randomUUID: () => 'command' }, MANUAL_SYNC_STAGE_ORDER_CLIENT_DEFAULT: [], APP_API_FUNCTION_URL: '/api',
-    applyManualSyncStatus: value => updates.push(value), lastManualSyncStatusCheckedAt: 1,
-    postAppFunctionJson: async (_url, body, options) => { writes.push({body,options}); return { ok:true,cloudRelay:true,data:{active:true,runId:'durable-run'} }; },
-    refreshManualSyncStatus: async force => { assert.equal(force,true); updates.push('status'); },
-    refreshDashboardSyncMetadata: async () => updates.push('metadata'),
-    getProductionLiveSyncCoordinator: () => ({ check: async () => updates.push('revisions') }),
-    MANUAL_SYNC_SCRIPT_TIMEOUT_MS: 60000, Date, Promise,
-    firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '')
-  });
-  await client.runGoogleAppsScriptTrigger(); assert.equal(writes.length,1); assert.equal(writes[0].body.operation,'start');
-  assert.equal(writes[0].options.keepalive,true); assert.equal(client.isRunScriptActive,false);
-  client.document.hidden=true; await client.continueManualErpSync({runId:'durable-run'}); assert.equal(writes.length,1);
-  client.document.hidden=false; assert.equal(client.refreshManualSyncOnForeground(),true);
-  assert.ok(updates.includes('status')); assert.ok(updates.includes('metadata')); assert.ok(updates.includes('revisions'));
-  const source=read('assets/app-runtime.js');
-  assert.match(source,/pageshow[^]*refreshManualSyncOnForeground/);
-  assert.match(source,/visibilitychange[^]*refreshManualSyncOnForeground/);
-  assert.doesNotMatch(source,/throw new Error\([^\n]*ERP_SYNC_CONTINUE_DEADLINE/);
-});
+test('Invariant 209 (Signed detached relay owns active sync while browser start and foreground remain bounded)', invariant209);
 
 
 test('Invariant 210 (A slow successor HTTP response cannot consume the current worker lease before heartbeat)', async () => {
@@ -4450,78 +3910,13 @@ test('Invariant 210 (A slow successor HTTP response cannot consume the current w
 test('Invariant 211 (Built hotfix module URLs survive precache normalization during blocked reload)', () => invariant211({read, plain}));
 
 
-test('Invariant 212 (Drive MD5 metadata never enters the SHA-256 fast-skip RPC)', async () => {
-  const calls=[];
-  const context=vm.createContext({moveProcessed:async()=>{},Date});
-  vm.runInContext(['stageFile','stageFileContinuation'].map(name=>functionSource('supabase/functions/_shared/erp-sync.mjs',name).replace(/^export\s+/, '')).join('\n'),context);
-  const supabase={rpc:async(name,args)=>{
-    assert.equal(name,'check_erp_file_sync_needed_v1');calls.push(args);
-    assert.ok(args.p_content_hash===null || /^[a-f0-9]{64}$/.test(args.p_content_hash));
-    return {data:{skip:args.p_file_id === 'file'}};
-  }};
-  const options={supabase,file:{id:'file',name:'Drive.xlsx',modifiedTime:'2026-10-30T12:00:00Z',md5Checksum:'a'.repeat(32)},dataset:'drive_around',maxRowsPerSlice:1000,sliceStartMs:0};
-  await context.stageFile(options);await context.stageFileContinuation(options);
-  assert.equal(calls.length,2);assert.equal(calls[0].p_modified_at,options.file.modifiedTime);
-});
+test('Invariant 212 (Drive MD5 metadata never enters the SHA-256 fast-skip RPC)', invariant212);
 
-test('Invariant 213 (Drive save receipts resolve masterUid and publish only the exact physical row)', () => {
-  const row={UNIQUE_ID:'row-a',ITEMCODE:'005243.031.1',LOCATIONCODE:'D.26.000',LOTCODE:'27.F1',SOURCE:'DRIVE'};
-  const sibling={...row,UNIQUE_ID:'row-b',LOTCODE:'26.F1',PHOTO_LINK:'keep.jpg',AV_NOTE:'KEEP'};
-  const receipt={ok:true,canonicalConfirmed:true,row:{unique_id:'row-a',itemcode:row.ITEMCODE,locationcode:row.LOCATIONCODE,lotcode:row.LOTCODE,source:'DRIVE',photo_link:'one.jpg,two.jpg,three.jpg',photo_name:'a,b,c',av_note:'FULL BODY / SPEC - 16-18" H'},locationRows:[]};
-  const columns=['unique_id','itemcode','locationcode','lotcode','source','photo_link','photo_name','av_note'];
-  const context=runFunctions('assets/app-runtime.js',['normalizeDriveEvidenceLocationPart','isSameDriveEvidenceLocation','reconcileConfirmedDriveEvidence',
-    'getConfirmedDriveEvidenceRow','applyConfirmedDriveLocationEvidence','reconcileConfirmedDriveMasterRows','updateConfirmedDriveEvidenceState',
-    'preserveDriveEvidenceEditor','restoreDriveEvidenceEditor','reapplyPendingEvaluationProjection'],{
-    getManagerAssignedColumnState:()=>({}), fullInventory:[row,sibling],masterInventoryById:new Map([[row.UNIQUE_ID,row],[sibling.UNIQUE_ID,sibling]]),activeItem:null,confirmedDriveEvidenceRows:new Map(),
-    firstNonEmptyValue:(...values)=>values.find(value=>value!==null&&value!==undefined&&String(value)!==''),
-    window:{GncDatabase:{confirmedDriveEvidence:result=>result.row,driveEvidenceColumns:columns}},
-    getRequestItemCodeOptionItemCode: value => value.ITEMCODE || value.itemcode || '',
-    getSupabaseReadIdentityScope:()=> 'account',formatFetchedRows:rows=>rows.map(raw=>Object.fromEntries(Object.entries(raw).map(([key,value])=>[key.toUpperCase(),value]))),
-    getEditorLocMatchQtyValue:()=>null,parseAppNumber:()=>null,setPhotoAliasFieldsForPrefix:(...args)=>Object.assign(args[0],{PHOTO_LINK:args[2],PHOTO_NAME:args[3]}),
-    normalizeRowPhotoFields(){},buildSearchIndex(){},buildConfirmedDriveEvidenceState:target=>({...target}),getDatasetKeysForTable:()=>[],
-    rebuildMasterInventoryIndexes(){},touchDatasetLoadStateForLocalChange(){},propagateCommittedEdit(){}
-  });
-  const result=context.reconcileConfirmedDriveEvidence(receipt,row,'ssn-');
-  assert.equal(result.row.PHOTO_LINK,'one.jpg,two.jpg,three.jpg');assert.equal(result.row.AV_NOTE,receipt.row.av_note);
-  assert.equal(sibling.PHOTO_LINK,'keep.jpg');assert.equal(sibling.AV_NOTE,'KEEP');
-  context.activeItem={...row,SOURCE_TABLE:'ph_master_inventory',AV_NOTE:'UNSAVED / SPEC - 18 inches'};
-  context.reconcileConfirmedDriveEvidence(receipt,row,'ssn-',{photoOnly:true});
-  assert.equal(context.activeItem.AV_NOTE,'UNSAVED / SPEC - 18 inches');
-  assert.equal(context.activeItem.PHOTO_LINK,receipt.row.photo_link);
-  assert.throws(()=>context.reconcileConfirmedDriveEvidence({...receipt,row:{...receipt.row,unique_id:'other'}},row,'ssn-'),/IDENTITY_MISMATCH/);
-});
-test('Invariant 214 (Entered AV Note and pending exact-row photos render without waiting for a server receipt)', () => {
-  const context=runFunctions('assets/app-runtime.js',['sanitizeAvNoteWithoutSpecCaliper','resolveCanonicalPhotoUrls'],{
-    getRowPhotoLink:()=> 'saved.jpg',getPhotoUrlList:value=>value.split(','),resolveAndFormatPhotoDate(){},
-    getPendingPhotoPreviewEntries:(row,prefix)=>row.UNIQUE_ID==='row-a'&&prefix==='ssn-'?[{url:'blob:pending'}]:[]
-  });
-  assert.equal(context.sanitizeAvNoteWithoutSpecCaliper('FULL BODY / SPEC - 16-18" H',{preserveEnteredText:true}),'FULL BODY / SPEC - 16-18" H');
-  assert.deepEqual(plain(context.resolveCanonicalPhotoUrls({UNIQUE_ID:'row-a'},'drive')),['saved.jpg','blob:pending']);
-  assert.deepEqual(plain(context.resolveCanonicalPhotoUrls({UNIQUE_ID:'row-b'},'drive')),['saved.jpg']);
-  assert.match(functionSource('assets/app-runtime.js','populateDetailInputsForPrefix'),/preserveEnteredText: true/);
-  assert.match(functionSource('assets/app-runtime.js','persistConfirmedRowEvaluation'),/itemToSave\.AV_NOTE = String\(avEl\.value \?\? ''\)/);
-});
+test('Invariant 213 (Drive save receipts resolve masterUid and publish only the exact physical row)', invariant213);
+test('Invariant 214 (Entered AV Note and pending exact-row photos render without waiting for a server receipt)', invariant214);
 test('Invariant 215 (Suspend Plan Start weekday colors are stable across dataset order and calendar representations)', () => weekdayContract(runFunctions, read));
-test('Invariant 216 (Assigned Items filters, unique mode, active owners and select-all share one row set)', () => {
-  const state={filters:{},sort:null};const selected=new Set();let rows=[{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'A',PLANTGROUPCODE:'TREE',ASSIGNEDTO:'dylan_collyge'},{ITEMCODE:'B',PLANTGROUPCODE:'SHRUB',ASSIGNEDTO:'megan_kelly'}];
-  const context=runFunctions('assets/app-runtime.js',['getFilteredManagerAssignedItemsExportRows','getManagerAssignedSelectionSnapshot','selectAllFilteredManagerAssignedItems','getManagerAssignableOwnerUsers'],{
-    getManagerAssignedColumnState:()=>state,getManagerAssignedItemsDisplayRows:()=>rows,rememberManagerAssignedColumnLabels(){},getManagerAssignedItemsActiveAssigneeKey:()=> 'all',managersSearchTerm:'',managerEvalAssignmentSelection:selected,
-    matchesManagerAssignedColumnFilters:row=>!state.filters.PLANTGROUPCODE||state.filters.PLANTGROUPCODE.includes(row.PLANTGROUPCODE.toLowerCase()),normalizeEvalAssignableUser:value=>String(value||'').toLowerCase(),managerTextMatchesSearch:()=>true,
-    buildManagerEvalAssignmentKey:value=>value,sortManagerAssignedColumnRows:value=>value,updateManagerAssignedItemsView(){},scheduleManagersRender(){},
-    getAssignableAppUserOptions:()=>[{username:'dylan_collyge'},{username:'new_manager'}],EVAL_ASSIGNMENT_ROSTER_USERS:['ellen_ward','megan_kelly'],evalAssignableUsers:[],EVAL_TASK_INACTIVE_USERS:new Set()
-  });
-  assert.equal(context.getFilteredManagerAssignedItemsExportRows().length,2);state.viewMode='rows';assert.equal(context.getFilteredManagerAssignedItemsExportRows().length,3);
-  state.filters.PLANTGROUPCODE=['tree'];context.selectAllFilteredManagerAssignedItems(true);assert.deepEqual([...selected],['A']);context.selectAllFilteredManagerAssignedItems(false);assert.equal(selected.size,0);
-  assert.deepEqual(plain(context.getManagerAssignableOwnerUsers()),['dylan_collyge','megan_kelly','new_manager']);
-  const jsx=read('components/assigned-items/AssignedItems.jsx');assert.match(jsx,/data-assigned-select-all-visible/);assert.doesNotMatch(jsx,/Refreshing history|Use suggestion|>Bulk</);
-  assert.match(functionSource('assets/app-runtime.js','getManagerAssignedColumnDefinitions'),/PLANTGROUPCODE/);
-});
-test('Invariant 217 (Home controls retain inline size bounds and expanded sync cards)', () => {
-  const html=read('index.html');assert.match(html,/<details open id="dashboard-sync-accordion"/);
-  assert.match(html,/#dashboard-print-btn svg\{width:16px;height:16px/);
-  assert.match(html,/#dashboard-sync-files\{display:grid!important;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(functionSource('assets/app-runtime.js','syncGoogleScriptButton'),/syncPanel\.open = true/);
-});
+test('Invariant 216 (Assigned Items filters, unique mode, active owners and select-all share one row set)', invariant216);
+test('Invariant 217 (Home controls retain inline size bounds and expanded sync cards)', invariant217);
 
 test('Invariant 218 (AST scope audit rejects undeclared masterUid in every asset and undeclared names in modified runtime functions)', () => invariant218({read, root}));
 test('Invariant 219 (loaded assignment controls survive background verification and mobile cards omit removed history)', () => {
@@ -4640,7 +4035,7 @@ test('Invariant 230 (ERP readers preserve prefixed OOXML worksheet cells and sha
 
 test('Invariant 231 (private recovery wakes accepted ERP jobs without relaxing the forty-hop relay or browser authorization)', () => privateRecoveryContract(runFunctions, read));
 
-test('Invariant 232 (slow metadata status calls cannot yield an ERP step without advancing its bounded file cursor)', () => slowMetadataContract(runFunctions));
+test('Invariant 232 (slow metadata status calls cannot yield an ERP step without advancing its bounded file cursor)', () => invariant232(runFunctions));
 
 test('Invariant 233 (printed CAV Item # rows retain availability and exclude report group headings)', async () => {
   const {deflateRawSync}=await import('node:zlib');
@@ -4692,42 +4087,10 @@ test('Invariant 236 (history recovery loads without machine-only parser packages
 });
 
 
-test('Invariant 237 (authorized stale itemcode owner saves apply returned revisions and use direct Storage object URLs)', () => {
-  const ownerMigration = read('supabase/migrations/20261030220000_agdata_v23117_itemcode_owner_lww.sql');
-  const appRuntime = read('assets/app-runtime.js');
-  const ownerSave = appRuntime.slice(appRuntime.indexOf('function applyAcknowledgedEvalAssignmentResults'), appRuntime.indexOf('async function reloadWarehouseAssignmentsAfterMutation'));
-  const storageBuilder = appRuntime.slice(appRuntime.indexOf('function buildSupabaseStorageThumbnailUrl'), appRuntime.indexOf('function getDirectImageUrl'));
-  assert.doesNotMatch(ownerMigration, /ITEMCODE_DEFAULT_OWNER_REVISION_CONFLICT/);
-  assert.match(ownerMigration, /current_row\.revision \+ 1/);
-  assert.match(ownerSave, /default_owner: saved\.assignedto/);
-  assert.match(ownerSave, /default_revision: Number\(saved\.revision/);
-  assert.match(storageBuilder, /nextUrl\.pathname = objectPrefix \+ publicPath/);
-  assert.match(storageBuilder, /searchParams\.delete\(key\)/);
-  assert.doesNotMatch(storageBuilder, /nextUrl\.pathname = renderPrefix \+ publicPath|searchParams\.set\('(width|height|resize|quality|format)'/);
-  assert.match(appRuntime, /cacheControl: String\(options\.cacheControl \|\| '31536000'\)/);
-});
+test('Invariant 237 (authorized stale itemcode owner saves apply returned revisions and use direct Storage object URLs)', invariant237);
 
 
-test('Invariant 238 (committed exact-row receipts survive normalized values and transport recovery)', async () => {
-  const context=runFunctions('assets/app-runtime.js',['getCommittedDriveEvidenceReceipt','firstNonEmptyValue'],{});
-  const item={UNIQUE_ID:'physical-a',ITEMCODE:'005687.031.1',LOCATIONCODE:'A.06.000',LOTCODE:'27.F1'};
-  const row={unique_id:'physical-a',itemcode:item.ITEMCODE,locationcode:item.LOCATIONCODE,lotcode:item.LOTCODE,av_note:'FULL BODY / SPEC - 16-18" H',loc_photo_match:41};
-  const receipt=context.getCommittedDriveEvidenceReceipt({ok:true,row},item);
-  assert.equal(receipt.canonicalConfirmed,true);assert.equal(receipt.writeConfirmed,true);assert.equal(receipt.row.av_note,row.av_note);
-  assert.throws(()=>context.getCommittedDriveEvidenceReceipt({ok:true,row:{...row,unique_id:'physical-b'}},item),/IDENTITY/);
-  assert.equal(context.getCommittedDriveEvidenceReceipt({ok:false,code:'DRIVE_FIELD_CONFLICT'},item),null);
-  const calls=[];
-  const transport=runFunctions('assets/app-runtime.js',['supabaseRpc'],{
-    assertEvalDataSourceAllowed(){},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),
-    SUPABASE_WRITE_TIMEOUT_MS:1000,SUPABASE_URL:'https://database.test',
-    window:{GncDatabase:{fetchRpc:async(url,name,init)=>{calls.push({url,name,body:JSON.parse(init.body),authorization:init.headers.Authorization});
-      if(calls.length===1)throw new TypeError('Failed to fetch');return new Response(JSON.stringify({ok:true,row}));}}},
-    redactEvalSensitiveData:value=>value,Response
-  });
-  const command={p_master_uid:item.UNIQUE_ID,p_idempotency_key:'same-command'};
-  const saved=await transport.supabaseRpc('save_drive_evidence_v3',command);
-  assert.equal(saved.ok,true);assert.equal(calls.length,2);assert.deepEqual(plain(calls[1].body),command);assert.equal(calls[1].authorization,'Bearer verified');
-});
+test('Invariant 238 (committed exact-row receipts survive normalized values and transport recovery)', invariant238);
 
 test('Invariant 239 (positive match percentages use positive exact-row stock and recover zero published quantities)', () => {
   const context=runFunctions('assets/app-runtime.js',['getEditorLocMatchQtyValue','getDisplayLocMatchQtyValue','firstNonEmptyValue','parseAppNumber'],{
@@ -4742,22 +4105,7 @@ test('Invariant 239 (positive match percentages use positive exact-row stock and
   assert.equal(context.getDisplayLocMatchQtyValue({PTRONHAND:0,on_hand:51,loc_match_pct:80,LOC_PHOTO_MATCH:'N/A'},'drive'),'0');
 });
 
-test('Invariant 240 (date observer keeps photo dates below a full-bleed square and AV evidence below metrics)', async () => {
-  const {JSDOM}=await import('jsdom');
-  const dom=new JSDOM('<div class="app-inline-thumb-column"><div class="app-inline-thumb-box app-av-photo-carousel"><img src="https://photo.test/a.jpg"><span class="app-av-photo-count">1/3</span></div></div>');
-  const context=runFunctions('assets/app-runtime.js',['ensurePhotoTakenDateBadges'],{document:dom.window.document,resolveAndFormatPhotoDate:()=> '10/30/26',esc:value=>value});
-  context.ensurePhotoTakenDateBadges();
-  const box=dom.window.document.querySelector('.app-inline-thumb-box'),date=dom.window.document.querySelector('.photo-thumb-date');
-  assert.equal(box.contains(date),false);assert.equal(date.parentElement,box.parentElement);
-  const runtime=read('assets/app-runtime.js'),css=read('assets/app-shell-style-05.css');
-  const preview=runtime.slice(runtime.indexOf('const previewHtml = isReserveAvCard'),runtime.indexOf('const buildAvMediaHtml'));
-  assert.doesNotMatch(preview,/\$\{imgHtml\}\$\{photoDateHtml\}/);
-  assert.match(css,/app-inline-thumb-box[^}]*display:block!important/);
-  assert.match(css,/app-inline-thumb-box[^}]*width:84px!important/);
-  assert.match(runtime,/buildAvMediaHtml\(`<div class="app-av-catalog-photo-wrap">\$\{heroHtml\}<\/div>`, photoDateHtml\)/);
-  assert.match(runtime,/\$\{avQuantityRowHtml\}\$\{seasonOhHtml\}<\/div>`\}\$\{avSpecHtml\}\$\{avCaliperHtml\}\$\{avNoteCatalogHtml\}/);
-  dom.window.close();
-});
+test('Invariant 240 (date observer keeps photo dates below a full-bleed square and AV evidence below metrics)', invariant240);
 
 
 test('Invariant 241 (request matrix renders synchronously, normalizes aliases and honors master denial)', () => invariant241({ read, functionSource }));
@@ -4795,10 +4143,7 @@ test('Invariant 245 (canonical photo receipts retain typed timestamps and exact-
 });
 
 
-test('Invariant 246 (committed Suspend photo receipts use the canonical proof signal)',()=>{
- const body=functionSource('assets/app-runtime.js','runSuspendTagRowCommand');const expression=body.match(/if \(photoOnly && \((options.photoProof.owner[^]*?)\)\) return \{ acknowledged: true, applied: false \};/)?.[1];assert.ok(expression);
- const controller=new AbortController();const ctx=vm.createContext({getSupabaseReadIdentityScope:()=> 'actor-a',canCurrentUserWorkRequestItem:()=>true});vm.runInContext('function shouldDefer(options,mirror){return ('+expression+');}',ctx);const options={photoProof:{owner:'actor-a',signal:controller.signal}};assert.equal(ctx.shouldDefer(options,{}),false);controller.abort();assert.equal(ctx.shouldDefer(options,{}),true);
-});
+test('Invariant 246 (committed Suspend photo receipts use the canonical proof signal)',invariant246);
 
 
 test('Invariant 247 (Suspend lock contention retries the same command without retrying authorization denials)',async()=>{
@@ -4867,7 +4212,7 @@ test('Invariant 255 (unchecked sources stay queued and checked unchanged sources
 
 test('Invariant 256 (SOC can cross 52,000 rows while each continuation remains bounded to 1,500)', largeSocChunkContract);
 
-test('Invariant 257 (late publication receipts cannot erase a checked complete source checkpoint)', () => completedCheckpointContract(runFunctions,plain));
+test('Invariant 257 (late publication receipts cannot erase a checked complete source checkpoint)', () => invariant257(runFunctions, plain));
 
 test('Invariant 258 (custom Park Hill GDD clamps and projects forecast calendar dates)',()=>{
  const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
@@ -4956,17 +4301,7 @@ test('Invariant 268 (uncommitted shear rows never scan recovery history or alter
  const guard=ctx.AgDataHoldIntelligence.shearGuard({itemcode:'NONE',locationcode:'L',lotcode:'X'},new Map(),[],forbidden,forbidden,'2026-10-31');
  assert.equal(guard.conflict,false);assert.equal(guard.loads.length,0);
 });
-test('Invariant 269 (account changes restore the optimistic draft before discarding an acknowledgment)',async()=>{
- const prior={},next={};let active=prior,undo=0,ack=0;
- const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{
-  canManageEvalItemcodeAssignments:()=>true,isManagerAssignedSnapshotCurrent:()=>true,
-  buildManagerEvalAssignmentKey:x=>x,parseManagerEvalAssignmentKey:x=>({itemcode:x}),getManagerAssignedColumnState:()=>active,
-  warehouseAssignedItemsInventory:[{itemcode:'A',default_revision:1}],normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> 'request'},
-  applyOptimisticItemcodeOwners:()=>()=>{undo++;},requestAnimationFrame:()=>{},
-  supabaseRpc:async()=>{active=next;return {};},applyAcknowledgedEvalAssignmentResults:()=>{ack++;}
- });
- assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.equal(undo,1);assert.equal(ack,0);assert.deepEqual(next,{});
-});
+test('Invariant 269 (account changes restore the optimistic draft before discarding an acknowledgment)',invariant269);
 
 test('Invariant 270 (background errors retain the loaded Shear List and Drive tab)',()=>{
  const nodes={'shear-list-content':{},'shear-list-crumb':{},'shear-list-back-btn':{classList:{toggle(){},add(){}}}};
@@ -4992,57 +4327,10 @@ test('Invariant 272 (Shear sorting evaluates outbound demand only once per visib
 });
 
 
-test('Invariant 273 (owner receipt completes before background refresh while optimism and account gates remain authoritative)',async()=>{
- const state={}, events=[];let releaseRefresh,finished=false,allowed=true;
- const refresh=new Promise(resolve=>{releaseRefresh=resolve;});
- const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{
-  canManageEvalItemcodeAssignments:()=>allowed,isManagerAssignedSnapshotCurrent:()=>true,
-  buildManagerEvalAssignmentKey:x=>x,parseManagerEvalAssignmentKey:x=>({itemcode:x}),getManagerAssignedColumnState:()=>state,
-  warehouseAssignedItemsInventory:[{itemcode:'A',default_revision:1}],normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> 'request'},
-  applyOptimisticItemcodeOwners:()=>{events.push('optimistic');return ()=>events.push('rollback');},requestAnimationFrame:fn=>fn(),
-  supabaseRpc:async()=>{events.push('rpc');return {defaults:[{itemcode:'A',assignedto:'zoe_green',revision:2}]};},
-  applyAcknowledgedEvalAssignmentResults:()=>events.push('receipt'),managerEvalAssignmentSelection:new Set(['A']),
-  showToast:()=>{},updateManagerAssignedItemsView:()=>events.push('render'),scheduleManagersRender:()=>{},
-  reloadWarehouseAssignmentsAfterMutation:()=>{events.push('refresh');return refresh;},reportSemanticHealthEvent:()=>{}
- });
- const save=ctx.assignEvalItemcodes(['A'],'zoe_green').then(()=>{finished=true;});
- await new Promise(resolve=>setImmediate(resolve));
- assert.equal(finished,true,'durable acknowledgment must not await the background snapshot');
- assert.ok(events.indexOf('optimistic')<events.indexOf('rpc'));assert.ok(events.indexOf('receipt')<events.indexOf('refresh'));
- assert.equal(state.defaultPending.size,0);assert.equal(state.defaultCommands.size,0);assert.equal(Object.keys(state.defaultDrafts).length,0);
- allowed=false;await ctx.assignEvalItemcodes(['A'],'zoe_green');assert.equal(events.filter(x=>x==='rpc').length,1);
- releaseRefresh();await save;assert.equal(events.includes('rollback'),false);
-});
+test('Invariant 273 (owner receipt completes before background refresh while optimism and account gates remain authoritative)',invariant273);
 
 
-test('Invariant 274 (owner saves hedge only an identical authenticated command and preserve denial, cancellation and account boundaries)',async()=>{
- const body={p_itemcodes:['A'],p_assignedto:'zoe_green',p_request_id:'00000000-0000-4000-8000-000000000001'};
- const flush=()=>new Promise(resolve=>setImmediate(resolve));
- const harness=()=>{
-  let scope='account-a',native=true;const timers=new Map(),calls=[];
-  const context=runFunctions('assets/app-runtime.js',['supabaseRpc'],{AbortController,
-   assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>native?{Authorization:'Bearer native-session'}:null,
-   getSupabaseReadIdentityScope:()=>scope,nativeSessionRecoveryError:()=>new Error('Native session required'),
-   SUPABASE_URL:'https://example.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:value=>value,
-   getResponseError:async()=> 'Forbidden',setTimeout:(fn,ms)=>{assert.equal(ms,75);timers.set(1,fn);return 1;},clearTimeout:id=>timers.delete(id),
-   window:{GncDatabase:{fetchRpc:(url,name,request)=>new Promise((resolve,reject)=>calls.push({url,name,request,resolve,reject}))}}
-  });
-  return {context,calls,timers,setScope:value=>{scope=value;},denyNative:()=>{native=false;}};
- };
- const h=harness();const pending=h.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();assert.equal(h.calls.length,1);
- h.timers.get(1)();await flush();assert.equal(h.calls.length,2);assert.equal(h.calls[0].request.body,h.calls[1].request.body);
- assert.deepEqual(h.calls[0].request.headers,h.calls[1].request.headers);assert.equal(h.calls[0].request.ownerReplayRelay,false);assert.equal(h.calls[1].request.ownerReplayRelay,true);assert.equal(JSON.parse(h.calls[1].request.body).p_request_id,body.p_request_id);
- h.calls[1].resolve(new Response(JSON.stringify({requestId:body.p_request_id,defaults:[{itemcode:'A',assignedto:'zoe_green'}]})));
- assert.equal((await pending).requestId,body.p_request_id);assert.equal(h.timers.size,0);assert.equal(h.calls[0].request.signal.aborted,true);assert.equal(h.calls[1].request.signal.aborted,false);
- h.calls[0].reject(new Error('superseded transport'));await flush();assert.equal(h.calls.length,2);
- const denied=harness();const deniedSave=denied.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();
- denied.calls[0].resolve(new Response(JSON.stringify({code:'42501'}),{status:403}));await assert.rejects(deniedSave,error=>error.status===403&&error.code==='42501');assert.equal(denied.calls.length,1);assert.equal(denied.timers.size,0);
- const switched=harness();const switchedSave=switched.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();switched.setScope('account-b');switched.timers.get(1)();await assert.rejects(switchedSave,error=>error.code==='REQUEST_SCOPE_CHANGED');assert.equal(switched.calls.length,1);assert.equal(switched.calls[0].request.signal.aborted,true);
- const cancelled=harness(),abort=new AbortController();const cancelledSave=cancelled.context.supabaseRpc('set_itemcode_default_owners_v1',body,{signal:abort.signal});await flush();cancelled.timers.get(1)();abort.abort();await assert.rejects(cancelledSave,error=>error.code==='REQUEST_ABORTED');assert.ok(cancelled.calls.every(call=>call.request.signal.aborted));
- const unauthenticated=harness();unauthenticated.denyNative();await assert.rejects(unauthenticated.context.supabaseRpc('set_itemcode_default_owners_v1',body),/Native session required/);assert.equal(unauthenticated.calls.length,0);
- const unavailable=harness();const continued=unavailable.context.supabaseRpc('set_itemcode_default_owners_v1',body);await flush();unavailable.timers.get(1)();unavailable.calls[1].resolve(new Response('{}',{status:503}));await flush();unavailable.calls[0].resolve(new Response('{}'));await continued;assert.equal(unavailable.calls.length,2);
- const other=harness();const otherSave=other.context.supabaseRpc('other_authorized_rpc',{});await flush();assert.equal(other.timers.size,0);other.calls[0].resolve(new Response('{}'));await otherSave;assert.equal(other.calls.length,1);
-});
+test('Invariant 274 (owner saves hedge only an identical authenticated command and preserve denial, cancellation and account boundaries)',invariant274);
 
 
 test('Invariant 275 (owner replay retains native SQL identity and cannot become a service-role or arbitrary mutation proxy)',async()=>{
@@ -5189,15 +4477,7 @@ test('Invariant 282 (owner capability prefetch retains the active-account cutoff
 });
 
 
-test('Invariant 283 (paged Assigned Items saves publish immediately and never preflight owner reads)',async()=>{
- const state={viewPageSource:{page:'assigned-items'}};const rows=[{ITEMCODE:'A',default_revision:2}];const events=[];let allowed=true,resolveSave,rejectSave,reads=0;
- const rpc=new Promise((resolve,reject)=>{resolveSave=resolve;rejectSave=reject;});
- const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{canManageEvalItemcodeAssignments:()=>allowed,buildManagerEvalAssignmentKey:x=>String(x||'').toUpperCase(),parseManagerEvalAssignmentKey:x=>({itemcode:x}),isManagerAssignedSnapshotCurrent:()=>true,getManagerAssignedColumnState:()=>state,readFreshPagedAssignedDefaults:async()=>{reads++;return new Map([['A',rows[0]]]);},warehouseAssignedItemsInventory:rows,normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> '00000000-0000-4000-8000-000000000283'},applyOptimisticItemcodeOwners:()=>{events.push('optimistic');return ()=>events.push('undo');},requestAnimationFrame:()=>{},updateManagerAssignedItemsView:()=>{},supabaseRpc:(_name,body)=>{events.push('rpc');assert.deepEqual(plain(body.p_itemcodes),['A']);return rpc;},applyAcknowledgedEvalAssignmentResults:()=>events.push('ack'),managerEvalAssignmentSelection:new Set(['A']),showToast:()=>{},scheduleManagersRender:()=>{},getManagerReportPageController:()=>({refresh:()=>events.push('refresh')}),reportSemanticHealthEvent:()=>{}});
- const pending=ctx.assignEvalItemcodes(['A'],'mitch_kaiser');assert.deepEqual(events,['optimistic','rpc']);assert.equal(reads,0);assert.equal(state.defaultPending.has('A'),true);
- assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.equal(events.length,2);resolveSave({ok:true});assert.equal(await pending,false);assert.ok(events.includes('ack'));assert.equal(state.defaultPending.size,0);
- allowed=false;assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.equal(reads,0);
- allowed=true;events.length=0;ctx.supabaseRpc=async()=>{throw new Error('server denied');};assert.equal(await ctx.assignEvalItemcodes(['A'],'zoe_green'),false);assert.deepEqual(events,['optimistic','undo']);
-});
+test('Invariant 283 (paged Assigned Items saves publish immediately and never preflight owner reads)',invariant283);
 
 
 test('Invariant 284 (owner acknowledgments normalize only returned rows and retain unrelated row objects)',()=>{
@@ -5216,11 +4496,7 @@ test('Invariant 285 (RPCs reuse the contract-validated JSON receipt without a se
 });
 
 
-test('Invariant 286 (batch owner saves scan displayed rows once before optimistic dispatch)',async()=>{
- const rows=Array.from({length:9487},(_,i)=>({ITEMCODE:'I'+i,default_revision:i}));const codes=rows.slice(-45).map(r=>r.ITEMCODE);const state={};let lookups=0,dispatches=0;
- const ctx=runFunctions('assets/app-runtime.js',['assignEvalItemcodes'],{canManageEvalItemcodeAssignments:()=>true,buildManagerEvalAssignmentKey:x=>{lookups++;return x;},parseManagerEvalAssignmentKey:x=>({itemcode:x}),isManagerAssignedSnapshotCurrent:()=>true,getManagerAssignedColumnState:()=>state,warehouseAssignedItemsInventory:rows,normalizeEvalAssignableUser:x=>x,crypto:{randomUUID:()=> '00000000-0000-4000-8000-000000000286'},applyOptimisticItemcodeOwners:()=>()=>{},requestAnimationFrame:()=>{},updateManagerAssignedItemsView:()=>{},supabaseRpc:async()=>{dispatches++;return {};},applyAcknowledgedEvalAssignmentResults:()=>{},managerEvalAssignmentSelection:new Set(),showToast:()=>{},scheduleManagersRender:()=>{},reloadWarehouseAssignmentsAfterMutation:async()=>{},reportSemanticHealthEvent:()=>{}});
- await ctx.assignEvalItemcodes(codes,'mitch_kaiser');assert.equal(dispatches,1);assert.ok(lookups<=rows.length+codes.length*2,'one scan must replace one full scan per item');
-});
+test('Invariant 286 (batch owner saves scan displayed rows once before optimistic dispatch)',invariant286);
 
 
 test('Invariant 287 (row owner dropdown sends every checked visible item through one canonical batch)',async()=>{
@@ -5246,17 +4522,9 @@ test('Invariant 289 (shearing requires recorded Sheared history and retains unkn
 });
 
 
-test('Invariant 290 (Suspend detail Mark Done saves exact evidence without issuing tag completion)',async()=>{
- const row={UNIQUE_ID:'tag'},calls=[],button={disabled:false};
- const ctx=runFunctions('assets/app-runtime.js',['saveDockSuspendDcRequestMirrorData'],{activeItem:row,window:{},findLinkedMasterRow:()=>row,getSuspendTagInventoryIdentity:()=>({masterUid:'tag'}),matchesSuspendTagInventoryIdentity:()=>true,beginRowEvaluationMemoryPublication:()=>()=>{},detailReturnState:null,scheduleRequestRender:()=>{},applyExplicitAvNotePayload:()=>{},readRowEvaluationDraft:()=>({}),getDockSuspendDcRequestSourceUid:()=> 'tag',restoreCapturedPhotoFields:()=>{},mergeActiveItemDetailPhotoFields:()=>{},clearSavedRowEvaluationDraft:()=>{},isDockSuspendDcRequestMirrorRow:()=>true,getSupabaseReadIdentityScope:()=> 'actor',canUseProductionLiveSync:()=>false,canCurrentUserViewDockSuspendDcRequests:()=>true,requireCurrentSuspendTagWriteProof:()=>true,getSuspendTagStatus:()=> 'pending',canCurrentUserWorkRequestItem:(r,action)=>{assert.equal(r,row);assert.equal(action,'edit');return true;},document:{getElementById:()=>button},isViewVisible:()=>false,findDockSuspendDcRequestSourceRow:()=>row,getPendingPhotoUploadsForItem:()=>[],syncDockSuspendDcRequestPhotoAliases:()=>{},mergePhotoCsvList:a=>a.filter(Boolean).join(','),buildDockSuspendDcRequestNote:()=> 'note',firstNonEmptyValue:(...a)=>a.find(Boolean)||'',getDockSuspendDcRequestCompletionReadiness:()=>({ready:true}),getSuspendTagFormDraftKey:()=> 'tag',suspendTagFormDrafts:new Map(),runSuspendTagRowCommand:async(op,r,patch)=>{calls.push({op,r,patch});return true;},restoreSuspendTagFormDraft:()=>{},showToast:()=>{},suspendTagErrorMessage:e=>{throw e;}});
- await ctx.saveDockSuspendDcRequestMirrorData(true,row,false,{suspendTagValues:{spec:'16-18 H',caliper:'',avNote:'Full body',match:''}});assert.equal(calls.length,1);assert.equal(calls[0].op,'save');assert.equal(calls[0].r,row);assert.equal(calls[0].patch.dock_spec,'16-18 H');assert.equal(button.disabled,false);
-});
+test('Invariant 290 (Suspend detail Mark Done saves exact evidence without issuing tag completion)',() => invariant290(runFunctions));
 
-test('Invariant 291 (acknowledged owner rows retain the mapped display cache without a full remap)',()=>{
- const row={master_unique_id:'A',ITEMCODE:'A',default_revision:1,default_owner:'old'},state={displayCache:{input:[],rows:[row],signature:'before'}};let normalized=0;
- const ctx=runFunctions('assets/app-runtime.js',['applyAcknowledgedEvalAssignmentResults','unwrapEvalAssignmentRpcRow'],{warehouseAssignedItemsInventory:[row],fullInventory:state.displayCache.input,currentUser:'dylan_collyge',getManagerAssignedColumnState:()=>state,normalizeWarehouseAssignedItemRow:r=>{normalized++;return r;},clearWarehouseAssignedItemCaches:()=>{},invalidateManagerEvalReport2Cache:()=>{},getManagerAssignedDisplaySignature:()=> 'current',getManagerItemLowStockTargetsState:()=>({revision:1})});
- ctx.applyAcknowledgedEvalAssignmentResults([],[{contractVersion:'inventory-row-assignments-v1',assignments:[{master_unique_id:'A',itemcode:'A',revision:2,present_in_drive:true}],defaults:[{itemcode:'A',assignedto:'new',revision:2}]}]);assert.equal(row.default_owner,'new');assert.equal(row.effective_worker,'new');assert.equal(state.displayCache.signature,'current');assert.equal(normalized,1);
-});
+test('Invariant 291 (acknowledged owner rows retain the mapped display cache without a full remap)',invariant291);
 
 
 test('Invariant 292 (role and user permission patches preserve unrelated views and rep overrides)',()=>{
@@ -5296,11 +4564,7 @@ test('Invariant 296 (pinned Manager workspace scrolling never clips another acti
 });
 
 
-test('Invariant 297 (explicit single-write owner batches preserve native authorization and durable receipt timing)',async()=>{
- let finish,calls=0;const ctx=runFunctions('assets/app-runtime.js',['supabaseRpc'],{assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),SUPABASE_URL:'https://project.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:x=>x,window:{GncDatabase:{fetchRpc:()=>{calls++;return new Promise(resolve=>{finish=resolve;});}}}});
- let done=false;const pending=ctx.supabaseRpc('set_itemcode_default_owners_v1',{p_itemcodes:['A','B','C'],p_assignedto:'abigail_vazquez',p_request_id:'00000000-0000-4000-8000-000000000001'},{singleWrite:true}).then(v=>{done=true;return v;});
- await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);assert.equal(done,false);finish(new Response(JSON.stringify({contractVersion:'inventory-row-assignments-v1',assignments:[]})));assert.equal((await pending).contractVersion,'inventory-row-assignments-v1');assert.equal(calls,1);
-});
+test('Invariant 297 (explicit single-write owner batches preserve native authorization and durable receipt timing)',invariant297);
 
 test('Invariant 298 (real summary reasons and profile thresholds drive remaining GDD without note inference)',()=>{
  const ctx=vm.createContext({Intl,Date});vm.runInContext(read('assets/smart-hold-intelligence.js'),ctx);const H=ctx.AgDataHoldIntelligence;
@@ -5322,11 +4586,7 @@ test('Invariant 300 (direct hold fallback fixtures accept exact scoped reads and
 });
 
 
-test('Invariant 301 (unchanged owner selections still obtain separate authorized durable command receipts)',async()=>{
- const calls=[];const ctx=runFunctions('assets/app-runtime.js',['supabaseRpc'],{assertEvalDataSourceAllowed:()=>{},getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer verified'}),SUPABASE_URL:'https://project.test',SUPABASE_WRITE_TIMEOUT_MS:22000,redactEvalSensitiveData:x=>x,window:{GncDatabase:{fetchRpc:async(u,n,r)=>{calls.push(JSON.parse(r.body));return new Response(JSON.stringify({requestId:JSON.parse(r.body).p_request_id}));}}}});
- for(const p_request_id of ['first','second'])assert.equal((await ctx.supabaseRpc('set_itemcode_default_owners_v1',{p_itemcodes:['A'],p_assignedto:'owner',p_request_id},{singleWrite:true})).requestId,p_request_id);
- assert.equal(calls.length,2);const sql=read('supabase/migrations/20261101010000_agdata_v23127_permissions_and_hold_history.sql');assert.match(sql,/unchanged authorized command[^]*if exists[^]*d.assignedto is distinct from[^]*with requested as materialized/);assert.match(sql,/insert into private.ph_itemcode_default_owner_commands/);
-});
+test('Invariant 301 (unchanged owner selections still obtain separate authorized durable command receipts)',invariant301);
 
 
 test('Invariant 302 (owner-only paints reuse mounted rows and defer full filtering until writes settle)',()=>{
@@ -5395,14 +4655,7 @@ test('Invariant 311 (snapshot preparation yields until interactive writes releas
  const pending=ctx.createMasterPreparationYieldController(()=>checked++)();await new Promise(resolve=>setImmediate(resolve));assert.equal(held,1);assert.equal(checked,0);release();await pending;assert.equal(checked,1);
 });
 
-test('Invariant 312 (nursery permission follows the super-admin role and explicit matrix N)',()=>{
- const ctx=vm.createContext({});vm.runInContext(read('assets/user-access-control.js'),ctx);const access=ctx.GncUserAccessControl;
- access.setAccessMatrixRows([{username:'dylan_collyge',role:'super-admin'}]);
- assert.equal(access.resolveUserAccessMatrix('dylan_collyge').view_nursery_command_tables,'Y');
- assert.equal(access.resolveUserAccessMatrix('megan_kelly','ADMIN').view_nursery_command_tables,'N');
- access.setAccessMatrixRows([{username:'megan_kelly',role:'Admin',view_permissions:{view_nursery_command_tables:'N'}}]);
- assert.equal(access.resolveUserAccessMatrix('megan_kelly').view_nursery_command_tables,'N');
-});
+test('Invariant 312 (nursery permission follows the super-admin role and explicit matrix N)',invariant312);
 
 test('Invariant 313 (Production Schedule filters physical AX even when another warehouse column says 10)',async()=>{
  const {mapProductionScheduleRecords}=await import('../supabase/functions/_shared/erp-sync.mjs');
@@ -5510,15 +4763,7 @@ test('Invariant 326 (watchdog production mode sends one fatal report without per
 });
 
 
-test('Invariant 327 (consolidated table aliases retain their exact legacy editors)',()=>{
- const c=runFunctions('assets/app-runtime.js',['getManagerTableManagementKey','getManagerTableManagementLegacyTab'],{});
- for(const [route,key] of Object.entries({'assigned-items-export':'assigned-items','customer-rep-map':'customer-assignments','access-control':'user-role-access','item-inquiry-coverage':'inquiry-coverage','av-blanks-photo-bypass':'av-note-users','season-settings':'season'}))assert.equal(c.getManagerTableManagementKey(route),key);
- assert.equal(c.getManagerTableManagementLegacyTab('assigned-items'),'assigned-items-export');assert.equal(c.getManagerTableManagementLegacyTab('user-role-access'),'access-control');assert.equal(c.getManagerTableManagementKey('orders'),'');
- assert.match(functionSource('assets/app-runtime.js','renderManagerModulePicker'),/filter\(option => !getManagerTableManagementKey\(option.id\)\)/);
- assert.match(functionSource('assets/app-runtime.js','renderManagers'),/getManagerTableManagementKey\(activeHomeTab\)\) && activeHomeTab !== MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && ensureViewDataForRender/);
- const auth=runFunctions('assets/app-runtime.js',['canManageCustomerRepMappings'],{canAccessView:()=>true,isFullAppAdministrator:()=>true,normalizeRoleAccessToken:String,currentRole:'SUPER_ADMIN'});assert.equal(auth.canManageCustomerRepMappings(),true);auth.canAccessView=()=>false;assert.equal(auth.canManageCustomerRepMappings(),false);
- const season=runFunctions('assets/app-runtime.js',['canViewManagerSeasonPriority'],{canAccessView:()=>true,isFullAppAdministrator:()=>true,normalizeRoleAccessToken:String,currentRole:'SUPER_ADMIN',getAuditedAppPermission:()=>({allowed:true})});assert.equal(season.canViewManagerSeasonPriority(),true);season.getAuditedAppPermission=()=>({allowed:false});assert.equal(season.canViewManagerSeasonPriority(),false);
-});
+test('Invariant 327 (consolidated table aliases retain their exact legacy editors)',invariant327);
 test('Invariant 328 (authorized table selectors retain the full editor and deny unavailable pills)',()=>{
  const items=[{id:'assigned-items',label:'Assigned Items',section:'editable'},{id:'president-command-center',label:'PRESIDENT_COMMAND_CENTER',nursery:true}];
  const c=runFunctions('assets/app-runtime.js',['renderManagerTableManagementWorkspace'],{getManagerTableManagementItems:()=>items,esc:String});
@@ -5533,13 +4778,7 @@ test('Invariant 329 (scroll proof fails when real headers or controls leave the 
  assert.throws(()=>assertPinnedTableGeometry(before,{...before,scrollTop:0,viewportHeight:1000}));
 });
 
-test('Invariant 330 (nursery reference tables never compile inventory plans)',async()=>{
- const {JSDOM}=await import('jsdom');const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});let calls=0;
- dom.window.GncNurseryModel={TABLES:[{id:'water-rating',label:'Water_Rating',relation:'water'}],FIELDS:{water:['id']},DECISIONS:[],compile(){calls++;throw Error('Reference view must not compile plans');}};
- dom.window.eval(readFileSync(path.join(root,'assets/nursery-command-tables.js'),'utf8'));
- const table=dom.window.GncNurseryTables.mount(dom.window.document.getElementById('root'),{identity:'verified-account',selected:'water-rating',inventory:()=>[],authorized:()=>true,request:async()=>({rows:[{id:'row-1'}]})});
- try{await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,0);assert.equal(dom.window.document.querySelectorAll('tbody tr').length,1);assert.match(dom.window.document.querySelector('h2').textContent,/Water_Rating/);}finally{table.destroy();dom.window.close();}
-});
+test('Invariant 330 (nursery reference tables never compile inventory plans)',invariant330);
 
 test('Invariant 331 (same-table SWR retains both scroll axes across pending and committed refresh)',async()=>{
  const {JSDOM}=await import('jsdom');const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(readFileSync(path.join(root,'assets/manager-table-management.js'),'utf8'));
@@ -5548,12 +4787,7 @@ test('Invariant 331 (same-table SWR retains both scroll axes across pending and 
  try{await new Promise(resolve=>setImmediate(resolve));host.querySelector('.tm-scroll').scrollTop=1000;host.querySelector('.tm-scroll').scrollLeft=90;host.querySelector('[data-refresh]').click();assert.equal(host.querySelector('.tm-scroll').scrollTop,1000);finish({rows,total:1});await new Promise(resolve=>setImmediate(resolve));assert.equal(host.querySelector('.tm-scroll').scrollTop,1000);assert.equal(host.querySelector('.tm-scroll').scrollLeft,90);}finally{view.destroy();dom.window.close();}
 });
 
-test('Invariant 332 (Table Management directory deduplicates the schedule and hides all editor content)',()=>{
- const nursery={};vm.runInNewContext(readFileSync(path.join(root,'assets/nursery-command-model.js'),'utf8'),{window:nursery});
- const c=runFunctions('assets/app-runtime.js',['getManagerTableManagementItems','renderManagerTableManagementWorkspace'],{GncNurseryModel:nursery.GncNurseryModel,getManagersToolAccess:()=>({canViewAssignedItemsExport:true,canManageCustomerRepMappings:true,canManageAccessControl:true,canManageAvBlanksPhotoBypass:true,canManageSeasonSettings:true,canViewSeasonPriority:true,canViewCropRoll:true,canViewProductionSchedule:true}),canViewNurseryCommandTables:()=>true,canUseHistoricalRequests:()=>true,canOpenPhotoHistory:()=>true,esc:String});
- const html=c.renderManagerTableManagementWorkspace('OLD_EDITOR','');assert.equal((html.match(/data-manager-table-card=/g)||[]).length,18);assert.equal((html.match(/PROD SCHEDULE 102726/g)||[]).length,1);assert.doesNotMatch(html,/OLD_EDITOR|table-management-pills|Maintained nursery reference data/);
- for(const key of ['company-directory','assigned-items','user-role-access','president-command-center']){const table=c.renderManagerTableManagementWorkspace('FULL_EDITOR',key);assert.match(table,/data-table-all/);assert.match(table,/data-table-switch/);assert.match(table,/data-table-workspace>FULL_EDITOR/);assert.doesNotMatch(table,/data-table-directory>|data-manager-table-card=/);}
-});
+test('Invariant 332 (Table Management directory deduplicates the schedule and hides all editor content)',invariant332);
 test('Invariant 333 (drilled table global Back takes a synchronous directory step)',()=>{
  let opened=0;const c=runFunctions('assets/app-runtime.js',['goBackUniversal'],{getVisibleSecondaryBack:()=>null,getManagerAssignedColumnState:()=>({}),getCurrentVisibleViewId:()=> 'managers',isDrawerOpen:()=>false,closeOpenInteractiveSurfaceForBack:()=>false,getManagerTableManagementKey:key=>key==='assigned-items-export'?'assigned-items':'',activeHomeTab:'assigned-items-export',openManagerTableManagement(){opened++;return false;},updateGlobalBackButton(){}});assert.equal(c.goBackUniversal(),false);assert.equal(opened,1);
 });
@@ -5968,72 +5202,9 @@ test('Invariant 462 (Suspend confirmation uses the same False Block predicate as
   assert.doesNotMatch(api.confirmSuspendLocationChange({ LOCATIONCODE:'F.14.000' }, ['F.15.000']), /Previous: F\.14\.000 FALSE BLOCK/);
 });
 
-test('Invariant 463 (ERP start renews the native bearer once, retains its command, and ignores an earlier idle poll)', async () => {
-  const sends = [];
-  const api = runFunctions('assets/app-runtime.js', ['postAppFunctionJson','applyAppApiSessionHeaders'], {
-    currentUser:'dylan_collyge', nativeAuthRecoveryEpoch:1, APP_VERSION:'fixture', SUPABASE_KEY:'public-fixture',
-    window:{}, PRELOGIN_BACKGROUND_ACTIONS:new Set(), isAllowedAppHostname:() => true,
-    getCurrentAppSessionToken:() => 'unusable-legacy-token',
-    getNativeAuthRequestHeaders: async refresh => ({ Authorization: refresh ? 'Bearer renewed' : 'Bearer prior' }),
-    canRunManualInventoryImport:() => true,
-    fetchWithTimeout: async (_url, request) => {
-      sends.push({ headers:request.headers, payload:JSON.parse(request.body) });
-      const ok = sends.length === 2;
-      return { ok, status:ok ? 200 : 401, headers:{get:() => null},
-        text:async () => JSON.stringify(ok ? {ok:true,cloudRelay:true} : {code:'AUTH_REQUIRED'}) };
-    }
-  });
-  const command = { action:'erp_sync', operation:'start', commandId:'fixture-command', force:true };
-  const receipt = await api.postAppFunctionJson('/app-api', command);
-  assert.equal(receipt.cloudRelay, true);
-  assert.deepEqual(sends.map(send => send.headers.Authorization), ['Bearer prior', 'Bearer renewed']);
-  assert.ok(sends.every(send => !('x-gnc-session' in send.headers)));
-  assert.deepEqual(sends.map(send => send.payload), [command, command]);
-  const legacy = {};
-  api.applyAppApiSessionHeaders(legacy, null, true);
-  assert.equal(legacy['x-gnc-session'], 'unusable-legacy-token');
-  api.staleSupabaseReadScopeError = () => new Error('Account changed');
-  api.getNativeAuthRequestHeaders = async () => { api.nativeAuthRecoveryEpoch++; return null; };
-  await assert.rejects(api.postAppFunctionJson('/app-api', command), /Account changed/);
-  assert.equal(sends.length, 2);
+test('Invariant 463 (ERP start renews the native bearer once, retains its command, and ignores an earlier idle poll)', invariant463);
 
-  let release;
-  const oldStatus = new Promise(resolve => { release = resolve; });
-  const current = { runId:'new', active:true, startedAt:'2026-11-04T18:00:00Z' };
-  const poll = runFunctions('assets/app-runtime.js', ['refreshManualSyncStatus'], {
-    currentUser:'dylan_collyge', document:{hidden:false}, navigator:{onLine:true},
-    manualSyncStatusPollInFlight:false, manualSyncStatusState:null, getSupabaseReadIdentityScope:() => 'fixture-owner',
-    fetchManualSyncStatusFromScript:() => oldStatus, applyManualSyncStatus:() => assert.fail('superseded status applied')
-  });
-  const observed = poll.refreshManualSyncStatus(true);
-  poll.manualSyncStartGeneration++;
-  poll.manualSyncStatusState = current;
-  release({runId:'yesterday',active:false,percent:100});
-  assert.equal(await observed, current);
-});
-
-test('Invariant 464 (Suspend save and camera upload replay an early authentication rejection once)', async () => {
-  for (const multipart of [false,true]) {
-    const calls = [];
-    const api = runFunctions('assets/app-runtime.js', ['postAppFunctionJson','postAppFunctionFormData','applyAppApiSessionHeaders'], {
-      currentUser:'fixture', nativeAuthRecoveryEpoch:1, APP_VERSION:'fixture', SUPABASE_KEY:'public', SUPABASE_UPLOAD_TIMEOUT_MS:1000,
-      window:{}, PRELOGIN_BACKGROUND_ACTIONS:new Set(), isAllowedAppHostname:()=>true,
-      getNativeAuthRequestHeaders:async refresh=>({Authorization:refresh?'Bearer fresh':'Bearer prior'}),
-      getCurrentAppSessionToken:()=>'', isLoginScreenVisible:()=>false,
-      fetchWithTimeout:async (_url,request)=>{
-        calls.push(request);
-        const ok = calls.length === 2;
-        return {ok,status:ok?200:401,headers:{get:()=>null},text:async()=>JSON.stringify(ok?{ok:true}:{code:'AUTH_REQUIRED'})};
-      }
-    });
-    const body = multipart ? new FormData() : {action:'suspend_tag',operation:'save',commandId:'row-command'};
-    if (multipart) body.set('prefix','req-');
-    const result = await api[multipart?'postAppFunctionFormData':'postAppFunctionJson']('/app-api',body);
-    assert.equal(result.ok,true);
-    assert.deepEqual(calls.map(call=>call.headers.Authorization),['Bearer prior','Bearer fresh']);
-    assert.equal(calls[0].body,calls[1].body);
-  }
-});
+test('Invariant 464 (Suspend save and camera upload replay an early authentication rejection once)', invariant464);
 
 test('Invariant 465 (Assigned Items fallback keeps eight labeled filter controls and selection state)', () => {
   const api = runFunctions('assets/app-runtime.js', ['renderManagerAssignedFallbackRows','renderManagerAssignedColumnTrigger','getManagerAssignedColumnDefinitions'], {
@@ -6091,21 +5262,7 @@ test('Invariant 468 (searched Apply and Enter exclude hidden values and clearing
   assert.deepEqual(Array.from(state.filters.COMMONNAME),[]);
 });
 
-test('Invariant 469 (Suspend Mark Done uses On Hand and requires an inventory receipt without closing the tag)', async () => {
-  const calls=[];
-  const api=runFunctions('assets/app-runtime.js',['publishRowEvaluationToMasterAndNotes','calculateDockSuspendDcRequestLocMatchQty','getDockSuspendDcRequestLocMatchBaselinePtr','calculateLocMatchQtyValue'],{
-    findLinkedMasterRow: row => row, getSupabaseReadIdentityScope:()=> 'owner',
-    findDockSuspendDcRequestSourceRow: row => row, getSuspendTagInventoryIdentity:()=>({masterUid:'tag'}),
-    matchesSuspendTagInventoryIdentity:()=>true, beginRowEvaluationMemoryPublication:()=>()=>{},
-    getDockSuspendCompletionRevision:()=> 'r1',runSuspendTagRowCommand:(...args)=>{calls.push(args);return true;},
-    parseAppNumber:value=>value==null?null:Number(value),parseLocMatchPercent:Number,
-    firstNonEmptyValue:(...values)=>values.find(value=>value!=null && value!=='')
-  });
-  const row={UNIQUE_ID:'tag',PTRONHAND:245,PTRAVAILABLE:235},qty=api.calculateDockSuspendDcRequestLocMatchQty(row,'50');
-  assert.equal(qty,123);
-  await api.publishRowEvaluationToMasterAndNotes(row,{match:50,loc_match_qty:qty,dock_spec:'38-42" H',av_note:'SPEC - 38-42" H'});
-  assert.equal(calls[0][0],'save');assert.equal(calls[0][2].loc_match_qty,123);assert.equal(calls[0][4].requireInventoryReceipt,true);
-});
+test('Invariant 469 (Suspend Mark Done uses On Hand and requires an inventory receipt without closing the tag)', () => invariant469(runFunctions));
 
 test('Invariant 470 (open ERP modal advances a fully staged run once and shows five operational sources)',async()=>{
   let calls=0,release;
@@ -6120,48 +5277,9 @@ test('Invariant 470 (open ERP modal advances a fully staged run once and shows f
   await Promise.resolve();assert.equal(calls,1);release();await ctx.window.erpSyncContinuationDriver.promise;
 });
 
-test('Invariant 471 (same-bed cards with separate physical UIDs never share evaluation evidence)', () => {
-  const target = {UNIQUE_ID:'pri-1',ITEMCODE:'005670.051.1',LOCATIONCODE:'J.03.000',LOTCODE:'27.F1',PHOTO_LINK:'target.jpg'};
-  const sibling = {...target,UNIQUE_ID:'pri-10',PHOTO_LINK:''};
-  const otherLot = {...sibling,UNIQUE_ID:'spring',LOTCODE:'27.S1'};
-  const otherItem = {...sibling,UNIQUE_ID:'sea-green',ITEMCODE:'000310.070.1'};
-  const rows = [target,sibling,otherLot,otherItem], state = {};
-  const ctx = runFunctions('assets/row-workflow-functions.js',['inventoryPhotoLocationKey','getInventoryLocationPhotos'],{
-    fullInventory:rows,avOpenInventory:[],inventoryDomIdLookupCacheVersion:1,queueCardInventoryRenderVersion:1,
-    getManagerAssignedColumnState:()=>state,getSupabaseReadIdentityScope:()=>'actor',
-    getSharedAppPhotoLinkCsvRaw:r=>r.PHOTO_LINK,getPhotoUrlList:s=>s?[s]:[],isPhotoEntryExpired:()=>false,resolveAndFormatPhotoDate:()=>{}
-  });
-  for (const row of [target,{...target,UNIQUE_ID:'tag',SOURCE_TABLE:'ph_soc_master',MASTER_ID:'pri-1'}]) {
-    assert.deepEqual(Array.from(ctx.getInventoryLocationPhotos(row)),['target.jpg']);
-  }
-  for (const row of [sibling,otherLot,otherItem,{LOCATIONCODE:'J.03.000'},{ITEMCODE:target.ITEMCODE,LOCATIONCODE:'J.03.000'}]) {
-    assert.deepEqual(Array.from(ctx.getInventoryLocationPhotos(row)),[]);
-  }
-  const guard = runFunctions('assets/app-runtime.js',['normalizeDriveEvidenceLocationPart','isSameDriveEvidenceLocation']);
-  assert.equal(guard.isSameDriveEvidenceLocation(target,{...target},true),true);
-  for (const row of [sibling,otherLot,otherItem]) assert.equal(guard.isSameDriveEvidenceLocation(row,target,true),false);
-});
+test('Invariant 471 (same-bed cards with separate physical UIDs never share evaluation evidence)', () => invariant471(runFunctions));
 
-test('Invariant 472 (Queue photos can be borrowed for display without changing either physical master)', () => {
-  const row = {ITEMCODE:'002769.150.1',LOCATIONCODE:'C.08.000',LOTCODE:'27.F1',PRIORITY:'1',UNIQUE_ID:'jewel',PHOTO_LINK:'photo-a'};
-  const empty = {...row,UNIQUE_ID:'other',PHOTO_LINK:'',PRIORITY:'10'};
-  const wrong = {...row,UNIQUE_ID:'wrong',ITEMCODE:'else',PHOTO_LINK:'wrong-photo'};
-  const ctx=runFunctions('assets/row-workflow-functions.js',['getQueueDisplayEvidenceRow','getQueueDisplayPhotoUrls','inventoryPhotoLocationKey'],{
-    window:{AgMetricQueueInventory:{normalizeLocation:s=>s}},getRequestItemCodeOptionItemCode:r=>r.ITEMCODE,
-    isFalseBlockLocation:()=>false,isRequestOwnedPhotoRow:()=>true,isDockSuspendDcRequestMirrorRow:()=>false,
-    getSupabaseReadIdentityScope:()=>'actor',getManagerAssignedColumnState:()=>({}),suspendTagItemHydration:new Map(),
-    masterInventoryByNormalizedItemLocation:new Map([['bed',[empty,row,wrong]]]),getInventoryCardItemLocationKey:()=>'bed',
-    resolveLiveInventoryForCard: value => value.MASTER_ID === 'other' ? empty : row,
-    masterInventoryById:new Map(),getSharedAppPhotoLinkCsvRaw:r=>r.PHOTO_LINK,getPhotoUrlList:v=>v?[v]:[],getInventoryLocationPhotos:()=>[]
-  });
-  const request={...empty,SOURCE_TABLE:'ph_requests_pending',UNIQUE_ID:'request',MASTER_ID:'other'};
-  const display=ctx.getQueueDisplayEvidenceRow(request);
-  assert.equal(display.UNIQUE_ID,'other');assert.deepEqual(Array.from(ctx.getQueueDisplayPhotoUrls(display)),[]);
-  const unlinked=ctx.getQueueDisplayEvidenceRow({...request,MASTER_ID:''});
-  assert.equal(unlinked.UNIQUE_ID,'jewel');assert.deepEqual(Array.from(ctx.getQueueDisplayPhotoUrls(unlinked)),['photo-a']);
-  assert.equal(ctx.getQueueDisplayEvidenceRow({...empty,SOURCE_TABLE:'ph_master_inventory'}),null);
-  assert.equal(ctx.inventoryPhotoLocationKey(request),'uid:other');assert.equal(empty.PHOTO_LINK,'');
-});
+test('Invariant 472 (Queue photos can be borrowed for display without changing either physical master)', () => invariant472(runFunctions));
 
 test('Invariant 473 (an inventory completion lock needs both a photo and positive match stock)', () => {
   const domain={}; vm.runInNewContext(read('assets/inventory-photo-domain.js'),domain);
@@ -6319,26 +5437,7 @@ test('Invariant 495 (Reclass source stock is exact-year and current destinations
  assert.equal(at('28.S1').S_LTS,'151');assert.equal(at('28.F1').S_LTS,'151');
 });
 
-test('Invariant 496 (removing Priority retains the row Move Up quantity and rendered destination without native confirmation)', () => {
- const move={action:'move_up',splits:[{quantity:'125',destinationSeason:'F1'}]};
- const rowMap={move_up:move,priority_change:{action:'priority_change',priority:'10'}};
- const state={activeReclassAction:{one:'priority_change'}};
- const c=runFunctions('assets/app-runtime.js',['toggleArgosReclassV3Action','cloneArgosReclassProposal','buildArgosReclassV3ProposalHtml'],{
-  argosInventoryTransactionState:state,argosReclassMultiActionState:{rowProposals:new Map([['one',rowMap]])},
-  canCurrentUserSubmitRepInventoryOperations:()=>false,getArgosReclassRowEditorEntry:()=>({unique_id:'one',values:{ptronhand:'401'}}),
-  getReclassActionWorkflowV5Config:a=>({kind:a==='priority_change'?'priority':'move',label:a}),RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS:[],
-  getArgosReclassV3HoldProposal:()=>null,getArgosReclassV3Proposal:(uid,a)=>rowMap[a],getArgosReclassRowProposalMap:()=>rowMap,
-  window:{confirm(){throw Error('Native confirmation is forbidden');}},refreshArgosReclassMultiActionUi(){},captureEvalWorkLocalDraftSoon(){},generateArgosInventoryTransactionId:()=>'new',
-  escapeHtml:String,getArgosReclassMoveUpLotState:()=>({rowMaximum:401}),getArgosReclassRowCurrentSeason:()=>'S1',RECLASS_ACTION_WORKFLOW_V2_SEASONS:['F1','S1'],
-  getArgosReclassMoveBalanceText:()=>'',getArgosReclassMoveBalance:()=>({remaining:276})});
- c.toggleArgosReclassV3Action(null,'priority_change','one');
- assert.equal(rowMap.priority_change,undefined);assert.equal(rowMap.move_up,move);assert.equal(move.splits[0].quantity,'125');assert.equal(move.splits[0].destinationSeason,'F1');
- const html=c.buildArgosReclassV3ProposalHtml({unique_id:'one',values:{ptronhand:'401'}},'move_up');
- assert.match(html,/value="125"/);assert.match(html,/<option value="F1" selected>F1/);assert.match(html,/toggleArgosReclassDestinationMenu\(this\)">F1 /);
- let expanded='';const card={getAttribute:k=>k==='data-reclass-row-card'?'one':'false'};
- const w=runFunctions('assets/row-workflow-functions.js',['toggleArgosReclassRowCard'],{getArgosReclassRowEditorEntry:()=>({}),focusArgosReclassRow:uid=>{expanded=uid;return false;}});
- w.toggleArgosReclassRowCard({closest:()=>card});assert.equal(expanded,'one');
-});
+test('Invariant 496 (removing Priority retains the row Move Up quantity and rendered destination without native confirmation)', () => invariant496(runFunctions));
 
 test('Invariant 497 (history keeps Eval Reports subview, cloned drill state and exact return scroll)', () => {
  const restored={};
@@ -6544,7 +5643,7 @@ test('Invariant 530 (native API identity cannot be overridden by a stale legacy 
 });
 
 test('Invariant 531 (Request read fallback never crosses an account change)', async () => {
-  const { requestSnapshotInvariant } = await import('../src/core/golden-request-snapshot.mjs');
+  const { requestSnapshotInvariant } = await import('./helpers/golden-request-snapshot.mjs');
   await requestSnapshotInvariant();
 });
 // Archive identities remain stable when unrelated notes are inserted.
@@ -6557,11 +5656,11 @@ test('Invariant 532 (archive note identities survive insertion and distinguish d
   assert.notEqual(archiveNoteIdentities('row-b', ['first'])[0].key, initial[0].key);
 });
 test('Invariant 533 (idempotent RPC recovery uses the authenticated checked bridge)', async () => {
-  const { rpcRecoveryInvariant } = await import('../src/core/golden-transport-invariants.mjs');
+  const { rpcRecoveryInvariant } = await import('./helpers/golden-restored-transport-invariants.mjs');
   await rpcRecoveryInvariant(databaseBridge);
 });
 test('Invariant 534 (transactionless migrations remain enclosed by one atomic runner transaction)', async () => {
-  const { migrationAtomicityInvariant } = await import('../src/core/golden-transport-invariants.mjs');
+  const { migrationAtomicityInvariant } = await import('./helpers/golden-restored-transport-invariants.mjs');
   migrationAtomicityInvariant();
 });
 import {assertDetailLiveDraftRetention,assertExistingSuspendDetailContract} from './helpers/detail-live-draft-contract.mjs';
@@ -6581,7 +5680,7 @@ test('Invariant 537 (release synchronization updates the source version descript
  versionDescriptorContract();
 });
 test('Invariant 538 (preboot uses a bounded lifecycle deadline and never polls a loading document)',async()=>{
- const {invariant538}=await import('../src/core/golden-boot-contract.mjs');
+ const {invariant538}=await import('./helpers/golden-boot-contract.mjs');
  invariant538({read});
 });
 test('Invariant 539 (pilot layout retry is single-flight and bounded)', boundedPilotIdleChecks);
@@ -6592,7 +5691,7 @@ test('Invariant 541 (Golden contract imports never register nested tests)', asyn
 });
 test('Invariant 542 (owner lookup benchmarks warm the same realm and retain the strict budget)', assertWarmOwnerBenchmarkContract);
 test('Invariant 543 (canonical owner timing runs alone before functional tooling)', async () => {
-  const { assertIsolatedToolingBenchmark } = await import('../src/core/golden-tooling-lanes.mjs');
+  const { assertIsolatedToolingBenchmark } = await import('./helpers/golden-restored-tooling-lanes.mjs');
   assertIsolatedToolingBenchmark();
 });
 test('Invariant 544 (Manager tables retain compact controls and Eval2 commits persistent multi-report choices)', async () => {
@@ -6650,7 +5749,7 @@ test('Invariant 570: compacted observations own immutable state and require exac
 test('Invariant 571: Request photo recovery proves identity and routes cross-bucket leaves safely', invariant571);
 test('Invariant 572: Request archive search retains the historical folder and canonical path', () => invariant572({ read }));
 import { invariant548, invariant549, invariant550, invariant551, invariant552 } from '../src/core/golden-complete-inventory-preview-guard.mjs';
-import { invariant546, invariant553, invariant554, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585, invariant586, invariant587, invariant588, invariant589, invariant590 } from '../src/services/golden-release-recovery.mjs';
+import { invariant546, invariant553, invariant555, invariant573, invariant574, invariant575, invariant576, invariant577, invariant578, invariant579, invariant580, invariant581, invariant582, invariant583, invariant584, invariant585, invariant586, invariant587, invariant588, invariant589, invariant590 } from '../src/services/golden-release-recovery.mjs';
 test('Invariant 573: generated bundle exemption requires exact canonical build parity', invariant573);
 test('Invariant 574: app-api history routing loads from the isolated Edge functions tree', () => invariant574({ read }));
 test('Invariant 575: AURA inventory scope follows explicit season and year', invariant575);
@@ -6673,7 +5772,7 @@ import { invariant591 } from '../src/core/golden-reclass-durable-outbox.mjs';
 test('Invariant 591: Reclass survives reload and retries the same saved command for the original account', invariant591);
 import { invariant592 } from '../src/core/golden-erp-run-isolation.mjs';
 test('Invariant 592: a fresh ERP run passes staged Drive and ignores a superseded response', invariant592);
-import { assertSuspendExactOwnerReceipt } from '../src/core/golden-soc-suspend-routing.mjs';
+import { assertSuspendExactOwnerReceipt } from './helpers/golden-restored-suspend-routing.mjs';
 test('Invariant 593: Suspend resolves exact Assigned Items ownership and clears immediately', assertSuspendExactOwnerReceipt);
 import { invariant594, invariant595, invariant596, invariant597 } from '../src/core/golden-suspend-and-excel-release.mjs';
 test('Invariant 594: only the original canceled order stays visible on the exact Dock and Drop', invariant594);
@@ -6785,3 +5884,10 @@ test('Invariant 646: a prior DRIVE alias requires unique matching lineage and re
 test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
   (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
 await import('../src/core/golden-final-polish.mjs');
+
+import {assertClearedSuspendDefaultOwner} from './helpers/golden-restored-suspend-routing.mjs';
+test('Invariant 661 (Explicitly cleared exact Suspend owners override stale projections while zone overrides retain precedence)', assertClearedSuspendDefaultOwner);
+import {assertPlantingDrillUsesExactLocationPlans} from './helpers/golden-planting-drill-projection.mjs';
+test('Invariant 662 (Planting drill cards use the selected exact bay without leaking neighboring plans)', assertPlantingDrillUsesExactLocationPlans);
+import {assertGoldenFixtureOwnership} from './helpers/golden-fixture-ownership-contract.mjs';
+test('Invariant 663 (Golden fixtures retain explicit owners and fail on missing identities without activating optional UI)', assertGoldenFixtureOwnership);

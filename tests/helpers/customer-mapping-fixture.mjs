@@ -1,28 +1,45 @@
 import { buildSync } from 'esbuild';
-import { readComposedAppSource } from '../../scripts/composed-app-source.mjs';
+import { parse } from 'acorn';
+import { simple } from 'acorn-walk';
+import { readComposedRuntimeSource } from '../../scripts/composed-app-source.mjs';
 
 export function mappingBrowserBundle() {
   return buildSync({ entryPoints: ['services/customerRepMapping.ts'], bundle:true, format:'iife', globalName:'MappingEditor', write:false, logLevel:'silent' }).outputFiles[0].text + '\nglobalThis.MappingEditor = MappingEditor;';
 }
 let cachedRequestMappingFunctions;
+let composedFunctionSource;
+
+function collectComposedFunctions() {
+  const source = readComposedRuntimeSource();
+  const declarations = new Map();
+  simple(parse(source, { ecmaVersion: 'latest' }), {
+    FunctionDeclaration(node) {
+      const previous = declarations.get(node.id.name);
+      if (!previous || previous.start > node.start) declarations.set(node.id.name, node);
+    },
+  });
+  return { source, declarations };
+}
+
+export function requestMappingFunction(name) {
+  composedFunctionSource ??= collectComposedFunctions();
+  const { source, declarations } = composedFunctionSource;
+  const declaration = declarations.get(name);
+  if (!declaration) throw new Error('Missing Request mapping function ' + name);
+  return source.slice(declaration.start, declaration.end);
+}
+
 export function requestMappingFunctions() {
   if (cachedRequestMappingFunctions) return cachedRequestMappingFunctions;
-  const html = readComposedAppSource();
   const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','matchSalesRepIdentity','getRequestRepMatchTokens','doesRequestRepMatchValue',
     'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName','isRequestRepRoleValue','normalizeRequestRepUserOption','dedupeRequestModalRepUsers','ensureRequestRepUserOptionsReady','getRequestModalLookupOwnerSignature','getRequestModalCustomerMappingCacheSignature','normalizeRequestSalesrepId','syncRequestModalCustomerMappingOwner','clearRequestModalCustomerMappingOwnerState',
     'getRequestMappedRepDirectory','getRequestReserveFallbackDirectory','getRequestAuthorizedReserveFallbackMappings','getReserveSalesRepLabel','isUniversalRequestDirectoryRep','getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','buildRequestModalNaCustomerOption','requestCustomerOptionKey','buildRequestCustomIdentity','addCustomRequestCustomerOption','getCustomerRepMapRepValue','isRequestModalCustomerAuthorizationFailure','hasVerifiedRequestRepCanonicalDirectory',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions','getRequestGlobalCustomerOptions','buildSalesRepCustomerDirectory','getRequestUniversalCustomerOptions','fetchRequestUniversalCustomerOptions',
     'isActiveRequestCustomerMapping','fetchRequestCustomerMapRows','fetchRequestCustomerMapRowsForRepName','isRequestModalCustomerMapReady','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','scheduleGlobalReferencePrefetch','ensureDockAssignableUsers','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
-    'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','isRequestNaCustomerValue','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep','renderRequestModalRepPickerOnOpen',
+    'isCurrentRequestCustomerContext','getRequestModalCachedCustomerOptionsForRep','isRequestNaCustomerValue','isRequestNaCustomerPair','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','resolveNewRequestFolderChoice','isReservedRequestNaChoice','hasRequestCreateMappingTuple','processCustStep','renderRequestModalRepPickerOnOpen',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
-  return cachedRequestMappingFunctions = names.map(name => {
-    let start = html.indexOf(`        function ${name}(`);
-    if (start < 0) start = html.indexOf(`        async function ${name}(`);
-    if (start < 0) throw new Error('Missing Request mapping function ' + name);
-    const tail = html.slice(start); const end = tail.slice(20).search(/\n        (?:async )?function /);
-    if (end < 0) throw new Error('Missing function boundary ' + name);
-    return tail.slice(0,end+20);
-  }).join('\n');
+  cachedRequestMappingFunctions = names.map(requestMappingFunction).join('\n');
+  return cachedRequestMappingFunctions;
 }
 export const mappingFixtureRow = {
   unique_id:'map-1', customeridentityid:'00012', consigneeid:'00007', salesrepid:'01', salesrepname:'Rep One',

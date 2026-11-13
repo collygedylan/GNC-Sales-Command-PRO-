@@ -2,8 +2,9 @@ import { read, rows, runtime, fixture, engines } from '../src/core/canonical-row
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
+import vm from 'node:vm';
 
-test('only a verified table grant permits foreign and completed inventory rows', () => {
+test('verified row grants and locked power profiles retain the exact session and module boundary', () => {
     const {ctx} = fixture([...engines,'canUserMakeLiveChangesOnRow','isEvalReclassRowAssigned','canUnlockCompletedRow','canEditRowDetails','canCurrentUserUpdateDrivePhotoData'], {
         resolveUserAccessMatrix:()=>({edit_any_row:'N',edit_assigned_rows_only:'N',verified:true,view_permissions:{view_drive_mode:'Y'}}),
         getRoleAccessState:()=>({}),getEditableDetailItemForPrefix:(_p,row)=>row
@@ -12,14 +13,20 @@ test('only a verified table grant permits foreign and completed inventory rows',
         ctx.currentUser = user;
         ctx.nativeAuthProfile.username = user;
         for (const row of [{ITEMCODE:'004424.020.1'},{ITEMCODE:'001973.030.1',completed:true}]) {
-            for (const action of engines.slice(-4)) assert.equal(ctx[action](user,row),false,action);
+            for (const action of engines.slice(-4)) assert.equal(ctx[action](user,row),true,`${user}: ${action}`);
+            assert.equal(ctx.canEditRowDetails('ssn-',row),true);
+            ctx.nativeAuthSessionUserId = 'other-profile';
+            for (const action of engines.slice(-4)) assert.equal(ctx[action](user,row),false,`foreign session: ${action}`);
             assert.equal(ctx.canEditRowDetails('ssn-',row),false);
+            ctx.nativeAuthSessionUserId = 'fixture-profile';
         }
     }
     ctx.currentUser = 'unlisted_writer';ctx.nativeAuthProfile.username = ctx.currentUser;
     ctx.resolveUserAccessMatrix = () => ({verified:true,profile_id:'fixture-profile',edit_any_row:'Y',view_permissions:{view_drive_mode:'Y'}});
     const row = {ITEMCODE:'001973.030.1',completed:true};
     assert.ok(ctx.canEditRowDetails('ssn-',row) && ctx.canUnlockCompletedRow(row) && ctx.canCurrentUserUpdateDrivePhotoData(row) && ctx.isEvalReclassRowAssigned(ctx.currentUser,row));
+    ctx.resolveUserAccessMatrix = () => ({verified:true,profile_id:'fixture-profile',edit_any_row:'Y',view_permissions:{view_drive_mode:'N',view_av:'N',view_que:'N'}});
+    for (const action of engines.slice(-4)) assert.equal(ctx[action](ctx.currentUser,row),false,`disabled modules: ${action}`);
 });
 test('assigned evaluators require exact owner evidence before mirrored fields', () => {
     const {ctx} = fixture(engines);
@@ -47,7 +54,7 @@ test('unlock paints the exact row while native headers are still pending', () =>
 });
 test('one physical Suspend row counts once and nonadmins see only assigned queue rows', () => {
     const names = [...engines,'getItemUniqueId','getDockSuspendDcRequestSourceUid','getPhysicalSuspendTagKey','uniquePhysicalSuspendTags',
-        'queueAccessScope','getQueueScopeFilter','hasCompletionDateValue','isQueueOwnerVisible','getDockSuspendDcSourceRows','getLatestSocSuspendTagSourceRows','countPendingSuspendTagQueueItems','getActiveAssignedQueueCounts','getRequestQueueAlertCount'];
+        'hasCompletionDateValue','getDockSuspendDcSourceRows','getLatestSocSuspendTagSourceRows','countPendingSuspendTagQueueItems','getActiveAssignedQueueCounts','getRequestQueueAlertCount'];
     const {ctx,state} = fixture(names, {
         isDockSuspendDcRequestMirrorRow:r=>r.suspend==='SUSPEND',canUseRequestSuspendTagAssignedToFilter:()=>false, firstNonEmptyValue:(...xs)=>xs.find(x=>x!=null&&x!=='')||'',
         getRequestCapabilities:()=>({canViewQueue:true}), canReadSuspendQueue:()=>true, getSupabaseReadIdentityScope:()=>'fixture',
@@ -57,16 +64,18 @@ test('one physical Suspend row counts once and nonadmins see only assigned queue
         getSuspendTagStatus:r=>r.status||'pending', getQueueCompletionState:()=>null,
         isRegularRequestQueueItem:()=>true, isRequestPendingVisible:r=>!r.completed
     });
+    vm.runInContext(read('assets/request-queue-membership.js'),ctx);
     const tags=Array.from({length:89},(_,i)=>({suspend:'SUSPEND',suspend_owner_zone_override:false,unique_id:String(i+1),itemcode:i<7?'004380.010.1':'001973.030.1'}));
     ctx.suspendTagInventory=[...tags,...tags.map(r=>({...r,unique_id:'dock_suspend_dc_'+r.unique_id}))];
     const unique=ctx.uniquePhysicalSuspendTags(ctx.suspendTagInventory);
     assert.equal(unique.length,89);
-    ctx.requestsInventory=[{itemcode:'001973.030.1'},{itemcode:'unassigned'}];
+    ctx.requestsInventory=[{unique_id:'REQ-foreign',itemcode:'001973.030.1'},{unique_id:'REQ-unassigned',itemcode:'unassigned'}];
     assert.equal(unique.filter(r=>ctx.isQueueOwnerVisible(r)).length,7);
-    assert.equal(ctx.requestsInventory.filter(r=>ctx.isQueueOwnerVisible(r)).length,0);
+    assert.equal(ctx.requestsInventory.filter(r=>ctx.isQueueOwnerVisible(r,'pending')).length,2,'Request permissions have separate scope');
     const counts=ctx.getActiveAssignedQueueCounts();
-    assert.equal(counts.pending,0);assert.equal(counts['suspend-tag'],7);
-    assert.equal(ctx.getRequestQueueAlertCount(),7);
+    assert.equal(counts.pending,2);assert.equal(counts['suspend-tag'],7);
+    assert.equal(ctx.getActiveAssignedQueueCounts(true).pending,0);
+    assert.equal(ctx.getRequestQueueAlertCount(),9);
     assert.deepEqual(ctx.getActiveAssignedQueueCounts(),counts,'unchanged source rows retain the same visible counts');
     state.dataEpoch=1;ctx.requestsInventory=[{unique_id:'REQ-1',itemcode:'004380.010.1'}];
     assert.equal(ctx.getRequestQueueAlertCount(),8);

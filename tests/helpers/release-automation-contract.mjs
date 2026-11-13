@@ -39,6 +39,8 @@ export async function frontendRecoveryContract(){
  await recoverVerifiedPublication(options);assert.equal(dispatches,1);assert.equal(finalizations,1);await recoverVerifiedPublication(options);assert.equal(dispatches,1);assert.equal(finalizations,2);
  await assert.rejects(recoverVerifiedPublication({...options,assertMain:async()=>{throw Error('superseded');}}),/superseded/);
  assert.equal(isTransientWorkflowFailure({conclusion:'failure'},'AssertionError: runner lost communication'),false);assert.equal(isTransientWorkflowFailure({conclusion:'failure'},'runner lost communication'),true);
+ assert.equal(isTransientWorkflowFailure({conclusion:'startup_failure'},'not ok {"code":"ERR_ASSERTION","error":"runner lost communication"}'),false);
+ assert.equal(isTransientWorkflowFailure({conclusion:'startup_failure'},'runner failed to start'),true);
  let attempts=1,reruns=0;await recoverVerifiedPublication({...options,runs:async()=>[{...green,run_attempt:attempts,conclusion:attempts===1?'failure':'success'}],failureLogs:async()=>'runner lost communication',rerun:async()=>{attempts++;reruns++;}});assert.equal(reruns,1);
  await assert.rejects(recoverVerifiedPublication({...options,runs:async()=>[{...green,conclusion:'failure'}],failureLogs:async()=>'not ok 1 - assertion failure'}),/CI_FAILED/);
 }

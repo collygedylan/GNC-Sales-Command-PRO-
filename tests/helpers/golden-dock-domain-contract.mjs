@@ -23,12 +23,15 @@ export function dockZeroProjectionContract() {
 export function suspendExactReceiptContract() {
   const browser = classic('suspend-receipt-domain');
   for (const matches of [suspendTagReceiptMatchesSource, browser.suspendTagReceiptMatchesSource]) {
+    const terminal = { unique_id: 'row-a', date_completed: '2026-09-08T16:00:00Z', suspend: null, suspend_to: null };
     for (const operation of ['save', 'complete', 'close']) {
-      assert.equal(matches(operation, { sourceUid: 'row-a' }, { row: { unique_id: 'row-a', date_completed: '2026-09-08T16:00:00Z' } }), true);
+      assert.equal(matches(operation, { sourceUid: 'row-a' }, { row: terminal }), true);
       assert.equal(matches(operation, { sourceUid: 'row-a' }, { row: { unique_id: 'row-b' } }), false);
       assert.equal(matches(operation, { sourceUid: 'row-a' }, { row: { unique_id: ' row-a ' } }), false);
       assert.equal(matches(operation, { sourceUid: 'row-a' }, {}), false);
     }
+    assert.equal(matches('close', { sourceUid: 'row-a' }, { row: { ...terminal, suspend: 'SUSPEND' } }), false);
+    assert.equal(matches('close', { sourceUid: 'row-a' }, { row: terminal, rows: [{ ...terminal, suspend_to: 'dc' }] }), false);
   }
   assert.equal(suspendTagReceiptMatchesSource('complete', { sourceUid: 'row-a' }, { row: { unique_id: 'row-a', date_completed: 'invalid' } }), false);
 }

@@ -2,19 +2,21 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { functionSource } from './completed-row-contract.mjs';
+import { verifiedRowSession } from './golden-verified-row-session.mjs';
 
 const urls = value => Array.isArray(value) ? value.map(entry => entry.url || entry) : String(value || '').split(',').filter(Boolean);
 const patch = {spec:'16-18" H',av_note:'SPEC - 16-18" H',match:40,photo_link:'https://fixture/figgy.jpg'};
 
 function createProjectionFixture() {
-    const master = {UNIQUE_ID:'figgy',ITEMCODE:'009999.001.1',LOCATIONCODE:'L.05.000',LOTCODE:'27.F1',PTRONHAND:210,PTRAVAILABLE:17,SPEC:'Prior'};
+    const master = {UNIQUE_ID:'figgy',ITEMCODE:'009999.001.1',LOCATIONCODE:'L.05.000',LOTCODE:'27.F1',PTRONHAND:210,PTRAVAILABLE:17,SPEC:'Prior',assignedto:'fixture_editor'};
     const sibling = {...master,UNIQUE_ID:'old-year',LOTCODE:'26.F1',SPEC:'Old year'};
-    const request = {...master,UNIQUE_ID:'request',MASTER_ID:'figgy',SOURCE_TABLE:'ph_requests_pending',LOTCODE:'F1',ORDER_QTY:999};
+    const request = {...master,UNIQUE_ID:'request',MASTER_ID:'figgy',SOURCE_TABLE:'ph_requests_pending',LOTCODE:'F1',SALEYEAR:'27',ORDER_QTY:999};
     const wrongRequest = {...request,UNIQUE_ID:'wrong-request',SALEYEAR:'26'};
     const suspend = {...request,UNIQUE_ID:'tag',SALEYEAR:'2027'};
     const flyer = {...request,UNIQUE_ID:'flyer',SALEYEAR:'27'};
     const state = {}, read = name => readFileSync(new URL(`../../assets/${name}.js`,import.meta.url),'utf8');
-    const context = vm.createContext({scope:'actor',masterInventoryById:new Map(),masterInventoryByItemCode:new Map(),
+    const context = vm.createContext({...verifiedRowSession(),scope:'actor',masterInventoryById:new Map(),masterInventoryByItemCode:new Map(),
+        activeItem:null,activeDetailSourceView:'drive',lastView:'drive',hasCompletionDateValue:row=>!!row.DATE_COMPLETED,
         fullInventory:[master,sibling],requestsInventory:[request,wrongRequest],suspendTagInventory:[suspend],flyerFolderInventory:[flyer],
         getManagerAssignedColumnState:()=>state,getSupabaseReadIdentityScope:()=>context.scope,
         firstNonEmptyValue:(...values)=>values.find(value=>value!=null && value!==''),parseAppNumber:value=>value==='' ? null : Number(value),
@@ -28,7 +30,7 @@ function createProjectionFixture() {
         }
     });
     context.rebuildMasterInventoryIndexes();
-    for (const file of ['canonical-inventory-evidence','row-publication-branches']) vm.runInContext(read(file),context);
+    for (const file of ['canonical-inventory-evidence','row-publication-branches','confirmed-evaluation-ui','row-access-policy']) vm.runInContext(read(file),context);
     const functions = ['getEditorLocMatchQtyValue','publishRowEvaluationToMasterAndNotes','resolveCanonicalInventoryRow'];
     vm.runInContext(functions.map(functionSource).join('\n'),context);
     return {context,state,master,sibling,request,wrongRequest,suspend,flyer};
@@ -84,7 +86,7 @@ async function assertPreProjectionBaseline(fixture) {
     context.reconcileConfirmedDriveEvidence = result => ({row:result.row,applied:true});
     const pending = context.publishRowEvaluationToMasterAndNotes(master,patch,{prefix:'lsn-',complete:false});
     assert.equal(request.REQ_SPEC,patch.spec,'all exact mirrors update before the persistence promise resolves');
-    release({canonicalConfirmed:true,row:{unique_id:'figgy'}});
+    release({canonicalConfirmed:true,row:{unique_id:master.UNIQUE_ID,itemcode:master.ITEMCODE,locationcode:master.LOCATIONCODE,lotcode:master.LOTCODE}});
     assert.equal((await pending).applied.applied,true);
 }
 
@@ -126,9 +128,9 @@ function assertCanonicalInputAliases({context,master,sibling,request}) {
     assert.equal(request.PHOTO_LINK,photo.url);
     assert.equal(request.photos[0].date,photo.date);
     rollback();
-    const yearless = {...request,MASTER_ID:'',UNIQUE_ID:'unlinked'};
+    const yearless = {...request,MASTER_ID:'',UNIQUE_ID:'unlinked',SALEYEAR:''};
     const byId = new Map();
-    assert.equal(context.resolveCanonicalInventoryTarget(yearless,byId,new Map([[master.ITEMCODE,[master]]])),master);
+    assert.equal(context.resolveCanonicalInventoryTarget(yearless,byId,new Map([[master.ITEMCODE,[master]]])),null);
     assert.equal(context.resolveCanonicalInventoryTarget(yearless,byId,new Map([[master.ITEMCODE,[master,sibling]]])),null);
     assert.equal(context.resolveCanonicalInventoryTarget({...yearless,LOTCODE:'26.F1'},byId,new Map([[master.ITEMCODE,[master]]])),null);
 }

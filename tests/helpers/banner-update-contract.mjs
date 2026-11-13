@@ -52,6 +52,7 @@ async function checkEditingViews(page) {
 async function verifySilentWorker(page, target, pill) {
     await page.evaluate(() => {
         window.captureActive = false;
+        window.GncLiveAppUpdate.scheduleApply();
         const button = document.getElementById('agdata-live-update-pill');
         const labels = [];
         new MutationObserver(() => {

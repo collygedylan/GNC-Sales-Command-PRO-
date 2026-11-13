@@ -219,10 +219,12 @@ export const toolingPerformanceCheckFile = 'tests/canonical-row-owner-performanc
 function parseToolingSummary(output) {
   const count = name => {
     const matches = [...output.matchAll(new RegExp(`^# ${name} (\\d+)$`, 'gm'))];
-    return matches.length === 1 ? Number(matches[0][1]) : null;
+    const value = matches.length === 1 ? Number(matches[0][1]) : null;
+    return Number.isSafeInteger(value) ? value : null;
   };
   const passed = count('pass');
-  if (!(passed > 0) || ['fail', 'cancelled', 'skipped'].some(name => count(name) !== 0)) return null;
+  if (!(passed > 0) || count('tests') !== passed) return null;
+  if (['fail', 'cancelled', 'skipped', 'todo'].some(name => count(name) !== 0)) return null;
   return passed;
 }
 
@@ -237,7 +239,7 @@ function runToolingLane({ spawn, args, env, timeout, error, label }) {
   const passed = parseToolingSummary(String(result.stdout || ''));
   if (passed === null) {
     if (result.stdout) error(result.stdout);
-    error(`Tooling ${label} checks require passing tests with no failed, cancelled, or skipped checks.`);
+    error(`Tooling ${label} checks require one complete summary with every test passing.`);
     return { exitCode: 1 };
   }
   return { exitCode: 0, passed };
@@ -248,7 +250,7 @@ export function runToolingReleaseChecks({ spawn = spawnSync, now = () => perform
   const started = now();
   const fullAudit = env.AGDATA_FULL_AUDIT_ONCE === '1';
   delete env.AGDATA_FULL_AUDIT_ONCE;
-  const prefix = ['--test', '--test-reporter=tap'];
+  const prefix = ['--test', '--test-reporter=./scripts/compact-test-reporter.mjs'];
   const performanceLane = runToolingLane({ spawn, env, error, label:'performance', timeout:75000,
     args:[...prefix, '--test-concurrency=1', toolingPerformanceCheckFile] });
   if (performanceLane.exitCode) return performanceLane;

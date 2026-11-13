@@ -54,8 +54,19 @@ export function requestGuidanceContract() {
     const banner={dataset:{kind:'input-guidance'},textContent:'Request field required',matches:()=>true,closest:()=>null};
     dom.inspectBanner(banner);assert.equal(signals.length,0);
     banner.dataset.kind='error';dom.inspectBanner(banner);assert.equal(signals.length,1);
-    assert.match(runtime,/response\.status === 409 && \/\^save_request_work\/\.test\(rpcName\)/);
-    assert.match(runtime,/isRequestWorkVersionConflict\(error\).*observeError/);
+    const recovery = read('assets/rpc-recovery-domain.js');
+    assert.ok(/response\.status === 409 && \/\^save_request_work\/\.test\(rpcName\)/.test(recovery),
+        'direct RPC recovery reserves expected request-work conflicts for reconciliation');
+    assert.ok(/isRequestWorkVersionConflict\(error\).*observeError/.test(runtime),
+        'unresolved request-work conflicts remain observable');
+    const transport = vm.createContext({window:{GncRuntimeWatchdog:{
+        observeError:(...args)=>signals.push(args), record:(...args)=>signals.push(args)
+    }}});
+    install(transport,read('assets/app-api-transport.js'),'reportAppFunctionFailure');
+    transport.reportAppFunctionFailure('request_work',{operation:'save'},{status:409},'REQUEST_VERSION_CONFLICT');
+    assert.equal(signals.length,1);
+    transport.reportAppFunctionFailure('request_work',{operation:'save'},{status:500},'REQUEST_SAVE_FAILED');
+    assert.equal(signals.length,3);
 }
 export async function retainedDraftContract() {
     const owner='reviewer', batches=['aaaaaaaa-aaaa-4aaa-8aaa-000000000001','aaaaaaaa-aaaa-4aaa-8aaa-000000000002','aaaaaaaa-aaaa-4aaa-8aaa-000000000003'];

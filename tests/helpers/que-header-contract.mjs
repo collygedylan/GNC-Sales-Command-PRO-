@@ -16,7 +16,7 @@ export function assertQueueOwnerScopes() {
     });
     const source = readComposedRuntimeSource();
     const powerKeys = source.match(/const GLOBAL_LIVE_CHANGE_USER_KEYS = new Set\(\[[\s\S]*?\]\);/)[0];
-    const functions = ['queueAccessScope', 'getQueueScopeFilter', 'isQueueOwnerVisible', 'setSuspendEvalUserFilter']
+    const functions = ['queueAccessScope', 'getQueueScopeFilter', 'isQueueOwnerVisible', 'normalizeSuspendQueueOwner', 'setSuspendEvalUserFilter']
         .map(name => extractGoldenFunction(source, name));
     Object.assign(context, { getSuspendEvalUserFilter: tab => context.getQueueScopeFilter(tab),
         markViewDirty() {}, renderRequest() {}, paintFooterRequestBadgeOnly() {} });

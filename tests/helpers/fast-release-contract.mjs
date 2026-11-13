@@ -5,11 +5,14 @@ import vm from 'node:vm';
 import {matchesSchema,validateSchema} from '../../services/database-contract-runtime.ts';
 import {matchesAppsScriptSourceFingerprint,verifyHeadOnlyAppsScript} from '../../scripts/apps-script-health-fingerprint.mjs';
 import {runToolingReleaseChecks} from '../../scripts/run-tooling-release-checks.mjs';
-import {functionSource} from './completed-row-contract.mjs';
+import { installAssignedPlantGroupFixture } from './assigned-items-hydration-contract.mjs';
+import { APPS_SCRIPT_RELEASE_SOURCE_PATHS } from '../../src/services/apps-script-release-source.mjs';
 const read=p=>fs.readFileSync(new URL('../../'+p,import.meta.url),'utf8');
 export function dormantFamilyContract(){
- const c=vm.createContext({getManagerAssignedColumnState:()=>({}),fullInventory:[{ITEMCODE:'123456.010.1',PLANTGROUPCODE:'130_SHRUB'}],buildManagerEvalAssignmentKey:v=>String(v||'').toUpperCase(),getCropRollPlantGroup:r=>r.PLANTGROUPCODE||r.plant_group_code||''});
- vm.runInContext(functionSource('enrichManagerAssignedPlantGroups'),c);
+ const state = {};
+ const c=vm.createContext({getManagerAssignedColumnState:()=>state,fullInventory:[{ITEMCODE:'123456.010.1',PLANTGROUPCODE:'130_SHRUB'}],
+   buildManagerEvalAssignmentKey:v=>String(v||'').toUpperCase(),firstNonEmptyValue:(...values)=>values.find(Boolean)});
+ installAssignedPlantGroupFixture(c);
  assert.equal(c.enrichManagerAssignedPlantGroups([{itemcode:'123456.070.9'}])[0].PLANTGROUPCODE,'130_SHRUB');
  c.fullInventory.push({ITEMCODE:'123456.030.1',PLANTGROUPCODE:'330_TREES'});
  assert.equal(c.enrichManagerAssignedPlantGroups([{itemcode:'123456.070.9'}])[0].PLANTGROUPCODE,'');
@@ -25,24 +28,32 @@ export function additiveReadContract(){
  for(const bad of [{...row,itemcode:42},{extra_metadata:'missing known fields'},{...row,extra_metadata:()=>{}}])assert.throws(()=>validateSchema(schema,bad,'read',true));
  assert.match(read('services/databaseRest.ts'),/validateSchema\(schema, row, .*method === 'GET'/);
 }
+function sourceWithChangedBlob(blobs, index) {
+  return sha => blobs.map((value, position) => position === index ? sha : value);
+}
+
 export function sourceFingerprintContract(){
   const expected = 'a'.repeat(40), deployed = 'b'.repeat(40), blob = 'c'.repeat(40);
+  const sourceBlobs = APPS_SCRIPT_RELEASE_SOURCE_PATHS.map(() => blob);
   let reads = 0;
   const equal = matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, () => {
     reads++;
-    return [blob, blob, blob];
+    return sourceBlobs;
   });
   assert.equal(equal, true);
   assert.equal(reads, 2);
-  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, () => [blob, null, null]), true);
-  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, sha => [blob, sha, blob]), false);
-  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, sha => [blob, blob, sha]), false);
-  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: '__PLACEHOLDER__' }, expected, () => [blob, blob, blob]), false);
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected,
+    () => sourceBlobs.map((value,index) => index ? null : value)), true);
+  for (const [index,path] of APPS_SCRIPT_RELEASE_SOURCE_PATHS.entries()) {
+    const readBlobs = sourceWithChangedBlob(sourceBlobs,index);
+    assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, readBlobs), false, path);
+  }
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: '__PLACEHOLDER__' }, expected, () => sourceBlobs), false);
   assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: deployed }, expected, () => { throw Error('unknown source'); }), false);
 }
 export function fastDefaultContract(){
  const env={AGDATA_FULL_AUDIT_ONCE:'1'},modes=[],lanes=[];
- const spawn=(_cmd,args,options)=>{modes.push(args.find(a=>a.startsWith('--test-concurrency=')));lanes.push(args.at(-1));assert.equal(options.env.AGDATA_FULL_AUDIT_ONCE,undefined);return {status:0,stdout:'# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n'};};
+ const spawn=(_cmd,args,options)=>{modes.push(args.find(a=>a.startsWith('--test-concurrency=')));lanes.push(args.at(-1));assert.equal(options.env.AGDATA_FULL_AUDIT_ONCE,undefined);return {status:0,stdout:'# tests 1\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n'};};
  for(let i=0;i<2;i++)assert.equal(runToolingReleaseChecks({env,spawn,print(){}}).exitCode,0);
  assert.deepEqual(modes,['--test-concurrency=1','--test-concurrency=1','--test-concurrency=1','--test-concurrency=8']);
  assert.equal(lanes[0],'tests/canonical-row-owner-performance.test.mjs');assert.equal(lanes[2],lanes[0]);

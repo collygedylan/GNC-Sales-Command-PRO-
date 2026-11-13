@@ -28,8 +28,8 @@ export function withGoldenReclassAuthority(context) {
     return context;
 }
 
-export function assertGoldenEvalReclassBoundaries({ runFunctions, functionSource, read }) {
-    const context = runFunctions('assets/app-runtime.js', ['isEvalReclassRowAssigned', 'isWarehouseAssignedDriveCardForCurrentUser', 'canCurrentUserUseDriveCardOptions'], {
+export function assertGoldenEvalReclassBoundaries({ functionSource, read }) {
+    const context = withGoldenReclassAuthority({
         currentRole: 'Evaluator', currentUser: 'taylor_eval', currentUserDisplay: 'Taylor Eval',
         getRoleAccessState: () => ({ isEval: true, isAdmin: false }),
         canUserReclassRow: (user, row) => context.isRowAssignedToUser(user, row),
@@ -38,7 +38,8 @@ export function assertGoldenEvalReclassBoundaries({ runFunctions, functionSource
         isRowAssignedToUser: (user, row) => actorKey(user) === 'taylor_eval' && row?.unique_id === 'assigned',
         firstNonEmptyValue: (...values) => values.find(value => value != null && value !== '') ?? '', showToast() {},
     });
-    withGoldenReclassAuthority(context);
+    vm.runInContext(['isEvalReclassRowAssigned', 'isWarehouseAssignedDriveCardForCurrentUser', 'canCurrentUserUseDriveCardOptions']
+        .map(name => functionSource('assets/app-runtime.js', name)).join('\n'), context);
     for (const assigned of [true, false]) {
         const row = { unique_id: assigned ? 'assigned' : 'other', SEASON: 'F1', LOTCODE: '27.F1' };
         assert.equal(context.canCurrentUserUseDriveCardOptions(row, 'drive'), assigned);
@@ -58,7 +59,7 @@ export function assertGoldenEvalReclassBoundaries({ runFunctions, functionSource
     assert.equal(context.authorizeArgosReclassRow(y, 'drive', 'open'), false);
     assert.match(functionSource('assets/app-runtime.js', 'canSubmitArgosReclassForRow'), /authorizeArgosReclassSubmissionRows\(payload, state\)/);
     assert.match(read('supabase/functions/app-api/reclass-inquiry-transport.ts'), /authorize_reclass_command_v3076/);
-    assert.match(read('supabase/migrations/20261111180000_agdata3076_reclass_y_authority.sql'), /edit_assigned_rows_only[\s\S]*inventory_row_assigned_to_actor_v2392/);
+    assert.match(read('supabase/migrations/20261111204840_agdata3076_reclass_y_authority.sql'), /edit_assigned_rows_only[\s\S]*inventory_row_assigned_to_actor_v2392/);
 }
 
 export function assertGoldenReclassExplanations({ functionSource }) {

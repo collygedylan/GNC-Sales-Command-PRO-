@@ -1,6 +1,7 @@
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
+import { includeFixtureFunctionDependencies } from './golden-function-dependencies.mjs';
 import { installGoldenRuntimeDefaults, goldenRuntimeDependencies } from '../../src/core/golden-runtime-fixture.mjs';
 
 export function createGoldenFunctionRunner({ functionSource, appApiVersion }) {
@@ -27,11 +28,12 @@ export function createGoldenFunctionRunner({ functionSource, appApiVersion }) {
     }
     if (file === 'assets/app-runtime.js'
       && names.some(name => ['normalizeWarehouseAssignedItemRow', 'getManagerAssignedItemsDisplayRows'].includes(name))) {
-      dependencies.push('getCropRollPlantGroup');
+      dependencies.push('getInventoryPlantGroup','readInventoryPlantGroup','nestedInventoryPlantGroupRows');
     }
     const datasetSource = names.includes('ensureDatasetLoaded') ? readFileSync(new URL('../../assets/dataset-load-runtime.js',import.meta.url),'utf8') : '';
-    const source = [...new Set([...dependencies, ...names])].filter(name => !datasetSource || name !== 'ensureDatasetLoaded')
-      .map(name => functionSource(file, name)).concat(datasetSource).join('\n');
+    const selectedNames = [...new Set([...dependencies, ...names])].filter(name => !datasetSource || name !== 'ensureDatasetLoaded');
+    const source = includeFixtureFunctionDependencies({file,names:selectedNames,context,functionSource,typescript})
+      .concat(datasetSource).join('\n').replace(/^export (?=(?:async )?function )/gm, '');
     const executable = typescript ? ts.transpileModule(source, {
       compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
     }).outputText : source;

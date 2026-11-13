@@ -3,6 +3,8 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {readComposedRuntimeSource} from '../../scripts/composed-app-source.mjs';
 import {liveUpdateFixture} from '../../src/ui/live-update-fixture.mjs';
+import { validateDatasetReadParams } from '../../supabase/functions/app-api/dataset-read-query.ts';
+import { functionSource } from './golden-test-environment.mjs';
 export async function signedInCutoverContract(){
  const h=liveUpdateFixture();
  try {
@@ -30,13 +32,13 @@ export function cancellationAndFallbackContract(){
 
 export async function legacyDatasetEnvelopeContract(){
  const ts=(await import('typescript')).default;
- const source=readFileSync(new URL('../../supabase/functions/app-api/index.ts',import.meta.url),'utf8');
- const block=source.slice(source.indexOf('function normalizeDatasetReadAlias'),source.indexOf('function datasetReadScalar'));
- const version=source.slice(source.indexOf('function isSupersededAppVersion'),source.indexOf('function jsonResponse'));
- const c=vm.createContext({DATASET_READ_PAGE_MAX:500,APP_RUNTIME_VERSION:'3.0.5'});vm.runInContext(ts.transpileModule(block+version,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,c);
+ const edge='supabase/functions/app-api/index.ts';
+ const declarations=['normalizeDatasetReadAlias','isSupersededAppVersion'].map(name=>functionSource(edge,name)).join('\n');
+ const c=vm.createContext({APP_RUNTIME_VERSION:'3.0.5'});
+ vm.runInContext(ts.transpileModule(declarations,{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,c);
  for(const alias of ['requestHistory','ph_requests_completed_history','ph_request_history'])assert.equal(c.normalizeDatasetReadAlias(alias),'request_history');
- assert.equal(c.normalizeDatasetReadAlias('requests'),'request_queue');assert.equal(c.validateDatasetReadParams({action:'dataset_read',dataset:'requests',params:{limit:'1000',offset:'0',select:'*'}}).limit,500);
- assert.throws(()=>c.validateDatasetReadParams({dataset:'requests',params:{actor:'forged'}}));
+ assert.equal(c.normalizeDatasetReadAlias('requests'),'request_queue');assert.equal(validateDatasetReadParams({action:'dataset_read',dataset:'requests',params:{limit:'1000',offset:'0',select:'*'}}).limit,500);
+ assert.throws(()=>validateDatasetReadParams({dataset:'requests',params:{actor:'forged'}}));
  for(const version of ['AgData v'+[2,3,137].join('.'),[2,3,138].join('.'),'v2.3.9'])assert.equal(c.isSupersededAppVersion(version),true);
  for(const version of ['3.0.5','3.0.5','unknown','99999999999.1.1'])assert.equal(c.isSupersededAppVersion(version),false);
  const {selectReleaseMigrations,migrationContractQuery}=await import('../../scripts/apply-item-low-stock-migration.mjs');const name='20261102220000_v23141_client_cutover_health.sql';assert.deepEqual(selectReleaseMigrations(JSON.stringify(['supabase/migrations/'+name])),[name]);assert.ok(migrationContractQuery(name));
