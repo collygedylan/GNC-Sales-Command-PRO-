@@ -81,6 +81,7 @@ function domainHarnessContext(ctx, options, row, mirror, calls, toasts, counters
     getSuspendTagExistingReviewPatch: () => ({}),
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
+    isViewVisible: view => ctx.view === view, renderRequestCategoryToolbar() {}, scheduleRequestRender() {},
     yieldToUiFrame: async () => {},
     requestTabQueueCountsSnapshot: null, requestTabQueueCountsSnapshotScope: '',
     queueSuspendTagInventoryReconciliation() {},
@@ -128,7 +129,8 @@ export function harness(options = {}) {
   const falseBlock = between("function isFalseBlockLocation(", 'function ');
   vm.runInContext(`${transport}\n${falseBlock}`, ctx);
   const completions = between('let queueCompletionState = null;', 'function trackOptimisticCompletedRows(');
-  vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${optimisticPainter}\n${handler}`, ctx);
+  const command = readFileSync(new URL('../../assets/suspend-detail-save-domain.js', import.meta.url), 'utf8');
+  vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${optimisticPainter}\n${handler}\n${command}`, ctx);
   ctx.applySuspendCandidateRows = () => {};
   return { ctx, row, mirror, calls, toasts, storage, documentListeners, get confirmCalls() { return counters.confirmCalls; }, get openUpdateCalls() { return counters.openUpdateCalls; } };
 }

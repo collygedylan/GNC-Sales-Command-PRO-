@@ -1,4 +1,52 @@
 
+function refreshOptionalRequestQueueData(reason, options) {
+    void refreshActiveRequestQueueSideData(reason || 'request-force-refresh', {
+        force: options.force === true,
+        allowWhileInteractive: true,
+        minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
+    }).catch(error => window.GncRuntimeWatchdog?.capture?.(error, 'requestQueueSideData'));
+}
+
+let pendingRequestDeliveryRead = null;
+
+function refreshVisiblePendingRequestDelivery(pendingRows) {
+    if (activeReqTab !== 'pending' || !isViewVisible('request') || navigator.onLine === false) return;
+    const owner = getSupabaseReadIdentityScope();
+    if (pendingRequestDeliveryRead?.owner === owner && (pendingRequestDeliveryRead.inFlight
+        || Date.now() - pendingRequestDeliveryRead.startedAt < REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS)) return;
+    const ids = pendingRows.slice(0, 40).map(getItemUniqueId).filter(Boolean);
+    if (!ids.length) return;
+    const read = { owner, startedAt: Date.now(), inFlight: true, navigationSeq: navTransitionSeq,
+        signal: productionLiveSyncNavigation.signal, ids: new Set(ids) };
+    pendingRequestDeliveryRead = read;
+    void readPendingRequestDelivery(read).finally(() => { read.inFlight = false; });
+}
+
+async function readPendingRequestDelivery(read) {
+    try {
+        const result = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+            action: 'dataset_read', dataset: 'request_queue', requestDeliveryStatus: true,
+            params: { limit: read.ids.size, filters: [{ field: 'unique_id', op: 'in', value: [...read.ids] }] }
+        }, { timeoutMs: 1800, signal: read.signal, label: 'Request delivery status' });
+        if (!result?.ok || !Array.isArray(result.data?.rows) || read.signal.aborted
+            || read.owner !== getSupabaseReadIdentityScope() || !isCurrentNavigationTransition(read.navigationSeq, 'request')) return;
+        applyPendingRequestDeliveryRows(read.ids, result.data.rows);
+    } catch {
+        // Delivery reads are optional. The authorized pending snapshot owns membership.
+    }
+}
+
+function applyPendingRequestDeliveryRows(ids, statuses) {
+    const byId = new Map(statuses.filter(status => ids.has(status.request_id)).map(status => [status.request_id, status]));
+    for (const row of requestsInventory) {
+        const status = byId.get(getItemUniqueId(row));
+        if (!status || !isRequestPendingVisible(row)) continue;
+        row.DELIVERY_STATUS = row.delivery_status = status.delivery_status;
+        row.DELIVERY_ATTEMPT_COUNT = row.delivery_attempt_count = status.delivery_attempt_count;
+        row.DELIVERY_DISPLAY_STATE = row.delivery_display_state = status.delivery_display_state;
+    }
+}
+
 function mergeRequestLiveCanonicalEvidence(row) {
     if (!row || row.REQUEST_HISTORY || hasConfirmedRequestCompletion(row)) return row;
     const canonical = resolveCanonicalInventoryRow(row);
@@ -143,11 +191,7 @@ async function refreshNativeRequestRows(nativeAdapter, reason, safeOptions, navi
                     // The coordinator owns snapshot validation, cache commits and
                     // rendering. Reapplying its rows through the legacy path can
                     // cancel a verified preview and rebuild the same list twice.
-                    await refreshActiveRequestQueueSideData(reason || 'request-force-refresh', {
-                        force: safeOptions.force === true,
-                        allowWhileInteractive: true,
-                        minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
-                    });
+                    refreshOptionalRequestQueueData(reason, safeOptions);
                     return true;
                 }
 
@@ -160,11 +204,6 @@ async function commitRefreshedRequestRows(rows, reason, safeOptions, navigationS
                 if (requestViewInteractiveRefreshTimer) clearTimeout(requestViewInteractiveRefreshTimer);
                 requestViewInteractiveRefreshTimer = null;
                 processAndLoadData({ requestsData: formattedRows });
-                await refreshActiveRequestQueueSideData(reason || 'request-force-refresh', {
-                    force: safeOptions.force === true,
-                    allowWhileInteractive: true,
-                    minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
-                });
                 const state = getDatasetState('requests');
                 state.initialLoaded = true;
                 state.fullLoaded = true;
@@ -177,5 +216,6 @@ async function commitRefreshedRequestRows(rows, reason, safeOptions, navigationS
                 if (isCurrentNavigationTransition(navigationSeq, 'request')) queueInteractiveViewRender('request', false, true, 0, REQUEST_REALTIME_UI_DELAY_MS);
                 if (isCurrentNavigationTransition(navigationSeq, 'reports')) queueInteractiveViewRender('reports', false, true, 0, 180);
                 persistCurrentCache(false, reason);
+                refreshOptionalRequestQueueData(reason, safeOptions);
                 return true;
 }

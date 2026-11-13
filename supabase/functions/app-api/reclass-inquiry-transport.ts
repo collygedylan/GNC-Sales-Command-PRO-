@@ -51,12 +51,15 @@ export async function enqueueReclassInquiry(db: InquiryDatabase, payload: Inquir
 export async function recoverReclassInquiryReceipt(
   db: InquiryDatabase, result: InquiryRecord, actorUsername: string, normalizeUsername: Function,
 ): Promise<InquiryRecord> {
-  if (!result.jobId) return result;
-  const { data: event } = await db.from("ph_request_delivery_outbox")
-    .select("payload").eq("event_id", String(result.jobId)).maybeSingle();
+  const jobId = String(result.jobId || result.job_id || "").trim();
+  if (!jobId || !actorUsername) return result;
+  const { data: event, error } = await db.from("ph_request_delivery_outbox")
+    .select("payload").eq("event_id", jobId).eq("event_type", "reclass_inquiry").maybeSingle();
+  if (error || !event) return result;
   const inquiry = jsonObject(jsonObject(event?.payload).reclassPayload);
   if (normalizeUsername(String(jsonObject(inquiry.actor).username || "")) !== actorUsername) return result;
   const receipt = jsonObject(inquiry.protectedDelivery);
+  if (!Array.isArray(receipt.liveEdits)) return result;
   for (const field of ["liveEdits", "inventoryRevision", "liveEditScope", "inventoryFields", "v7Scope"]) {
     if (receipt[field] !== undefined) result[field] = receipt[field];
   }

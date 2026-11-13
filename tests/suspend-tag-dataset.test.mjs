@@ -1,3 +1,4 @@
+import { assertReclassReceiptRecovery, assertPriorityReceiptSurvivesDeliveryFailure } from './helpers/suspend-reclass-receipt-contract.mjs';
 import { suspendZeroQuantityContract } from './helpers/suspend-quantity-chip-contract.mjs';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 // @test-group: suspend
@@ -9,6 +10,7 @@ import ts from 'typescript';
 import { getDockOrderBusinessKey, isDockSuspendDcRequestSource } from '../src/core/dock-order-domain.js';
 
 const appApi = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+const datasetQuery = readFileSync(new URL('../supabase/functions/app-api/dataset-read-query.ts', import.meta.url), 'utf8');
 const appAuth = readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
 const suspendRead = readFileSync(new URL('../supabase/functions/app-api/suspend-tag-read.ts', import.meta.url), 'utf8');
 const queueInventory = readFileSync(new URL('../assets/queue-inventory-hydration.js', import.meta.url), 'utf8');
@@ -396,27 +398,9 @@ test('confirmed priority report uses frozen quantity but retains quantity-action
   assert.throws(()=>ctx.buildProtectedLiveEditReportRows_({},rows,[overlay],live,{}),/RECLASS_CONFLICT/);
 });
 
-test('Reclass recovery reads committed receipts and restores an unloaded source by identity', () => {
-  const html=readComposedAppSource();
-  assert.match(html,/const receipt = await driveReclassApi\('status'/);
-  const reopen=html.match(/        async function reopenReclassDeliveryJob\([^]*?^        }/m)[0];
-  assert.match(reopen,/requestInventoryRead\('master_page'/);
-  assert.doesNotMatch(reopen,/The source row is not loaded/);
-  assert.match(html,/Dismiss inquiry notification/);
-  assert.match(appApi,/result\.jobId[\s\S]*receipt\[field\]/);
-});
+test('Reclass recovery reads committed receipts and restores an unloaded source by identity', assertReclassReceiptRecovery);
 
-test('a committed priority receipt survives failed email status without rollback', async () => {
-  const html=readComposedAppSource();let rollback=0,applied=0;
-  const receipt={ok:false,status:'conflict',liveEdits:[{unique_id:'006489.021.1/G.24.000/27.F1',priority:'1'}]};
-  const ctx=vm.createContext({getInventoryStatusSync:()=>({begin:()=> 'pending',confirm:async()=>{},rollback:async()=>{rollback++;},revalidate:()=>{}}),
-    buildInventoryStatusPatches:()=>[{unique_id:'row',priority:'1'}],getArgosReclassLiveEditIdentityKey:()=> 'actor',getSupabaseReadIdentityScope:()=> 'actor',
-    inventoryStatusPendingSaves:new Map(),clearTimeout,document:{getElementById:()=>null},applyConfirmedArgosReclassLiveEdits:()=>{applied++;},
-    window:{GncDatabase:{confirmedReclassLiveEditsFromResult:()=>({liveEdits:[]})}}});
-  vm.runInContext(html.match(/        async function runInventoryStatusMutation\([^]*?^        }/m)[0],ctx);
-  const result=await ctx.runInventoryStatusMutation({idempotencyToken:'same-command'},async()=>receipt);
-  assert.equal(result,receipt);assert.equal(applied,1);assert.equal(rollback,0);assert.equal(ctx.inventoryStatusPendingSaves.size,0);
-});
+test('a committed priority receipt survives failed email status without rollback', assertPriorityReceiptSurvivesDeliveryFailure);
 
 test('candidate handler forwards only exact inventory IDs and the verified actor to the atomic RPC',async()=>{
  const src=readFileSync(new URL('../supabase/functions/_shared/suspend-tag.ts',import.meta.url),'utf8');
@@ -490,7 +474,7 @@ test('Suspend projections include all four deployed candidate columns in the gen
   const fields=['unique_id','suspend_candidate_group','suspend_candidate_state','suspend_order_quantity','suspend_origin_uid'];
   assert.doesNotThrow(()=>module.exports.validateQuery('ph_soc_master','select='+fields.join(',')));
   assert.throws(()=>module.exports.validateQuery('ph_soc_master','select=unreviewed_secret_column'));
-  const ctx=vm.createContext({}); vm.runInContext(ts.transpileModule(extractFunction(appApi,'normalizeDatasetReadAlias')+extractFunction(appApi,'validateDatasetReadParams'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,ctx);
+  const ctx=vm.createContext({}); vm.runInContext(ts.transpileModule(extractFunction(appApi,'normalizeDatasetReadAlias')+extractFunction(datasetQuery,'validateDatasetReadParams'),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,ctx);
   for(const [alias,canonical] of Object.entries({ph_master_inventory:'master_inventory',ph_soc_master:'soc',suspend:'suspend_tag',suspend_tag:'suspend_tag',ph_active_request:'active_request',ph_reserves:'reserves',ph_cav_import:'cav',docks:'dock_team',location_move:'location_moves',location_moves:'location_moves',recount:'sales_office',shear_list:'shear',eval_work:'eval_work',bunch_notes:'bunch_notes',count_review:'count_review',access_control:'access_control',managers_dashboard:'managers_dashboard',requests:'request_queue',request_queue:'request_queue',request_history:'request_history'})) assert.equal(ctx.normalizeDatasetReadAlias(alias),canonical);
   ctx.DATASET_READ_PAGE_MAX=500;
   ctx.DATASET_READ_RETAIN_ONLY_ALIASES=new Set(['master_inventory','access_control','managers_dashboard']);

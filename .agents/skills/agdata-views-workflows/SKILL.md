@@ -48,6 +48,8 @@ static wording.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Validate a final Suspend pull receipt before publishing it to Queue and Docks. Use the server-confirmed order group to clear candidates and refresh both badges. An unrelated order that shares dock, drop, and item must stay visible (Invariant 650).
+
 - Suspend evaluator scope, filters and badges resolve the exact Assigned Items itemcode, including a trailing-dot alias. Never substitute a raw ERP route or a different container's owner for a missing or cleared assignment (Invariant 593).
 
 - Do not remove a mounted report selector or filter workflow while leaving only

@@ -6767,23 +6767,17 @@ test('Invariant 634: exact-row drafts publish before photo completion and surviv
 test('Invariant 635: photo, evaluation and completion entrypoints require verified table grants and exact ownership without named-user exceptions',assertTableDrivenRowAuthorization);
 test('Invariant 636: a populated Que dropdown passes Watchdog and review reads preserve open incidents under the same native session',reviewedQueueWatchdogContract);
 test('Invariant 637: Season Y moves bind preview and receipt to the physical source sales year', async () => (await import('./helpers/reclass-season-y-receipt.mjs')).reclassSeasonYReceiptContract());
-
 import {assertErpPublicationRecovery} from './helpers/erp-publication-recovery-contract.mjs';
-
 test('Invariant 638: unchanged ERP publication resumes its exact saved stage once after ninety seconds and requires a durable receipt', assertErpPublicationRecovery);
-
 import {assertErpPublicationCheckpoint} from './helpers/erp-publication-checkpoint-contract.mjs';
 test('Invariant 639: sealed ERP publication drops parser-only state while parsing and durable receipt identity remain intact', assertErpPublicationCheckpoint);
-
 import {assertErpTypedPreparationProgress} from './helpers/erp-typed-progress-contract.mjs';
 test('Invariant 640: bounded typed ERP preparation advances its durable stall clock without publishing or archiving before a receipt', assertErpTypedPreparationProgress);
-
 test('Invariant 641: operational ERP completion requires DRIVE, CAV, RESERVES, SOC and HL PO', async () => (await import('./helpers/erp-cron-release-contract.mjs')).assertErpStageSequence());
 test('Invariant 642: 250-row DRIVE preparation and its sealed digest require a later matching publication receipt', async () =>
   (await import('./helpers/erp-incremental-drive-preparation.mjs')).assertIncrementalDrivePublication());
 test('Invariant 643: bounded compiled DRIVE progress preserves the same fully typed stage without premature recovery', async () =>
   (await import('./helpers/erp-compiled-drive-work.mjs')).assertCompiledDrivePublicationClock());
-
 test('Invariant 644: the release gate accepts removal of planner maintenance and rejects changes to compiled DRIVE readiness witnesses', async () =>
   (await import('./helpers/erp-readiness-maintenance-contract.mjs')).assertIndependentDriveReadiness());
 test('Invariant 645: final certificate release rejects removal of input invalidation, stage locks, or either proof phase', async () =>
@@ -6796,3 +6790,8 @@ test('Invariant 648: six field photos transfer in order with bounded retries and
   (await import('./helpers/ordered-detail-photo-contract.mjs')).assertOrderedDetailPhotoUploads());
 test('Invariant 649: Request completion transports exact queued photo IDs and reports a missing registration receipt', async () =>
   (await import('./helpers/request-photo-intent-contract.mjs')).assertRequestPhotoIntentContract());
+
+test('Invariant 650: warm AV uses the active account and a final Suspend receipt clears only its exact order', async () => {
+  const {assertWarmAvAndFinalSuspendReceipt} = await import('../src/core/warm-av-suspend-receipt-fixture.mjs');
+  assertWarmAvAndFinalSuspendReceipt();
+});

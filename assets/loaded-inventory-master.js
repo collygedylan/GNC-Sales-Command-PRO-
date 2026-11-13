@@ -75,6 +75,7 @@ function publishLoadedMasterInventory(res, preparedMasterAtEntry) {
     if (preparedIndexes) installMasterInventoryIndexMaps(preparedIndexes);
     else rebuildMasterInventoryIndexes();
     rebindLoadedMasterDisplayReceipt(res, priorDisplayRows);
+    rememberWarmAvInventoryRows(fullInventory);
     const inheritanceCandidates = preparedIndexes ? prepared.inheritanceCandidates : null;
     hydrateNcrCurrentCropRowsFromSources({ remote: false, maxRemote: 12, candidates: inheritanceCandidates?.ncr });
     hydrateMovedSeasonCurrentRowsFromSources({ remote: false, maxRemote: 12, candidates: inheritanceCandidates?.moved });
@@ -109,6 +110,7 @@ function publishLoadedAvInventory(res, hasMaster, changedDatasetKeys) {
     const preparedAvOpen = rebuild && prepared?.avOpenRows;
     if (preparedAvOpen) {
         avOpenInventory = mergeLiveInventoryCardRows(preparedAvOpen);
+        rememberWarmAvInventoryRows(avOpenInventory);
         if (!changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
         return;
     }
@@ -119,5 +121,6 @@ function publishLoadedAvInventory(res, hasMaster, changedDatasetKeys) {
         item.DOM_ID = 'avo_' + (item.UNIQUE_ID || index);
         return buildSearchIndex(normalizeRowPhotoFields(item));
     });
+    rememberWarmAvInventoryRows(avOpenInventory);
     if (rebuild && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
 }

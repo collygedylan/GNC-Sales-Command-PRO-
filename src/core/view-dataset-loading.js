@@ -1,3 +1,22 @@
+const warmAvInventoryOwners = new WeakMap();
+
+export function rememberWarmAvInventoryRows(rows) {
+    if (rows.length && hasAuthenticatedOperationalReadIdentity()) {
+        warmAvInventoryOwners.set(rows, getSupabaseReadIdentityScope());
+    }
+}
+
+export function canRenderWarmAvInventory() {
+    if (activeAVTab !== 'open' || !canAccessView('av') || hasConfirmedCurrentAccountRevocation()) return false;
+    const owner = getSupabaseReadIdentityScope();
+    return [fullInventory, avOpenInventory].some(rows => rows.length && warmAvInventoryOwners.get(rows) === owner);
+}
+
+export function retainPendingRequestDisplayOnReadFailure(viewId) {
+    return viewId === 'request' && activeReqTab === 'pending' && canAccessView('request')
+        && hasAuthenticatedOperationalReadIdentity() && !hasConfirmedCurrentAccountRevocation();
+}
+
 export function getViewLoadingConfig(viewId) {
     const pagedSurface = getActiveManagerReportPageSurface(viewId);
     if (viewId === 'sales-inventory' || pagedSurface && useManagerReportPages(pagedSurface)) return { required:[], background:[], label:'Loading report rows...' };
@@ -132,4 +151,150 @@ function getLegacyWorkflowViewLoading(viewId) {
     if (viewId === 'grower') return { required: [{ key: 'master', mode: 'full' }], background: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }], label: 'Loading verified Grower inventory...' };
     if (viewId === 'pest-management') return { required: [{ key: 'growerScoutReports', mode: 'full' }, { key: 'growerScoutAssets', mode: 'full' }], background: [], label: 'Loading verified pest management...' };
     if (viewId === 'reports') return { required: [{ key: 'master', mode: 'full' }, { key: 'requests', mode: 'full' }, { key: 'requestHistory', mode: 'full' }, { key: 'salesCredits', mode: 'full' }, { key: 'reserves', mode: 'full' }, { key: 'soc', mode: 'full' }], background: [], label: 'Loading verified reports...' };
+}
+
+export function ensureViewDataForRender(viewId) {
+    const pagedSurface = getActiveManagerReportPageSurface(viewId);
+    if (viewId === 'sales-inventory' || pagedSurface && useManagerReportPages(pagedSurface)) return false;
+    // Eval Reports #2 owns its inventory/assignment load and keeps its
+    // last-good index. Generic Manager verification must not replace
+    // the report panel with the shared view error screen.
+    if (shouldLetManagerEvalReport2OwnLoadState(viewId)) return false;
+    const config = getViewLoadingConfig(viewId);
+    if (!config) return false;
+    return canUseProductionLiveSync() ? ensureProductionViewDataForRender(viewId) : ensureLegacyViewDataForRender(viewId, config);
+}
+
+function ensureProductionViewDataForRender(viewId) {
+    const context = getProductionLiveSyncContext();
+    if (!context.adapters.length) return false;
+    const optionalBunchView = viewId === 'bunch-note'
+        || viewId === 'request' && ['bunch-notes', 'bunch-count-review'].includes(String(activeReqTab || '').trim().toLowerCase());
+    if (optionalBunchView || viewId === 'docks') {
+        void getProductionLiveSyncCoordinator().check('visible-view').catch(() => false);
+        return false;
+    }
+    if (getCurrentVisibleViewId() !== viewId) return true;
+    if (viewId === 'av' && canRenderWarmAvInventory()) {
+        void getProductionLiveSyncCoordinator().check('visible-view').catch(() => false);
+        return false;
+    }
+    const key = productionVerifiedViewKey(context);
+    if (productionLiveSyncVerifiedView === key
+        || hasCurrentProductionReadStatus(productionLiveSyncCoordinator?.getStatus(), context)) return false;
+    // Navigation changes verification identity, not the ownership of
+    // this account's already-rendered snapshot. Retain its display
+    // before a loading state can replace it; revalidation still runs.
+    if (!hasProgressiveViewData(context)) getProductionLiveSyncCoordinator().retainDisplay();
+    const canDisplay = hasProgressiveViewData(context);
+    if (productionLiveSyncViewLoad?.key === key && productionLiveSyncViewLoad.failed) {
+        if (canDisplay) return false;
+        if (viewId === 'av') {
+            showAvReadUnavailableState(productionLiveSyncViewLoad.error || new Error(productionLiveSyncCoordinator.getStatus().message || 'Available inventory could not be verified.'), false, viewId);
+            return true;
+        }
+        showViewErrorState(viewId, productionLiveSyncCoordinator.getStatus().message || 'Current data could not be verified. Please retry.', true, productionLiveSyncViewLoad.error);
+        return true;
+    }
+    if (!canDisplay) showViewLoadingState(viewId, 'Loading data...', true);
+    if (productionLiveSyncViewLoad?.key !== key || !productionLiveSyncViewLoad.pending) startProductionViewRead(viewId, key, canDisplay);
+    return !canDisplay;
+}
+
+function startProductionViewRead(viewId, key, canDisplay) {
+    const load = { key, pending: true, failed: false };
+    productionLiveSyncViewLoad = load;
+    if (!canDisplay && (viewId === 'drive' || viewId === 'av')) {
+        const recoveryScope = window.AgMetricLifecycle.createScope({ lifetime: 'view', foreground: true });
+        recoveryScope.timeout(() => {
+            recoveryScope.dispose();
+            void recoverColdInventoryView(viewId, load);
+        }, 1000);
+    }
+    getProductionLiveSyncCoordinator().check('visible-view').then(() => {
+        const status = productionLiveSyncCoordinator.getStatus();
+        load.failed = productionLiveSyncVerifiedView !== key
+            && ['Needs attention', 'Importing', 'Offline'].includes(status.state);
+        if (load.failed && status.message) load.error = Object.assign(new Error(status.message), {
+            status: Number(status.status || 0), code: String(status.code || '').trim().toUpperCase()
+        });
+    }).catch((error) => { load.failed = true; load.error = error; }).finally(() => {
+        load.pending = false;
+        if (!load.failed || productionLiveSyncViewLoad !== load || !isViewVisible(viewId) || productionVerifiedViewKey() !== key) return;
+        if (viewId === 'drive' || viewId === 'av') void recoverColdInventoryView(viewId, load);
+        const currentHasDisplay = hasProgressiveViewData(getProductionLiveSyncContext());
+        if (load.failed && !currentHasDisplay) {
+            if (viewId === 'av' || viewId === 'drive') showAvReadUnavailableState(load.error || new Error(productionLiveSyncCoordinator.getStatus().message || 'Available inventory could not be verified.'), false, viewId);
+            else showViewErrorState(viewId, productionLiveSyncCoordinator.getStatus().message || 'Current data could not be verified. Please retry.', true, load.error);
+        } else if (load.failed && (viewId === 'av' || viewId === 'drive')) {
+            showAvReadUnavailableState(load.error || new Error(productionLiveSyncCoordinator.getStatus().message || 'Available inventory refresh failed.'), true, viewId);
+        }
+        // Successful publication is rendered once by onStatus.
+    });
+}
+
+function ensureLegacyViewDataForRender(viewId, config) {
+    if (viewId === 'av' && canRenderWarmAvInventory()) {
+        queueViewBackgroundDatasets([...config.required, ...config.background]);
+        return false;
+    }
+    const blockedByManualSync = hasActiveManualSync() && config.required.some((item) => isDatasetFrozenDuringManualSync(item.key, item.mode) && !isDatasetLoaded(item.key, item.mode));
+    if (blockedByManualSync) {
+        showViewLoadingState(viewId, 'Manual sync running...');
+        updateSyncDiagnostics('manual-sync');
+        return true;
+    }
+    const pending = config.required.filter((item) => !isDatasetLoaded(item.key, item.mode));
+    const blockingPending = pending.filter((item) => !canUseDatasetForImmediateRender(item));
+    if (!blockingPending.length) {
+        if (pending.length) loadLegacyViewDataInBackground(viewId, pending);
+        queueViewBackgroundDatasets(config.background || []);
+        return false;
+    }
+    startLegacyBlockingViewRead(viewId, config, blockingPending);
+    return true;
+}
+
+function startLegacyBlockingViewRead(viewId, config, blockingPending) {
+    showViewLoadingState(viewId, config.label);
+    const viewDataStartedAt = beginInternalPerfMeasure();
+    loadDatasetTargetsWithLimit(blockingPending).then(() => {
+        resetViewLoadRetry(viewId);
+        reportPerformanceHealthEvent('view_data_ready', 'rendering', getAdaptivePerfElapsedMs(viewDataStartedAt), {
+            reason: viewId,
+            affected_count: blockingPending.length
+        });
+        queueViewBackgroundDatasets(config.background || []);
+        markViewDirty(viewId);
+        if (isViewVisible(viewId)) {
+            prepareLatestViewRender(viewId);
+            renderViewContent(viewId, false, true);
+        }
+    }).catch(error => handleLegacyViewReadFailure(viewId, error));
+}
+
+function handleLegacyViewReadFailure(viewId, error) {
+    if (!isViewVisible(viewId)) return;
+    if (viewId === 'av') showAvReadUnavailableState(error, hasProgressiveViewData());
+    else showViewErrorState(viewId, error?.message || 'Could not load data.', false, error);
+    scheduleViewLoadRetry(viewId, error);
+}
+
+function loadLegacyViewDataInBackground(viewId, pending) {
+    const concurrency = getDatasetTargetLoadConcurrency(pending, { allowWhileInteractive: true });
+    loadDatasetTargetsWithLimit(pending, {
+        preserveRequestedMode: true,
+        allowWhileInteractive: true,
+        retryReason: 'view-immediate-background'
+    }, concurrency).then(() => {
+        markViewDirty(viewId);
+        if (isViewVisible(viewId)) queueInteractiveViewRender(viewId, false, true, 0, 120);
+    }).catch(() => {});
+}
+
+function queueViewBackgroundDatasets(targets) {
+    const delay = getViewBackgroundLoadDelayMs();
+    for (const {key, mode} of targets) {
+        if (!isDatasetLoaded(key, mode) && !isDatasetFrozenDuringManualSync(key, mode)) queueDatasetLoad(key, mode, delay);
+    }
 }

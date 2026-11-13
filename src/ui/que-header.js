@@ -86,7 +86,9 @@ export function buildPendingRequestRenderPlan(items) {
     pendingItems.sort((a, b) => compareLocationCodeValues(a.LOCATIONCODE, b.LOCATIONCODE)
         || naturalCompare(a.LOTCODE, b.LOTCODE)
         || naturalCompare(getItemUniqueId(a), getItemUniqueId(b)));
-    return buildRequestPagedRenderPlan('request:pending', crumbText, pendingItems);
+    const plan = buildRequestPagedRenderPlan('request:pending', crumbText, pendingItems);
+    refreshVisiblePendingRequestDelivery(plan.rows);
+    return plan;
 }
 
 const queHeaderSearchTerms = new Map();

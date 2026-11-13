@@ -178,6 +178,7 @@ function mountPrimaryNavigation(context) {
     if (targetView) {
         showOnlyPrimaryView(nextViewId);
         updateFooterNavState(nextViewId);
+        if (nextViewId === 'docks') mountDocksFilterDisclosure(targetView);
     }
     if (window.__gncOpsPilot && typeof window.__gncOpsPilot.setActiveView === 'function') {
         window.__gncOpsPilot.setActiveView(nextViewId);
@@ -202,6 +203,17 @@ function mountPrimaryNavigation(context) {
     lastViewSwitchAt = Date.now();
     if (nextViewId !== 'home') ensureNativeBackGuard();
     Object.assign(context, { targetView, nextState });
+}
+
+function mountDocksFilterDisclosure(view) {
+    const controls = view.querySelector('.freeze-panel #docks-filter-controls');
+    if (!controls || controls.parentElement.matches('.docks-filter-disclosure')) return;
+    const disclosure = document.createElement('details');
+    disclosure.className = 'docks-filter-disclosure';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Filters';
+    controls.before(disclosure);
+    disclosure.append(summary, controls);
 }
 
 function reusePrimaryNavigation(context) {
@@ -323,4 +335,31 @@ function activatePrimaryNavigation(context) {
     recordInternalPerfDuration('viewSwitchDurations', viewSwitchStartedAt, `${currentViewId || 'none'}->${nextViewId}`);
     return false;
 
+}
+
+
+function shouldRenderViewSynchronouslyOnSwitch(viewId = '', state = null) {
+    const targetViewId = String(viewId || '').trim();
+    if (!targetViewId) return false;
+    if (targetViewId === 'av' && canRenderWarmAvInventory()) return true;
+    if (targetViewId === 'request') {
+        const requestState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
+        return !requestState.initialized || !!requestState.dirty;
+    }
+    if (targetViewId === 'managers' && activeHomeTab === 'dashboard') {
+        const managerState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
+        if (managerState.initialized && !managerState.dirty) return false;
+        const managerConfig = getViewLoadingConfig(targetViewId);
+        // The module picker is a small navigation shell with no required
+        // dataset cohort. Render it in the click turn so touch devices
+        // don't pay an extra timer and animation-frame hop.
+        return !(managerConfig && Array.isArray(managerConfig.required) && managerConfig.required.length);
+    }
+    if (isTouchConstrainedDevice() || isIOSDevice()) return false;
+    const lightViewIds = ['home', 'sales', 'qc', 'communication', 'production', 'sales-inventory', 'disease-pest', 'office', 'po-management'];
+    if (!lightViewIds.includes(targetViewId)) return false;
+    const safeState = (state && typeof state === 'object') ? state : ensureViewRenderState(targetViewId);
+    if (safeState.initialized && !safeState.dirty) return false;
+    const config = getViewLoadingConfig(targetViewId);
+    return !(config && Array.isArray(config.required) && config.required.length);
 }

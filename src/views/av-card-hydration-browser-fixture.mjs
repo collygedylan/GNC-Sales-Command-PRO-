@@ -17,10 +17,11 @@ function physicalFixtureRow(row, schema) {
 }
 
 async function seedAvSearch(page, rows) {
-    await page.evaluate(rows => {
-        switchView('av');
+    const result = await page.evaluate(rows => {
         fullInventory = rows;
         avOpenInventory = rows;
+        rememberWarmAvInventoryRows(fullInventory);
+        rememberWarmAvInventoryRows(avOpenInventory);
         rebuildMasterInventoryIndexes();
         appSeasonSettingsCache = { seasonCode:'F1', salesYear:27 };
         activeAVTab = 'open';
@@ -30,8 +31,16 @@ async function seedAvSearch(page, rows) {
         selectedAvSeasons.add('F1');
         document.getElementById('av-search').value = 'Dragon Baby';
         invalidateResolvedViewStateCaches();
-        renderAV();
+        markViewDirty('av');
+        const startingView = getCurrentVisibleViewId();
+        switchView('av', { force:true });
+        const host = document.getElementById('av-content');
+        return { startingView, warm:canRenderWarmAvInventory(), ready:!!host.querySelector('.app-av-catalog-card'),
+            loading:!!host.querySelector('.skeleton') || /Loading (data|latest AV|AV inventory)/i.test(host.innerText),
+            view:getCurrentVisibleViewId() };
     }, rows);
+    assert.notEqual(result.startingView, 'av');
+    assert.deepEqual({ ...result, startingView:undefined }, { startingView:undefined, warm:true, ready:true, loading:false, view:'av' });
 }
 
 async function verifyAvSearch(page) {

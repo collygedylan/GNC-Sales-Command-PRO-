@@ -1,4 +1,6 @@
+import { datasetReadFilterParts, datasetReadOrLiteral, datasetReadOrCondition, applyReserveRepQuery, isRequestRemovalTimestamp, validateDatasetReadParams } from "./dataset-read-query.ts";
 import { executeReclassInquiryAction } from "./reclass-inquiry-handler.ts";
+import { queueRequestOutboxReconciliation, readPendingRequestDeliveryStatus } from "./request-queue-delivery.ts";
 import { startBrowserErpSyncCommand, withErpStageCheckRecording, createErpStageCheckRecorder, deferredErpRetry } from "../_shared/erp-browser-start.ts";
 import { recoverErpCloudSliceFailure } from "../../../src/services/erp-cloud-slice-recovery.ts";
 import { cloudErpCoreCheckpoint, createCloudErpStatusWriter, createErpDriveScanFetcher, guardErpScanCheckpoint, mintCloudDriveAccessToken } from "../_shared/erp-scan-recovery.mjs";
@@ -41,7 +43,7 @@ import { validateNurseryPdfInput, assertNurseryPdfApprovals, renderNurseryPdf } 
 import type { NurseryPdfDatabase } from "../_shared/nursery-bunch-pdf.ts";
 import { isOperationalErpSyncComplete, ERP_SYNC_STAGES, runErpSyncWorkerStep, runProductionScheduleSyncStep, validateErpSyncCommand, isLegacyRunScriptAction } from "../_shared/erp-sync.mjs";
 import { SECONDARY_ERP_STAGES, runSecondaryErpSyncStep } from "../_shared/erp-secondary-sync.mjs";
-import { suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
+import { mergeSuspendWorkflowRows, suspendSourceFreshnessFromRows, suspendSourceFreshnessQuery, suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppRateLimitDigest, createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, isSuperAdminRole, normalizeRole, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
@@ -978,7 +980,6 @@ const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permiss
     filterFields: new Set(["event_key", "completed_by_username", "completed_at", "source_kind", "source_table", "source_unique_id"]), orderFields: new Set(["event_key", "completed_at", "completed_by_username"]),
   },
 };
-const DATASET_READ_FILTER_OPERATORS = new Set(["eq", "neq", "in", "ilike", "is", "gte", "lte", "gt", "lt", "not.is", "not.ilike"]);
 const DATASET_READ_PAGE_MAX = 500;
 const DATASET_READ_RETAIN_ONLY_ALIASES = new Set(["master_inventory", "access_control", "managers_dashboard"]);
 const PRODUCTIVITY_HISTORY_SOURCE_KINDS = new Set(["season_sales_note", "location_sales_note", "need_av", "flyer", "request", "sales_office_order", "end_cap", "task"]);
@@ -999,74 +1000,6 @@ function normalizeDatasetReadAlias(value: unknown): string {
     managers_dashboard: "managers_dashboard",
   };
   return aliases[key] || key;
-}
-
-function validateDatasetReadParams(payload: Record<string, unknown>) {
-  if (Object.keys(payload).some((key) => !["action", "dataset", "params"].includes(key))) throw new Error("DATASET_READ_PAYLOAD_INVALID");
-  const params = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
-    ? payload.params as Record<string, unknown> : {};
-  if (payload.params !== undefined && (!payload.params || typeof payload.params !== "object" || Array.isArray(payload.params))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
-  if (Object.keys(params).some((key) => !["limit", "offset", "select", "projection", "filters", "anyOf", "order", "ifRevision"].includes(key))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
-  const requestedLimitValue = Number(params.limit ?? 250), offsetValue = Number(params.offset ?? 0);
-  const requestedLimit = Number.isInteger(requestedLimitValue) && requestedLimitValue > 0 ? requestedLimitValue : 250;
-  const offset = Number.isInteger(offsetValue) && offsetValue >= 0 && offsetValue <= 2_000_000 ? offsetValue : 0;
-  const limit = Math.min(DATASET_READ_PAGE_MAX, requestedLimit);
-  // A legacy select may narrow the fixed projection, never inject SQL fields.
-  const requestedSelection = params.select == null ? "*" : String(params.select).trim() || "*";
-  const selection = ["*", "unique_id"].includes(requestedSelection) ? requestedSelection : "*";
-  const projection = String(params.projection || (selection === "unique_id" ? "ids" : "default"));
-  if (!["default", "signature", "ids"].includes(projection)) throw new Error("DATASET_READ_PROJECTION_INVALID");
-  const rawFilters = params.filters ?? [];
-  const rawAnyOf = params.anyOf ?? [];
-  const rawOrder = params.order ?? [];
-  if (!Array.isArray(rawFilters) || rawFilters.length > 30 || !Array.isArray(rawAnyOf) || rawAnyOf.length > 30 || !Array.isArray(rawOrder) || rawOrder.length > 4) throw new Error("DATASET_READ_FILTER_INVALID");
-  const ifRevision = params.ifRevision === undefined ? '' : String(params.ifRevision);
-  if (ifRevision && !/^\d+$/.test(ifRevision)) throw new Error("DATASET_READ_REVISION_INVALID");
-  return { limit, offset, projection, ifRevision, filters: rawFilters as unknown[], anyOf: rawAnyOf as unknown[], order: rawOrder as unknown[] };
-}
-
-function datasetReadScalar(value: unknown) {
-  if (value === null || typeof value === "boolean") return value;
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.length <= 500 && ![...value].some((character) => character.charCodeAt(0) < 32)) return value;
-  throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
-}
-
-function datasetReadFilterParts(source: typeof DATASET_READ_SOURCES[string], filters: unknown[]) {
-  return filters.map((raw) => {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("DATASET_READ_FILTER_INVALID");
-    const filter = raw as Record<string, unknown>;
-    if (Object.keys(filter).some((key) => !["field", "op", "value"].includes(key))) throw new Error("DATASET_READ_FILTER_INVALID");
-    const field = String(filter.field || ""), op = String(filter.op || "");
-    if (!source.filterFields.has(field) || !DATASET_READ_FILTER_OPERATORS.has(op) || !Object.prototype.hasOwnProperty.call(filter, "value")) throw new Error("DATASET_READ_FILTER_INVALID");
-    let value: unknown = filter.value;
-    if (op === "in") {
-      if (!Array.isArray(value) || value.length < 1 || value.length > 100) throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
-      value = value.map(datasetReadScalar);
-    } else {
-      value = datasetReadScalar(value);
-      if ((op === "ilike" || op === "not.ilike") && typeof value !== "string") throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
-      if ((op === "is" || op === "not.is") && value !== null && typeof value !== "boolean") throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
-    }
-    if (ESCAPED_DISPLAY_TEXT_FIELDS.has(escapedDisplayTextFieldKey(field))) {
-      value = Array.isArray(value) ? value.map(normalizeEscapedDisplayText) : normalizeEscapedDisplayText(value);
-    }
-    return { field, op, value };
-  });
-}
-
-function datasetReadOrLiteral(value: unknown) {
-  if (value === null) return "null";
-  const text = String(value);
-  return /[,()."\\]/.test(text) ? `"${text.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"` : text;
-}
-
-function datasetReadOrCondition(filter: { field: string; op: string; value: unknown }) {
-  const op = filter.op === "not.is" || filter.op === "not.ilike" ? filter.op : filter.op;
-  const value = Array.isArray(filter.value)
-    ? `(${filter.value.map(datasetReadOrLiteral).join(",")})`
-    : datasetReadOrLiteral(filter.value);
-  return `${filter.field}.${op}.${value}`;
 }
 
 function restrictedRequestIdentityOrCondition(identity: string) {
@@ -1253,31 +1186,11 @@ async function handleDatasetRead(
   const role = String(session.role || "");
   const dataset = normalizeDatasetReadAlias(payload.dataset);
   if (["location_moves", "eval_work", "bunch_notes", "count_review", "request_history"].includes(dataset)) {
-    let params: ReturnType<typeof validateDatasetReadParams>;
-    try { params = validateDatasetReadParams(payload); }
-    catch { return retainedReadResponse("DATASET_READ_PARAMETERS_INVALID", { dataset }); }
-    // Delegate to the existing actor-scoped read. No service-role table alias is introduced.
-    let response: Response;
-    if (dataset === "location_moves") response = await handleLocationWorkAction(session, { operation:"list", status:"active" });
-    else if (dataset === "eval_work") response = await handleEvalWorkAction(session, { operation:"list" }, canonicalAccess);
-    else if (dataset === "request_history") response = await handleSalesWorkflow({ session, payload:{ action:"request_history", operation:"search", payload:{ offset:params.offset, limit:params.limit } }, supabase, resolveActiveSessionProfile, headers:corsHeaders });
-    else {
-      const rpc = supabase.rpc.bind(supabase) as unknown as BunchNoteRpc;
-      const result = await rpc("bunch_note_workflow_command_v1", { p_actor_id:actor.id, p_operation:dataset === "count_review" ? "list_discrepancies" : "queue", p_payload:{ filter:"mine", offset:params.offset, limit:Math.min(params.limit, 100) } });
-      if (result.error) return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset });
-      response = jsonResponse({ ok:true, data:result.data });
-    }
-    if (!response.ok) return [401, 403].includes(response.status) ? response : retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset });
-    const body = jsonObject(await response.json()), data = body.data;
-    const object = data && !Array.isArray(data) && typeof data === "object" ? data : {};
-    const rows = Array.isArray(data) ? data : Array.isArray(object.rows) ? object.rows : Array.isArray(object.jobs) ? object.jobs : Array.isArray(object.cards) ? object.cards : Array.isArray(object.reviews) ? object.reviews : [];
-    const total = Number(object.total ?? rows.length);
-    const page = ["request_history", "bunch_notes", "count_review"].includes(dataset) ? rows : rows.slice(params.offset, params.offset + params.limit);
-    return jsonResponse({ ok:true, data:{ rows:page, total, offset:params.offset, limit:params.limit, hasMore:params.offset + page.length < total } });
+    return await readScopedDataset(session, payload, canonicalAccess, actor, dataset);
   }
   const source = DATASET_READ_SOURCES[dataset];
   if (!source && DATASET_READ_RETAIN_ONLY_ALIASES.has(dataset)) {
-    const params = validateDatasetReadParams(payload);
+    const params = validateDatasetReadParams(payload, DATASET_READ_PAGE_MAX);
     return jsonResponse({ ok: true, data: { dataset, rows: [], total: null, offset: params.offset, limit: params.limit, hasMore: false, up_to_date: true, retained: true } });
   }
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
@@ -1288,191 +1201,269 @@ async function handleDatasetRead(
     return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
   }
   let parsed: ReturnType<typeof validateDatasetReadParams>;
-  try { parsed = validateDatasetReadParams(payload); }
+  try { parsed = validateDatasetReadParams(payload, DATASET_READ_PAGE_MAX); }
   catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
 
-  if (["request_queue", "active_request"].includes(dataset) && parsed.offset === 0) {
-    try {
-      const reconciliationTask = Promise.resolve(supabase.rpc("reconcile_active_requests_from_outbox_v1"))
-        .then((reconciliation) => {
-          if (reconciliation.error) console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", reconciliation.error.code || reconciliation.error.message);
-        })
-        .catch((error) => console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", error instanceof Error ? error.message : String(error)));
-      const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil: (task: Promise<void>) => void } }).EdgeRuntime;
-      if (runtime) runtime.waitUntil(reconciliationTask);
-    } catch (error) {
-      console.warn("REQUEST_OUTBOX_RECONCILIATION_DEFERRED", error instanceof Error ? error.message : String(error));
-    }
+  const requestDataset = ["request_queue", "active_request"].includes(dataset);
+  const deliveryOnly = requestDataset && payload.requestDeliveryStatus === true;
+  if (payload.requestDeliveryStatus !== undefined && !deliveryOnly) {
+    return errorResponse("Invalid Request delivery read.", 400, { code: "DATASET_READ_PARAMETERS_INVALID" });
   }
 
   if (parsed.projection === "signature" && !source.signatures) return errorResponse("This dataset has no signature projection.", 400, { code: "DATASET_READ_PROJECTION_INVALID" });
-  const fields = parsed.projection === "ids" ? source.key : parsed.projection === "signature" ? source.signatures! : source.fields;
-  try {
-    const query = new URLSearchParams();
-    query.set("select", fields);
-    if (dataset === "app_user_directory") query.set("disabled_at", "is.null");
-    if (["request_queue", "active_request"].includes(dataset)) query.set("date_completed", "is.null");
-    const filters = datasetReadFilterParts(source, parsed.filters);
-    for (const filter of filters) {
-      const value = Array.isArray(filter.value) ? `(${filter.value.map(datasetReadOrLiteral).join(",")})` : datasetReadOrLiteral(filter.value);
-      query.append(filter.field, `${filter.op}.${value}`);
-    }
-    // The invoker view filters active physical Suspend lines before counting and paging.
-    const anyOf = datasetReadFilterParts(source, parsed.anyOf);
-    if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
-    const policyUsername = String(actor.username || "").trim().toLowerCase();
-    const legacyRequestScope = ["request_queue", "active_request"].includes(dataset)
-      && ["ben_brown", "chance_alldredge"].includes(policyUsername);
-    const requestMatrix = legacyRequestScope ? await resolveUserAccessMatrix(supabase, actor.username) : null;
-    // The explicit capability replaces legacy rep-only display scoping. Mutation gates stay unchanged.
-    const restrictedRequestIdentity = legacyRequestScope
-      && !["Y", "N"].includes(String(requestMatrix?.view_all_requests || "")) ? policyUsername : "";
-    const requestScopeOr = restrictedRequestIdentity ? restrictedRequestIdentityOrCondition(restrictedRequestIdentity) : "";
+  const fields = deliveryOnly ? "unique_id,date_completed,req_status,req_archived"
+    : parsed.projection === "ids" ? source.key : parsed.projection === "signature" ? source.signatures! : source.fields;
+  const context = { session, payload, request, canonicalAccess, actor, role, username, dataset, source, parsed, requestDataset, deliveryOnly, fields, revisionRetry };
+  try { return await readDatasetPage(context); }
+  catch (error) { return await handleDatasetPageFailure(context, error); }
+}
 
-    // Rep access to reserve rows is always scoped to the active profile; a
-    // client filter can narrow this set but cannot remove the server scope.
-    const access = getRoleAccessState(role);
-    if (dataset === "reserves" && access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username)) {
-      const patterns = new Set<string>();
-      for (const value of [actor.username, actor.display_name]) {
-        const parts = String(value || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-        if (parts.length < 2) continue;
-        patterns.add(`${parts[0]}*${parts.at(-1)}`);
-        patterns.add(`${parts.at(-1)}*${parts[0]}`);
-      }
-      if (!patterns.size) return errorResponse("Your sales representative profile is incomplete.", 403, { code: "DATASET_READ_REP_IDENTITY_REQUIRED" });
-      const repScope = [...patterns].map((pattern) => `salesrepname.ilike.${datasetReadOrLiteral(pattern)}`).join(",");
-      const anyOfScope = anyOf.length ? `or(${anyOf.map(datasetReadOrCondition).join(",")})` : "";
-      query.set("or", anyOfScope ? `(and(or(${repScope}),${anyOfScope}))` : `(${repScope})`);
-    } else if (requestScopeOr && anyOf.length) {
-      query.set("or", `(and(or(${requestScopeOr}),or(${anyOf.map(datasetReadOrCondition).join(",")})))`);
-    } else if (requestScopeOr) {
-      query.set("or", `(${requestScopeOr})`);
-    } else if (anyOf.length) {
-      query.set("or", `(${anyOf.map(datasetReadOrCondition).join(",")})`);
-    }
+type DatasetReadContext = {
+  session: NonNullable<Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>>;
+  payload: Record<string, unknown>;
+  request?: Request;
+  canonicalAccess: CanonicalUserAccess | null;
+  actor: Record<string, unknown>;
+  role: string;
+  username: string;
+  dataset: string;
+  source: typeof DATASET_READ_SOURCES[string];
+  parsed: ReturnType<typeof validateDatasetReadParams>;
+  requestDataset: boolean;
+  deliveryOnly: boolean;
+  fields: string;
+  revisionRetry: boolean;
+};
 
-    for (const raw of parsed.order) {
-      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("DATASET_READ_ORDER_INVALID");
-      const order = raw as Record<string, unknown>;
-      if (Object.keys(order).some((key) => !["field", "ascending"].includes(key)) || typeof order.ascending !== "boolean") throw new Error("DATASET_READ_ORDER_INVALID");
-      const field = String(order.field || "");
-      if (!source.orderFields.has(field)) throw new Error("DATASET_READ_ORDER_INVALID");
-      query.append("order", `${field}.${order.ascending ? "asc" : "desc"}`);
+async function readScopedDataset(session: DatasetReadContext["session"], payload: DatasetReadContext["payload"],
+  canonicalAccess: DatasetReadContext["canonicalAccess"], actor: DatasetReadContext["actor"], dataset: string) {
+  let params: ReturnType<typeof validateDatasetReadParams>;
+  try { params = validateDatasetReadParams(payload, DATASET_READ_PAGE_MAX); }
+  catch { return retainedReadResponse("DATASET_READ_PARAMETERS_INVALID", { dataset }); }
+  // Delegate to the existing actor-scoped read. No service-role table alias is introduced.
+  const response = await fetchScopedDataset(session, canonicalAccess, actor, dataset, params);
+  if (!response.ok) return [401, 403].includes(response.status) ? response : retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset });
+  const body = jsonObject(await response.json()), data = body.data;
+  const object = jsonObject(data);
+  const rows = [data, object.rows, object.jobs, object.cards, object.reviews].find(Array.isArray) || [];
+  const total = Number(object.total ?? rows.length);
+  const page = ["request_history", "bunch_notes", "count_review"].includes(dataset) ? rows : rows.slice(params.offset, params.offset + params.limit);
+  return jsonResponse({ ok:true, data:{ rows:page, total, offset:params.offset, limit:params.limit, hasMore:params.offset + page.length < total } });
+}
+
+async function fetchScopedDataset(session: DatasetReadContext["session"], canonicalAccess: DatasetReadContext["canonicalAccess"],
+  actor: DatasetReadContext["actor"], dataset: string, {offset, limit}: DatasetReadContext["parsed"]) {
+  if (dataset === "location_moves") return await handleLocationWorkAction(session, { operation:"list", status:"active" });
+  if (dataset === "eval_work") return await handleEvalWorkAction(session, { operation:"list" }, canonicalAccess);
+  if (dataset === "request_history") {
+    return await handleSalesWorkflow({ session, payload:{ action:"request_history", operation:"search", payload:{ offset, limit } },
+      supabase, resolveActiveSessionProfile, headers:corsHeaders });
+  }
+  const rpc = supabase.rpc.bind(supabase) as unknown as BunchNoteRpc;
+  const operation = dataset === "count_review" ? "list_discrepancies" : "queue";
+  const result = await rpc("bunch_note_workflow_command_v1", { p_actor_id:actor.id, p_operation:operation,
+    p_payload:{ filter:"mine", offset, limit:Math.min(limit, 100) } });
+  if (result.error) return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset });
+  return jsonResponse({ ok:true, data:result.data });
+}
+
+async function buildDatasetPageQuery(context: DatasetReadContext) {
+  const { dataset, fields, source, parsed, actor, role, username, deliveryOnly } = context;
+  const query = new URLSearchParams();
+  query.set("select", fields);
+  if (dataset === "app_user_directory") query.set("disabled_at", "is.null");
+  if (["request_queue", "active_request"].includes(dataset)) query.set("date_completed", "is.null");
+  const filters = datasetReadFilterParts(source, parsed.filters, normalizeDatasetFilterDisplayValue);
+  for (const filter of filters) {
+    const value = Array.isArray(filter.value) ? `(${filter.value.map(datasetReadOrLiteral).join(",")})` : datasetReadOrLiteral(filter.value);
+    query.append(filter.field, `${filter.op}.${value}`);
+  }
+  // The invoker view filters active physical Suspend lines before counting and paging.
+  const anyOf = datasetReadFilterParts(source, parsed.anyOf, normalizeDatasetFilterDisplayValue);
+  if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
+  const policyUsername = String(actor.username || "").trim().toLowerCase();
+  const legacyRequestScope = ["request_queue", "active_request"].includes(dataset)
+    && ["ben_brown", "chance_alldredge"].includes(policyUsername);
+  const requestMatrix = legacyRequestScope ? await resolveUserAccessMatrix(supabase, actor.username) : null;
+  // The explicit capability replaces legacy rep-only display scoping. Mutation gates stay unchanged.
+  const restrictedRequestIdentity = legacyRequestScope
+    && !["Y", "N"].includes(String(requestMatrix?.view_all_requests || "")) ? policyUsername : "";
+  const requestScopeOr = restrictedRequestIdentity ? restrictedRequestIdentityOrCondition(restrictedRequestIdentity) : "";
+
+  const repScopeError = applyDatasetPageAccessScope(query, { dataset, role, username, actor }, requestScopeOr, anyOf);
+  if (repScopeError) return repScopeError;
+  for (const raw of parsed.order) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("DATASET_READ_ORDER_INVALID");
+    const order = raw as Record<string, unknown>;
+    if (Object.keys(order).some((key) => !["field", "ascending"].includes(key)) || typeof order.ascending !== "boolean") throw new Error("DATASET_READ_ORDER_INVALID");
+    const field = String(order.field || "");
+    if (!source.orderFields.has(field)) throw new Error("DATASET_READ_ORDER_INVALID");
+    query.append("order", `${field}.${order.ascending ? "asc" : "desc"}`);
+  }
+  if (!parsed.order.some((entry) => entry && typeof entry === "object" && (entry as Record<string, unknown>).field === source.key)) {
+    query.append("order", `${source.key}.asc`);
+  }
+  query.set("offset", String(parsed.offset));
+  query.set("limit", String(deliveryOnly ? Math.min(parsed.limit, 40) : parsed.limit));
+  return query;
+}
+
+function normalizeDatasetFilterDisplayValue(field: string, value: unknown) {
+  if (!ESCAPED_DISPLAY_TEXT_FIELDS.has(escapedDisplayTextFieldKey(field))) return value;
+  return Array.isArray(value) ? value.map(normalizeEscapedDisplayText) : normalizeEscapedDisplayText(value);
+}
+
+function applyDatasetPageAccessScope(query: URLSearchParams, context: Pick<DatasetReadContext,"dataset"|"role"|"username"|"actor">,
+  requestScopeOr: string, anyOf: ReturnType<typeof datasetReadFilterParts>) {
+  const { dataset, role, username, actor } = context;
+  // Rep access to reserve rows is always scoped to the active profile; a
+  // client filter can narrow this set but cannot remove the server scope.
+  const access = getRoleAccessState(role);
+  if (dataset === "reserves" && access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username)) {
+    return applyReserveRepQuery(query, actor, anyOf) ? null
+      : errorResponse("Your sales representative profile is incomplete.", 403, { code: "DATASET_READ_REP_IDENTITY_REQUIRED" });
+  }
+  if (requestScopeOr && anyOf.length) {
+    query.set("or", `(and(or(${requestScopeOr}),or(${anyOf.map(datasetReadOrCondition).join(",")})))`);
+    return null;
+  }
+  if (requestScopeOr) {
+    query.set("or", `(${requestScopeOr})`);
+    return null;
+  }
+  if (anyOf.length) query.set("or", `(${anyOf.map(datasetReadOrCondition).join(",")})`);
+  return null;
+}
+
+async function getDatasetPageRevisions({ dataset, source, parsed, deliveryOnly, requestDataset, role, username, actor }: DatasetReadContext) {
+  // Only physical, non-enriched snapshots use a single revision. Queue joins
+  // continue to use the coordinator's complete dependency vector.
+  let revision: string | null = null;
+  if (["soc", "cav", "reserves"].includes(dataset)) {
+    const metadata = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", source.table).maybeSingle();
+    if (!metadata.error && metadata.data?.state === "ready") revision = String(metadata.data.revision);
+    if (revision && parsed.ifRevision === revision) return { revision, inventoryRevision: null, unchanged: true };
+  }
+  const includeLocationTotals = !deliveryOnly && parsed.projection === "default" && requestDataset
+    && hasTableReadAccess(role, "ph_master_inventory", username);
+  let inventoryRevision: string | null = null;
+  if (includeLocationTotals) {
+    try { inventoryRevision = await captureReadyInventoryLocationRevision(String(actor.id || "")); }
+    catch (error) {
+      console.warn("REQUEST_INVENTORY_REVISION_RETAINED", error instanceof Error ? error.message : String(error));
     }
-    if (!parsed.order.some((entry) => entry && typeof entry === "object" && (entry as Record<string, unknown>).field === source.key)) {
-      query.append("order", `${source.key}.asc`);
-    }
-    query.set("offset", String(parsed.offset));
-    query.set("limit", String(parsed.limit));
-    // Only physical, non-enriched snapshots use a single revision. Queue joins
-    // continue to use the coordinator's complete dependency vector.
-    let revision: string | null = null;
-    if (["soc", "cav", "reserves"].includes(dataset)) {
-      const metadata = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", source.table).maybeSingle();
-      if (!metadata.error && metadata.data?.state === "ready") revision = String(metadata.data.revision);
-      if (revision && parsed.ifRevision === revision) return jsonResponse({ ok: true, data: { up_to_date: true, revision } });
-    }
-    const includeLocationTotals = parsed.projection === "default" && ["request_queue", "active_request"].includes(dataset)
-      && hasTableReadAccess(role, "ph_master_inventory", username);
-    let inventoryRevision: string | null = null;
-    if (includeLocationTotals) {
-      try { inventoryRevision = await captureReadyInventoryLocationRevision(String(actor.id || "")); }
-      catch (error) {
-        console.warn("REQUEST_INVENTORY_REVISION_RETAINED", error instanceof Error ? error.message : String(error));
-      }
-    }
-    const sourceFreshnessPromise = dataset === "suspend_tag" && parsed.offset === 0
-      ? databaseBridge.fetchTable(SUPABASE_URL, source.table, suspendSourceFreshnessQuery(), {
-        method: "GET", headers: buildRestHeaders("GET", source.table),
-      }, 30_000, "app-api.suspend-tag-source-freshness")
-      : Promise.resolve(null);
-    const [response, sourceFreshnessResponse] = await Promise.all([
-      databaseBridge.fetchTable(SUPABASE_URL, source.table, query.toString(), {
-        method: "GET", headers: { ...buildRestHeaders("GET", source.table), Prefer: "count=exact" },
-      }, 30_000, "app-api.dataset-read"),
-      sourceFreshnessPromise,
-    ]);
-    const responseData = await readResponsePayload(response);
-    if (!response.ok) {
-      return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset, offset: parsed.offset, limit: parsed.limit });
-    }
-    let sourceFreshness: ReturnType<typeof suspendSourceFreshnessFromRows> | undefined;
-    if (sourceFreshnessResponse) {
-      const freshnessData = await readResponsePayload(sourceFreshnessResponse);
-      if (sourceFreshnessResponse.ok) {
-        try { sourceFreshness = suspendSourceFreshnessFromRows(freshnessData); }
-        catch { sourceFreshness = undefined; }
-      }
-    }
-    const checkedData = jsonValue(responseData);
-    if (!Array.isArray(checkedData) || checkedData.some((row) => !row || typeof row !== "object" || Array.isArray(row))) return retainedReadResponse("DATASET_READ_INVALID_PAGE", { dataset, offset: parsed.offset, limit: parsed.limit });
-    const data: Array<Record<string, Json | undefined>> = checkedData.map((row) => jsonObject(row));
-    const range = response.headers.get("content-range") || "";
-    const total = Number(range.match(/\/(\d+)$/)?.[1]);
-    if (!Number.isInteger(total) || total < 0) return retainedReadResponse("DATASET_READ_INVALID_PAGE", { dataset, offset: parsed.offset, limit: parsed.limit });
-    if (dataset === "suspend_tag") {
-      const ids = data.map((row) => row.unique_id).filter((value): value is string => typeof value === "string");
-      try {
-        const state = await handleSuspendTag(supabase, actor, { operation: "rows", payload: { ids } });
-        const stateRows = suspendTagRowsFromResult(state);
-        const byId = new Map(stateRows.map((item) => { const row = jsonObject(item); return [String(row.unique_id || ""), row] as const; }));
-        for (const row of data) {
-          const current = typeof row.unique_id === "string" ? byId.get(row.unique_id) : undefined;
-          if (current) for (const [key, value] of Object.entries(current)) if (key.startsWith("suspend_tag_") || key in row) row[key] = value;
-        }
-      } catch { /* Direct ph_soc_master rows remain the fail-open read. */ }
-    }
-    let metricRows = data;
-    if (["suspend_tag", "request_queue", "active_request"].includes(dataset)) {
-      try { metricRows = await enrichSuspendTagMetricRows(data, String(actor.id || ""),dataset === "suspend_tag" ? "suspend_tag_metrics" : "request_inventory_metrics"); }
-      catch { metricRows = data; }
-    }
-    let deliveredInventoryRevision = inventoryRevision;
-    let enrichedRows: Json[] = metricRows;
-    if (inventoryRevision !== null) {
-      try {
-        enrichedRows = await enrichInventoryLocationRows(supabase, String(actor.id || ""), metricRows, inventoryRevision);
-      } catch (error) {
-        if (!["request_queue", "active_request"].includes(dataset)) throw error;
-        deliveredInventoryRevision = null;
-        console.warn("REQUEST_INVENTORY_ENRICHMENT_RETAINED", error instanceof Error ? error.message : String(error));
-      }
-    }
-    const rows = ["request_queue", "active_request"].includes(dataset)
-      ? enrichedRows.map((row) => normalizeRequestBrowserCompatibilityRow(jsonObject(row)))
-      : enrichedRows;
-    return jsonResponse({ ok: true, data: { rows, total, revision, up_to_date: false, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total,
-      ...(sourceFreshnessResponse ? { sourceFreshness } : {}),
-      ...(deliveredInventoryRevision === null ? {} : { inventoryRevision: deliveredInventoryRevision }) } });
-  } catch (error) {
-    const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
-    if (code.includes("LOC_ON_HAND_REVISION_CHANGED")) {
-      if (!revisionRetry) return await handleDatasetRead(session, payload, request, canonicalAccess, actor, true);
-      return jsonResponse({ ok: true, data: { rows: [], total: 0, offset: parsed.offset, limit: parsed.limit, hasMore: false, retained: true, retryable: true, revisionChanged: true } });
-    }
-    const locationFailure = inventoryLocationReadFailureResponse(error);
-    if (locationFailure) return locationFailure;
-    if (dataset === "suspend_tag") {
-      return jsonResponse({ ok: true, data: { rows: [], total: 0, offset: parsed.offset, limit: parsed.limit, hasMore: false, retained: true, retryable: true } });
-    }
-    if (/^DATASET_READ_(?:FILTER|ORDER|PAGE|PROJECTION)(?:_[A-Z]+)*_INVALID$/.test(code)) {
-      return errorResponse("Unsupported dataset filter or ordering.", 400, { code });
-    }
-    console.warn("DATASET_READ_UNAVAILABLE", dataset, code);
+  }
+  return { revision, inventoryRevision, unchanged: false };
+}
+
+async function fetchDatasetPage({ dataset, source, parsed }: DatasetReadContext, query: URLSearchParams) {
+  const sourceFreshnessPromise = dataset === "suspend_tag" && parsed.offset === 0
+    ? databaseBridge.fetchTable(SUPABASE_URL, source.table, suspendSourceFreshnessQuery(), {
+      method: "GET", headers: buildRestHeaders("GET", source.table),
+    }, 30_000, "app-api.suspend-tag-source-freshness")
+    : Promise.resolve(null);
+  const [response, sourceFreshnessResponse] = await Promise.all([
+    databaseBridge.fetchTable(SUPABASE_URL, source.table, query.toString(), {
+      method: "GET", headers: { ...buildRestHeaders("GET", source.table), Prefer: "count=exact" },
+    }, 30_000, "app-api.dataset-read"),
+    sourceFreshnessPromise,
+  ]);
+  return { response, sourceFreshnessResponse };
+}
+
+async function readDatasetPage(context: DatasetReadContext) {
+  const { dataset, parsed, deliveryOnly, requestDataset, actor } = context;
+  const query = await buildDatasetPageQuery(context);
+  if (query instanceof Response) return query;
+  const { revision, inventoryRevision, unchanged } = await getDatasetPageRevisions(context);
+  if (unchanged) return jsonResponse({ ok: true, data: { up_to_date: true, revision } });
+  const { response, sourceFreshnessResponse } = await fetchDatasetPage(context, query);
+  const responseData = await readResponsePayload(response);
+  if (!response.ok) {
     return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset, offset: parsed.offset, limit: parsed.limit });
   }
+  const checkedData = jsonValue(responseData);
+  if (!Array.isArray(checkedData) || checkedData.some((row) => !row || typeof row !== "object" || Array.isArray(row))) return retainedReadResponse("DATASET_READ_INVALID_PAGE", { dataset, offset: parsed.offset, limit: parsed.limit });
+  const data: Array<Record<string, Json | undefined>> = checkedData.map((row) => jsonObject(row));
+  const range = response.headers.get("content-range") || "";
+  const total = Number(range.match(/\/(\d+)$/)?.[1]);
+  if (!Number.isInteger(total) || total < 0) return retainedReadResponse("DATASET_READ_INVALID_PAGE", { dataset, offset: parsed.offset, limit: parsed.limit });
+  if (deliveryOnly) {
+    const rows = await readPendingRequestDeliveryStatus(supabase, data);
+    return jsonResponse({ ok: true, data: { rows, total: rows.length, offset: parsed.offset, limit: Math.min(parsed.limit, 40), hasMore: false } });
+  }
+  if (requestDataset && parsed.offset === 0 && parsed.projection === "default") {
+    queueRequestOutboxReconciliation(() => supabase.rpc("reconcile_active_requests_from_outbox_v1")
+      .abortSignal(AbortSignal.timeout(4000)));
+  }
+  if (dataset === "suspend_tag") await enrichSuspendWorkflowPage(data, actor);
+  return finishDatasetPage(context, data, total, revision, inventoryRevision, sourceFreshnessResponse);
 }
 
-function isRequestRemovalTimestamp(value: string): boolean {
-  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
-  if (!parts || !Number.isFinite(Date.parse(value))) return false;
-  const year = Number(parts[1]), month = Number(parts[2]), day = Number(parts[3]);
-  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return year >= 1000 && month >= 1 && month <= 12 && day >= 1 && day <= days
-    && Number(parts[4]) < 24 && Number(parts[5]) < 60 && Number(parts[6]) < 60
-    && (!parts[7] || (Number(parts[8]) < 16 && Number(parts[9]) < 60));
+async function enrichSuspendWorkflowPage(data: Record<string, Json | undefined>[], actor: DatasetReadContext["actor"]) {
+  const ids = data.map((row) => row.unique_id).filter((value): value is string => typeof value === "string");
+  try {
+    const state = await handleSuspendTag(supabase, actor, { operation: "rows", payload: { ids } });
+    const stateRows = suspendTagRowsFromResult(state);
+    const byId = new Map(stateRows.map((item) => { const row = jsonObject(item); return [String(row.unique_id || ""), row] as const; }));
+    mergeSuspendWorkflowRows(data, byId);
+  } catch { /* Direct ph_soc_master rows remain the fail-open read. */ }
 }
+
+async function finishDatasetPage(context: DatasetReadContext, data: Record<string, Json | undefined>[], total: number,
+  revision: string | null, inventoryRevision: string | null, sourceFreshnessResponse: Response | null) {
+  const { dataset, parsed, actor } = context;
+  let sourceFreshness: ReturnType<typeof suspendSourceFreshnessFromRows> | undefined;
+  if (sourceFreshnessResponse) {
+    const freshnessData = await readResponsePayload(sourceFreshnessResponse);
+    if (sourceFreshnessResponse.ok) {
+      try { sourceFreshness = suspendSourceFreshnessFromRows(freshnessData); }
+      catch { sourceFreshness = undefined; }
+    }
+  }
+  let metricRows = data;
+  if (["suspend_tag", "request_queue", "active_request"].includes(dataset)) {
+    try { metricRows = await enrichSuspendTagMetricRows(data, String(actor.id || ""),dataset === "suspend_tag" ? "suspend_tag_metrics" : "request_inventory_metrics"); }
+    catch { metricRows = data; }
+  }
+  let deliveredInventoryRevision = inventoryRevision;
+  let enrichedRows: Json[] = metricRows;
+  if (inventoryRevision !== null) {
+    try {
+      enrichedRows = await enrichInventoryLocationRows(supabase, String(actor.id || ""), metricRows, inventoryRevision);
+    } catch (error) {
+      if (!["request_queue", "active_request"].includes(dataset)) throw error;
+      deliveredInventoryRevision = null;
+      console.warn("REQUEST_INVENTORY_ENRICHMENT_RETAINED", error instanceof Error ? error.message : String(error));
+    }
+  }
+  const rows = ["request_queue", "active_request"].includes(dataset)
+    ? enrichedRows.map((row) => normalizeRequestBrowserCompatibilityRow(jsonObject(row)))
+    : enrichedRows;
+  return jsonResponse({ ok: true, data: { rows, total, revision, up_to_date: false, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total,
+    ...(sourceFreshnessResponse ? { sourceFreshness } : {}),
+    ...(deliveredInventoryRevision === null ? {} : { inventoryRevision: deliveredInventoryRevision }) } });
+}
+
+async function handleDatasetPageFailure(context: DatasetReadContext, error: unknown) {
+  const { session, payload, request, canonicalAccess, actor, dataset, parsed, revisionRetry } = context;
+  const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
+  if (code.includes("LOC_ON_HAND_REVISION_CHANGED")) {
+    if (!revisionRetry) return await handleDatasetRead(session, payload, request, canonicalAccess, actor, true);
+    return jsonResponse({ ok: true, data: { rows: [], total: 0, offset: parsed.offset, limit: parsed.limit, hasMore: false, retained: true, retryable: true, revisionChanged: true } });
+  }
+  const locationFailure = inventoryLocationReadFailureResponse(error);
+  if (locationFailure) return locationFailure;
+  if (dataset === "suspend_tag") {
+    return jsonResponse({ ok: true, data: { rows: [], total: 0, offset: parsed.offset, limit: parsed.limit, hasMore: false, retained: true, retryable: true } });
+  }
+  if (/^DATASET_READ_(?:FILTER|ORDER|PAGE|PROJECTION)(?:_[A-Z]+)*_INVALID$/.test(code)) {
+    return errorResponse("Unsupported dataset filter or ordering.", 400, { code });
+  }
+  console.warn("DATASET_READ_UNAVAILABLE", dataset, code);
+  return retainedReadResponse("DATASET_READ_UNAVAILABLE", { dataset, offset: parsed.offset, limit: parsed.limit });
+}
+
 
 async function handleRequestQueueRemove(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, payload: Record<string, unknown>) {
   if (!session) return errorResponse("Sign in before removing requests.", 401);

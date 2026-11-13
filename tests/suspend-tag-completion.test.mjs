@@ -618,9 +618,7 @@ test('server rejection of an incomplete card retains the row', async () => {
 test('new denial state supersedes a cached completion without dropping photos', async () => { const h=harness(); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); const denied={...source(),suspend_tag_status:'denied',suspend_tag_version:2,DOCK_PHOTO_LINK:'saved.jpg'}; assert.equal(h.ctx.getSuspendTagStatus(denied),'denied'); assert.equal(h.ctx.overlaySuspendTagReceipt(denied).DOCK_PHOTO_LINK,'saved.jpg'); });
 
 test('Complete Tag paints row removal and reconciles assigned counts before broad refresh', () => {
-  const commandStart = html.indexOf('async function runSuspendTagRowCommand(');
-  const commandEnd = html.indexOf('const photoOnly =', commandStart);
-  const beginPath = html.slice(commandStart, commandEnd);
+  const beginPath = between('async function runSerializedSuspendCommand(', 'function removePendingSuspendCloseRows(');
   assert.match(beginPath, /completion\.begin\(completionKey[\s\S]*?paintOptimisticSuspendTagRemoval\(mirror\)[\s\S]*?serializeSuspendTagRowWrite/);
   assert.match(beginPath, /paintOptimisticSuspendTagRemoval\(mirror\)[\s\S]*?await yieldToUiFrame\(\);[\s\S]*?invalidateResolvedViewStateCaches\(\);[\s\S]*?serializeSuspendTagRowWrite/);
   assert.doesNotMatch(beginPath, /refreshLocalDockSuspendDcRequestState\('suspend-tag-completing'/);

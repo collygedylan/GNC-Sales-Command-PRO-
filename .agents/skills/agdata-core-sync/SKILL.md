@@ -35,6 +35,8 @@ and relevant source skill before changing behavior.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Keep outbox revisions and delivery-status timeouts outside the pending Request snapshot gate. Warm AV may paint before revision checks only when its hydrated row array belongs to the active read identity (Invariant 650).
+
 - Do not spend the read-probe deadline on photo binaries or use editor navigation to cancel accepted photo jobs. Keep capture-order transfers, bounded transient retries, account-owned IndexedDB backup, and publication through exact-row receipts. Request archive must preserve the authority to finish accepted evidence.
 - Do not infer archived Request photo authority from the archive or a public URL. Register the capture IDs atomically with completion, verify the native actor and physical row, bind each ID to the validated immutable Storage object, and keep its folder completion email pending until the final exact receipt or the bounded delivery deadline.
 - Never evaluate whole-row JSON or resolve the interactive actor before an existing authenticated bulk-return guard. Audit DECLARE initializers as well as the function body; preserve the protected blank-overwrite and completion-sync definitions exactly. Validate exact/mismatched evaluation UIDs and real interactive evidence capture in the local PostgreSQL fixture.

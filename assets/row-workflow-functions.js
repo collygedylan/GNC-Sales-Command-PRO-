@@ -378,10 +378,12 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
                 : options.commandId && ['close','save','complete','replace_location','split_location','remove_location','add_candidates','dock_review'].includes(operation) ? [300, 800, 1600] : ['rows','inbox','approval'].includes(operation) ? [350] : [];
             const result = await retrySuspendTagTransport(operation, payload, options, { owner, startedView, delays });
             if (!suspendTagReceiptMatchesSource(operation, payload, result.data)) throw new Error('The server did not confirm the saved row. Retry safely.');
+            if (options.validateReceipt && !options.validateReceipt(result.data)) throw new Error('The server did not confirm this pull location.');
             if (owner === getSupabaseReadIdentityScope() && suspendSourceSnapshotChanged(sourceSnapshot)) throw new Error('The source changed while saving. Refresh before retrying.');
             if (owner === getSupabaseReadIdentityScope() && !['rows', 'approval', 'inbox'].includes(operation)) {
-                applySuspendCandidateRows(result.data.rows, {close:operation === 'close'});
+                if (operation !== 'close') applySuspendCandidateRows(result.data.rows, {close:result.data.finalPull === true});
                 if (['add_candidates','replace_location','split_location'].includes(operation)) applySuspendTagInventoryReceipt(result.data, owner);
+                if (result.data.finalPull === true) refreshConfirmedSuspendQueueBadges();
             }
             return result.data;
         }
@@ -1420,110 +1422,6 @@ function confirmSuspendLocationChange(source, locations) {
     return showAppConfirm(message, {title:'Confirm Final Pull Location', tone:'suspend-location', confirmLabel:'✓ Confirm & Update Docks', cancelLabel:'Cancel'});
 }
 
-function previewSuspendPullAllocation(target, source, masterUid) {
-    const location = target.LOCATIONCODE || target.locationcode;
-    const lot = target.LOTCODE || target.lotcode || '';
-    const quantity = Math.abs(parseAppNumber(getDockOrderedQtyDisplay(source)) || 0);
-    const changes = [];
-    if (masterUid && quantity && (location !== (source.LOCATIONCODE || source.locationcode) || lot !== (source.LOTCODE || source.lotcode || ''))) {
-        const rows = new Set([masterInventoryById.get(masterUid), ...avOpenInventory.filter(row => getRequestItemCodeOptionMasterId(row) === masterUid)]);
-        for (const row of rows) {
-            if (!row) continue;
-            const before = [row.PTRREVIEWED, row.ptrreviewed];
-            const next = String((parseAppNumber(before[0] ?? before[1]) || 0) + quantity);
-            row.PTRREVIEWED = row.ptrreviewed = next;
-            changes.push({row,before,next});
-        }
-        markViewDirty('drive'); markViewDirty('av');
-    }
-    return () => {
-        for (const {row,before,next} of changes) if (row.PTRREVIEWED === next && row.ptrreviewed === next) [row.PTRREVIEWED,row.ptrreviewed] = before;
-        markViewDirty('drive'); markViewDirty('av');
-    };
-}
-
-async function changeSuspendPullLocation(uniqueId, masterUid, operation, splitQuantity = null, customRow = null) {
-    const source = findDockSuspendDcRequestMirrorRowByUniqueId(uniqueId);
-    if (!source || !resolveCanonicalRowAccess(currentUser, source).canManageLocations || !['replace_location','split_location','remove_location'].includes(operation)) return false;
-    if (operation === 'split_location' && (!Number.isFinite(Number(splitQuantity)) || Number(splitQuantity) <= 0)) {
-        showToast('Split Quantity','Enter the quantity to pull from this location.',true);
-        return false;
-    }
-    const target = customRow || (masterUid && getRequestItemCodeOptionRows(source).find(row => getRequestItemCodeOptionMasterId(row) === masterUid));
-    if (operation !== 'remove_location' && (!target || isFalseBlockLocation(target.LOCATIONCODE || target.locationcode))) return false;
-    const scope = getSupabaseReadIdentityScope();
-    const next = target && (target.LOCATIONCODE || target.locationcode);
-    const old = source.LOCATIONCODE || source.locationcode;
-    const reviewed = getSuspendTagStableSourceIdentity(source);
-    if (next && operation === 'replace_location' && !await confirmSuspendLocationChange(source, [next])) return false;
-    if (scope !== getSupabaseReadIdentityScope()) return false;
-    const sourceUid = getDockSuspendDcRequestSourceUid(source);
-    const key = JSON.stringify([operation,sourceUid,masterUid,customRow,splitQuantity,reviewed]);
-    return serializeSuspendTagRowWrite(source, async () => {
-        const original = findDockSuspendDcRequestSourceRow(source) || source;
-        if (scope !== getSupabaseReadIdentityScope() || JSON.stringify(getSuspendTagStableSourceIdentity(original)) !== JSON.stringify(reviewed)
-            || !resolveCanonicalRowAccess(currentUser, original).canManageLocations) return false;
-        const state = getDockSuspendCompletionState();
-        const snapshot = Object.fromEntries(Object.entries(original).map(([key,value])=>[key.toLowerCase(),value]));
-        snapshot.unique_id = sourceUid;
-        const pending = state.pending[key] || {requestId:crypto.randomUUID(),savedAt:Date.now()};
-        const payload = {sourceUid,...(operation==='replace_location' ? {finalPull:true} : {}),sourceIdentity:reviewed,expectedLastUpdated:getDockSuspendCompletionRevision(original),inventoryIds:masterUid?[masterUid]:[],
-            ...(customRow ? {customRows:[customRow]} : {}), ...(operation==='split_location'?{splitQuantity:Number(splitQuantity)}:{})};
-        // An uncertain retry must replay exactly the original command, including its version.
-        pending.payload ||= payload;
-        if (!Object.hasOwn(pending,'version')) pending.version = getSuspendTagWriteVersion(source);
-        state.pending[key]=pending; persistDockSuspendCompletionState(state);
-        let preview = false, rollbackAllocation;
-        try {
-            if (operation === 'replace_location') {
-                rollbackAllocation = previewSuspendPullAllocation(target, original, masterUid);
-                const entry = buildDockSuspendDcOptionSocEntry(target, source);
-                if (entry) {
-                    applySuspendCandidateRows([{...snapshot, ...entry.payload, unique_id:sourceUid}], {preview:true});
-                    preview = true;
-                }
-            } else if (operation === 'remove_location') {
-                applySuspendCandidateRows([{...snapshot,suspend_candidate_state:'replaced',suspend:null,suspend_to:null,quantityordered:'0'}]);
-                preview = true;
-            }
-            const readCommitted = async () => {
-                if (operation !== 'replace_location' || scope !== getSupabaseReadIdentityScope()) return null;
-                const page = query => fetchAuthenticatedSupabaseReadPage('ph_soc_master', 'select=*&' + query);
-                const origin = original.SUSPEND_ORIGIN_UID || original.suspend_origin_uid || sourceUid;
-                const prior = (await page('unique_id=eq.' + encodeURIComponent(origin) + '&limit=1')).rows?.[0];
-                if (!prior || prior.unique_id !== origin || scope !== getSupabaseReadIdentityScope() || prior.suspend || !prior.date_completed ||
-                    prior.suspend_candidate_state !== 'approved' || prior.locationcode !== next || String(prior.lotcode || '') !== String(target.LOTCODE || target.lotcode || '')) return null;
-                const rows = (await page('suspend_origin_uid=eq.' + encodeURIComponent(origin) + '&limit=1000')).rows || [];
-                if (rows.some(row => row.suspend || !row.date_completed)) return null;
-                const inventory = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory','select=*&unique_id=eq.' + encodeURIComponent(masterUid) + '&limit=1');
-                return inventory.rows?.length === 1 ? {ok:true,finalPull:true,originUid:origin,rows:[prior,...rows.filter(row => row.unique_id !== origin)],inventoryRows:inventory.rows} : null;
-            };
-            const result = await suspendTagApi(operation,pending.payload,{commandId:pending.requestId,expectedVersion:pending.version,readCommitted});
-            if (scope !== getSupabaseReadIdentityScope()) return false;
-            if (!result?.ok || !Array.isArray(result.rows)) throw new Error('The order line was not confirmed. Retry safely.');
-            const order = getDockSuspendDcRequestGroupParts(original);
-            if (operation === 'replace_location' && (!result.finalPull || !result.rows.some(row =>
-                (row.unique_id === sourceUid || row.suspend_origin_uid === (original.SUSPEND_ORIGIN_UID || original.suspend_origin_uid || sourceUid))
-                && row.locationcode === next && String(row.lotcode || '') === String(target.LOTCODE || target.lotcode || '')
-                && String(row.dock_num || row.dock) === String(order.dock) && String(row.stopnumber) === String(order.drop)
-                && row.date_completed && !row.suspend && !['denied','replaced','canceled'].includes(row.suspend_candidate_state)))) throw new Error('The server did not confirm this pull location.');
-            delete state.pending[key]; persistDockSuspendCompletionState(state);
-            requestAvOptionsDropdownOpen=false;
-            if (isViewVisible('detail')) {lastView='request';goBackFromDetail();}
-            scheduleRequestRender(0,16,true);
-            if (operation === 'replace_location') showToast('Location Changed', 'Updated ' + old + ' → ' + next + ' across Suspend Tag, Drive Mode, and Dock ' + order.dock + ' · Drop ' + order.drop + '.');
-            else showToast('Location Saved','The exact Dock and Drop now use the confirmed pull locations.');
-        } catch (error) {
-            if (scope === getSupabaseReadIdentityScope()) {
-                rollbackAllocation?.();
-                if (preview) applySuspendCandidateRows([snapshot]);
-                showToast('Location Not Saved',suspendTagErrorMessage(error),true);
-            }
-        }
-        return false;
-    }, key);
-}
-
 function toggleArgosReclassRowCard(button = null) {
             const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
             if (!card) return false;
@@ -1537,6 +1435,8 @@ function toggleArgosReclassRowCard(button = null) {
             if (!getArgosReclassRowEditorEntry(uid)) return false;
             return focusArgosReclassRow(uid);
         }
+
+window.toggleArgosReclassRowCard = toggleArgosReclassRowCard;
 
 function focusArgosReclassRow(uid = '') {
             const state = argosInventoryTransactionState;

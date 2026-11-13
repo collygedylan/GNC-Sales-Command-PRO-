@@ -9,6 +9,26 @@ const siblingUid = 'REQ-fixture-other';
 const requestCard = uid => `#request-content [data-request-uid="${uid}"]`;
 const deadlineMs = 50;
 
+async function assertRequestDeliveryTimeoutIsolated(page) {
+    const request = page.waitForRequest(candidate => candidate.method() === 'POST'
+        && candidate.url().endsWith('/functions/v1/app-api') && candidate.postDataJSON()?.requestDeliveryStatus === true);
+    await page.route('**/functions/v1/app-api', route => {
+        if (route.request().method() !== 'POST' || route.request().postDataJSON()?.requestDeliveryStatus !== true) return route.fallback();
+        return route.fulfill({ status:504, json:{ ok:false, code:'TIMEOUT' }, headers:{ 'access-control-allow-origin':'*' } });
+    });
+    await page.evaluate(() => {
+        switchView('request');
+        renderRequest();
+        paintFooterRequestBadgeOnly();
+    });
+    const optional = (await request).postDataJSON();
+    const ids = optional.params.filters[0].value;
+    assert.deepEqual([...ids].sort(), [requestUid, siblingUid].sort());
+    await page.locator(requestCard(requestUid)).waitFor();
+    await page.locator(requestCard(siblingUid)).waitFor();
+    assert.doesNotMatch(await page.locator('#view-request').innerText(), /Load Failed/);
+}
+
 async function seedRequestReads(page, master) {
     const rows = [requestUid, siblingUid].map(uid => ({
         ...master, unique_id: uid, master_id: master.unique_id, req_status: 'Pending', req_qty: '12',
@@ -32,7 +52,7 @@ async function seedRequestReads(page, master) {
     });
 }
 
-async function openRequestEditor(page) {
+async function seedPendingRequestCards(page) {
     await page.evaluate(({ uid, sibling }) => {
         const master = fullInventory[0];
         const masterUid = getItemUniqueId(master);
@@ -47,11 +67,7 @@ async function openRequestEditor(page) {
         requestsInventory = [pendingRow(uid), pendingRow(sibling)];
         activeReqTab = 'pending';
         refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
-        switchView('request');
-        renderRequest();
-        paintFooterRequestBadgeOnly();
     }, { uid: requestUid, sibling: siblingUid });
-    await enterRequestEvaluation(page);
 }
 
 async function enterRequestEvaluation(page) {
@@ -194,7 +210,10 @@ async function runViewport(browser, origin, width) {
         const control = await installHlOrderFixture(page, origin, { role: 'SUPER ADMIN', appPermissions: [{ permissionKey: 'module.request.view', kind: 'module', moduleKey: 'request', allowed: true }] });
         await page.waitForFunction(() => typeof fullInventory !== 'undefined' && fullInventory.length > 0);
         await seedRequestReads(page, control.master[0]);
-        await openRequestEditor(page);
+        await seedPendingRequestCards(page);
+        await assertRequestDeliveryTimeoutIsolated(page);
+        if (process.argv.includes('--delivery-only')) return { width, deliveryTimeoutIsolated: true };
+        await enterRequestEvaluation(page);
         await page.locator('#req-btn-save-complete').click();
         const ok = page.locator('#mark-done-confirm-modal').getByRole('button', { name: 'OK', exact: true });
         await ok.waitFor({ state: 'visible' });
@@ -215,7 +234,7 @@ async function runViewport(browser, origin, width) {
 }
 
 async function run() {
-    const siteDir = path.resolve(process.argv[2] || '_site');
+        const siteDir = path.resolve(process.argv.slice(2).find(arg => !arg.startsWith('--')) || '_site');
     const server = await startReleaseTestServer({ siteDir, port: 0 });
     let browser;
     try {
@@ -223,7 +242,7 @@ async function run() {
         const origin = `http://127.0.0.1:${server.address().port}`;
         const results = [];
         for (const width of [390, 1440]) results.push(await runViewport(browser, origin, width));
-        const pass = results.every(result => result.transition.removedMs < deadlineMs);
+        const pass = results.every(result => result.deliveryTimeoutIsolated || result.transition.removedMs < deadlineMs);
         process.stdout.write(`${JSON.stringify({ pass, browser: `Microsoft Edge ${browser.version()}`, deadlineMs, results })}\n`);
         assert.ok(pass, 'OK pointer activation to Request removal exceeded the 50 ms target');
     } finally {

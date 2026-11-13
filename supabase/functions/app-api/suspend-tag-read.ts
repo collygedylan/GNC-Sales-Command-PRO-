@@ -31,3 +31,12 @@ export function suspendSourceFreshnessFromRows(input: unknown): SuspendSourceFre
   }
   return { filename, last_updated: lastUpdated };
 }
+
+export function mergeSuspendWorkflowRows<T>(data: Record<string, T>[], byId: Map<string, Record<string, T>>) {
+  for (const row of data) {
+    const current = typeof row.unique_id === "string" ? byId.get(row.unique_id) : undefined;
+    for (const [key, value] of Object.entries(current || {})) {
+      if (key.startsWith("suspend_tag_") || key in row) row[key] = value;
+    }
+  }
+}
