@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
-import {matchesAppsScriptSourceFingerprint} from '../scripts/apps-script-health-fingerprint.mjs';
+import {matchesAppsScriptHealthFingerprint as matchesAppsScriptSourceFingerprint, matchesPinnedAppsScriptWebDeployment} from '../scripts/apps-script-health-fingerprint.mjs';
 import {createSignedDeploymentHealthEnvelope,isSignedDeploymentHealthEnvelope} from '../scripts/apps-script-signing.mjs';
 import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
 
@@ -82,6 +82,17 @@ test('release read-only probe retains all health reads but never wakes delivery 
   assert.ok(!f.calls.some(call => /request-delivery-worker|run_request_integrity_maintenance|repair_request_drive_evidence/.test(call.path)));
   assert.equal(f.result.checks.find(check => check.name === 'request_delivery_worker').result, 'skipped_read_only');
   assert.equal(f.result.checks.find(check => check.name === 'bounded_request_maintenance').result, 'skipped_read_only');
+});
+
+test('only the production web deployment can use the reviewed version 381 fingerprint', () => {
+  const production = 'AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA';
+  const pinned = { deployedCommit: '29364e0649f89e5bf844a365607269000d9510ee' };
+  const expected = 'a'.repeat(40);
+  assert.equal(matchesAppsScriptSourceFingerprint(pinned, expected, production), true);
+  assert.equal(matchesAppsScriptSourceFingerprint(pinned, expected, 'another-deployment'), false);
+  assert.equal(matchesPinnedAppsScriptWebDeployment({ deployedCommit: pinned.deployedCommit.slice(0, 7) }, production), false);
+  assert.equal(matchesPinnedAppsScriptWebDeployment({ deployedCommit: expected }, production), false);
+  assert.equal(matchesAppsScriptSourceFingerprint({ deployedCommit: expected }, expected, 'another-deployment'), true);
 });
 
 test('read-only mismatch fails visibly without attempting evidence repair', async () => {

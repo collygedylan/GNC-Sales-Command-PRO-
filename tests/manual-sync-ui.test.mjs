@@ -30,7 +30,8 @@ test('manual sync client fallback uses the ordered five-stage pass and advances 
     firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && String(value).trim() !== '') ?? '',
     Date, String, Number, Array, Object, Math,
   };
-  vm.runInNewContext(`${normalizers}\n${progress}\nmodule.exports = { normalizeManualSyncStatusPayload, getManualSyncProgressInfo };`, sandbox);
+  const timestamps = extractBetween('function confirmedErpRunTime(', 'function latestErpHomeTimestamp(');
+  vm.runInNewContext(`${timestamps}\n${normalizers}\n${progress}\nmodule.exports = { normalizeManualSyncStatusPayload, getManualSyncProgressInfo };`, sandbox);
   const { normalizeManualSyncStatusPayload, getManualSyncProgressInfo } = sandbox.module.exports;
   const active = normalizeManualSyncStatusPayload({
     active: true,

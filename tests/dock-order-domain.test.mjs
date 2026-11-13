@@ -62,16 +62,16 @@ test('inventory display projection derives location totals without collapsing ph
     { ...primary, UNIQUE_ID:'x1', LOTCODE:'27.X', PTRONHAND:'26', PTRREVIEWED:null, PTRAVAILABLE:'26', PHOTO_LINK:null }];
   const before = structuredClone(rows);
   const result = hydrateLiveInventoryCardDisplay(primary, [primary], rows, rows, {
-    canonical:primary, notes:[], normalizeLocation:value=>String(value || '').toUpperCase(), calculateMatch:()=>34
+    canonical:{...primary, LOC_PHOTO_MATCH:59}, notes:[], normalizeLocation:value=>String(value || '').toUpperCase(), calculateMatch:()=>34
   });
   assert.deepEqual({ onHand:result.PTRONHAND, review:result.PTRREVIEWED, available:result.PTRAVAILABLE,
     openStock:result.S_LTS, locOnHand:result.LOC_ON_HAND, locPhotoMatch:result.LOC_MATCH_QTY },
-  { onHand:90, review:25, available:65, openStock:'57', locOnHand:254, locPhotoMatch:42 });
+  { onHand:90, review:25, available:65, openStock:'57', locOnHand:254, locPhotoMatch:59 });
   assert.deepEqual(rows, before);
   assert.equal(mergeLiveInventoryCardRows(rows).length, 4);
   const unverified = { ...primary, AV_RULE_PHOTO_UPDATED_AT:null };
   assert.equal(hydrateLiveInventoryCardDisplay(unverified, [unverified], [unverified], [unverified], {
-    canonical:unverified, notes:[], normalizeLocation:value=>String(value || '').toUpperCase(), calculateMatch:()=>34
+    canonical:{...unverified, LOC_PHOTO_MATCH:59}, notes:[], normalizeLocation:value=>String(value || '').toUpperCase(), calculateMatch:()=>34
   }).LOC_MATCH_QTY, null);
 });
 

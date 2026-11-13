@@ -58,20 +58,8 @@ test('Eval Reports 2 replaces contradictory zero counts from a complete same-acc
   assert.match(build, /cachedSnapshot:true/);
 });
 
-test('Home sync always renders four named cards while partial metadata refreshes', () => {
-  const nodes = Object.fromEntries(['dashboard-sync-accordion', 'dashboard-sync-stamp', 'dashboard-sync-summary', 'dashboard-sync-files'].map(id => [id, { classList: { toggle() {} }, innerHTML: '', innerText: '' }]));
-  const ctx = vm.createContext({ document: { getElementById: id => nodes[id] }, canViewDashboardSyncStatus: () => true,
-    getSupabaseReadIdentityScope: () => 'owner', dashboardSyncMetadataOwner: 'owner',
-    dashboardSyncMetadataSummaries: [], dashboardSyncMetadataFetchedAt: Date.now(), dashboardSyncMetadataInFlight: false,
-    DASHBOARD_SYNC_METADATA_TTL_MS: 60000, fullInventory: [], socInventory: [], reservesInventory: [], cavInventory: [],
-    collectDashboardSyncSource: (_rows, label) => ({ label, iso: label === 'Reserves' ? '2026-10-21T16:00:00Z' : '', ms: label === 'Reserves' ? 1 : 0, files: label === 'Reserves' ? ['Reserves.xlsx'] : [] }),
-    mergeDashboardSyncSummaries: rows => rows, formatDashboardSyncDateTime: value => value || 'Awaiting import metadata',
-    escapeDashboardSyncText: value => String(value) });
-  vm.runInContext('const homeMarkupByNode = new WeakMap();' + shellFunction('syncRequestChromeMarkup') + shellFunction('updateDashboardSyncSummary'), ctx);
-  ctx.updateDashboardSyncSummary();
-  for (const source of ['DRIVE', 'CAV', 'RESERVES', 'SOC']) assert.match(nodes['dashboard-sync-files'].innerHTML, new RegExp('data-sync-source="' + source + '"'));
-  assert.match(nodes['dashboard-sync-files'].innerHTML, /Reserves.xlsx/);
-});
+test('Home sync always renders four named cards while partial metadata refreshes', async () =>
+  (await import('./helpers/home-import-filename-fixture.mjs')).assertPartialHomeImportFilenames(shellFunction));
 
 test('desktop connection status is visible without standalone mode or an active import', () => {
   const nodes = Object.fromEntries(['sync-diagnostics-badge', 'sync-diagnostics-detail'].map(id => [id, { classList: { toggle(_key, hidden) { this.hidden = hidden; } } }]));

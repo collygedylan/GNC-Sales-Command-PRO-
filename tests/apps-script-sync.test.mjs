@@ -1,3 +1,4 @@
+import { assertHomeImportFilenames } from './helpers/home-import-filename-fixture.mjs';
 import {assertHomeSyncVisibility} from '../src/core/home-sync-visibility-contract.mjs';
 import { ingestionPatchContract } from '../src/core/apps-script-patch-contract.mjs';
 import { readComposedRuntimeSource } from '../scripts/composed-app-source.mjs';
@@ -27,26 +28,7 @@ test('Home imported filenames keep the permission-scoped sync cards visible with
 });
 
 test('Home first render exposes all four exact filenames with their import timestamps', () => {
-  const importedAt = '2026-10-20T18:12:53.303Z';
-  const files = ['DriveAroundMC-10-12333420261020123334.xlsx', 'SOC-10 Open Orders-12251620261020122516.xlsx',
-    'SOC-10 Reserves-12370820261020123708.xlsx', 'Dylan Wide Open 2026-10-19.xlsx'];
-  const elements = Object.fromEntries(['accordion', 'stamp', 'summary', 'files'].map(key =>
-    [`dashboard-sync-${key}`, { classList: { toggle() {} }, innerHTML: '', innerText: '' }]));
-  const context = vm.createContext({ document: { getElementById: id => elements[id] },
-    canViewDashboardSyncStatus: () => true, getSupabaseReadIdentityScope: () => 'brian',
-    dashboardSyncMetadataOwner: 'brian', dashboardSyncMetadataFetchedAt: Date.now(),
-    dashboardSyncMetadataInFlight: null, dashboardSyncMetadataRequestOwner: '', DASHBOARD_SYNC_METADATA_TTL_MS: 60000,
-    dashboardSyncMetadataSummaries: files.map((file, index) => ({ label: ['Drive', 'SOC', 'Reserves', 'CAV'][index],
-      files: [file], iso: importedAt, ms: Date.parse(importedAt), authoritative: true })),
-    fullInventory: [], socInventory: [], reservesInventory: [], cavInventory: [],
-    collectDashboardSyncSource: () => ({ iso: '', files: [] }), mergeDashboardSyncSummaries: rows => rows,
-    formatDashboardSyncDateTime: iso => iso, escapeDashboardSyncText: text => text,
-    syncRequestChromeMarkup: (element, markup) => { element.innerHTML = markup; }, homeMarkupByNode: new WeakMap() });
-  vm.runInContext(sourceFunction(appHtml, 'updateDashboardSyncSummary', '        '), context);
-  context.updateDashboardSyncSummary();
-  for (const file of files) assert.ok(elements['dashboard-sync-files'].innerHTML.includes(file));
-  assert.equal(elements['dashboard-sync-stamp'].innerText, importedAt);
-  assert.equal((elements['dashboard-sync-files'].innerHTML.match(/2026-10-20T18:12:53.303Z/g) || []).length, 4);
+  assertHomeImportFilenames(appHtml, sourceFunction);
 });
 test('empty drop folders never open Processed folders, import fences or publication RPCs', () => {
   for (const name of ['processFolderLocked_', 'processLatestFileOnlyFolderLocked_',

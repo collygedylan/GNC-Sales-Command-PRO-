@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.82';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.83';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -24703,7 +24703,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.82';
+        const APP_VERSION = '3.0.83';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -26069,19 +26069,6 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const coordinator = getProductionLiveSyncCoordinator();
             if (coordinator) void coordinator.check('manual-sync-foreground').catch(() => {});
             return true;
-        }
-        function canRunManualInventoryImport() {
-            const profile = nativeAuthProfile;
-            const username = String(profile?.username || '').trim().toLowerCase();
-            const lock = profile?.locked_until ? Date.parse(profile.locked_until) : 0;
-            const verifiedNative = nativeAuthSessionActive === true && !!profile?.id
-                && !profile.disabled_at && profile.must_change_password === false
-                && Number.isFinite(lock) && lock <= Date.now()
-                && isFullAppAdministrator()
-                && String(currentUser || '').trim().toLowerCase() === username;
-            if (profile?.id && username === String(currentUser || '').trim().toLowerCase()
-                && (profile.disabled_at || profile.must_change_password || lock > Date.now())) return false;
-            return verifiedNative || (!!getCurrentAppSessionToken() && !!currentUser && isFullAppAdministrator());
         }
         /* @runtime-fragment assets/erp-manual-continuation.js */
         bindManualErpProgressWakeLock(document, window, navigator.wakeLock, getSupabaseReadIdentityScope);
@@ -53076,7 +53063,10 @@ function toggleDriveQuickRequestItem(domId) {
             // projection can serve the same account while SOC is hydrating.
             if (typeof socRawSourceRowsReady !== 'undefined' && socRawSourceRowsReady && getDatasetState('soc')?.rowCompleteness === 'complete') return socInventory;
             if (suspendTagInventoryScope === getSupabaseReadIdentityScope()) return suspendTagInventory;
-            if (activeReqTab === 'suspend-tag' && (view === 'request' || view === 'detail')) return EMPTY_DOCK_SUSPEND_SOURCE_ROWS;
+            if (activeReqTab === 'suspend-tag' && (view === 'request' || view === 'detail')) {
+                return typeof getSuspendSocDisplayRows === 'function' ? getSuspendSocDisplayRows() || EMPTY_DOCK_SUSPEND_SOURCE_ROWS
+                    : EMPTY_DOCK_SUSPEND_SOURCE_ROWS;
+            }
             return socInventory;
         }
 
@@ -101350,7 +101340,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const sortedSourceRows = getSortedSuspendTagSourceRows(currentFileItems, collators, sourceLookup, sourceLookupRevision);
             const allItems = getSuspendTagRequestItems(sortedSourceRows, requestSuspendTagStatusFilter);
             const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
-            const assignedItems = applySuspendEvalUserFilter(searchItems);
+            const assignedItems = suspendQueueRowsForOwner(searchItems, requestSuspendTagStatusFilter === 'active' ? allItems : []);
             const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems, sourceLookup);
             const candidates = applyRequestSuspendTagDockFilter(contSizeItems, sourceLookup);
             const filteredItems = typeof applyInventoryExcelFilters === 'function' ? applyInventoryExcelFilters('suspend',candidates) : candidates;

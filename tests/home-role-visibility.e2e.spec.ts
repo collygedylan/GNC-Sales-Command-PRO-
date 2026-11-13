@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
-import { isManualStatusAppsScriptProxyRead } from './helpers/release-smoke-route-policy.mjs';
+import { erpSyncProgressReadFixture, isManualStatusAppsScriptProxyRead } from './helpers/release-smoke-route-policy.mjs';
 // @test-group: @home-role,home
 
 
@@ -195,26 +195,67 @@ async function harness(page: Page, baseURL: string) {
   return { seed, assertTiles, assertClean };
 }
 
-test('authorized manual import control is reachable before imported metadata loads', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
+async function allowHomeSourceFreshness(page: Page) {
+  await page.route('https://kzrnyjsosryejjejliii.supabase.co/functions/v1/app-api', route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const body = route.request().postDataJSON();
+    if (body?.action !== 'inventory_read' || body.operation !== 'source_freshness'
+      || Object.keys(body).some(key => !['action', 'operation', 'params'].includes(key))
+      || Object.keys(body.params || {}).length || route.request().headers()['idempotency-key']) return route.fallback();
+    return route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*' },
+      json: { ok: true, data: { filename: null, last_updated: null } } });
+  });
+}
+
+async function allowHomeErpProgress(page: Page) {
+  await page.route('https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/get_my_erp_sync_progress_v23116', route => {
+    if (route.request().method() !== 'POST' || route.request().headers()['idempotency-key']) return route.fallback();
+    const progress = erpSyncProgressReadFixture(route.request().postDataJSON());
+    if (!progress) return route.fallback();
+    return route.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*' }, json: progress });
+  });
+}
+
+async function seedErpIdentity(page: Page, username: string, role: string) {
+  await page.evaluate(profile => {
+    (window as any).__erpRoleFixture = profile;
+    window.eval(`nativeAuthSessionActive = true; nativeAuthProfile = window.__erpRoleFixture;
+      nativeAuthSessionUserId = nativeAuthProfile.id; syncGoogleScriptButton();`);
+  }, { id: `synthetic-import-${username}`, username, role, active: true, disabled_at: null,
+    locked_until: null, must_change_password: false });
+}
+
+test('designated ERP users can open the five-stage progress modal before metadata loads', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
-  await app.seed('dylan_collyge', 'ADMIN');
-  await page.evaluate(() => window.eval(`nativeAuthSessionActive = true; nativeAuthProfile = { id:'synthetic-import-dylan', username:'dylan_collyge', disabled_at:null, locked_until:null, must_change_password:false }; syncGoogleScriptButton();`));
+  await allowHomeSourceFreshness(page);
+  await allowHomeErpProgress(page);
   const button = page.locator('#run-google-script-btn');
-  await expect(button).toBeVisible();
-  await expect(button).toBeEnabled();
-  await button.click({ trial: true });
-  await page.evaluate(() => window.eval(`manualSyncStatusState = { active:true, currentStage:'drive', updatedAt:new Date().toISOString() }; syncGoogleScriptButton();`));
-  await expect(button).toBeVisible();
-  await expect(button).toBeDisabled();
-  await page.evaluate(() => window.eval(`manualSyncStatusState = null; syncGoogleScriptButton();`));
-  await app.seed('jd_jones', 'ADMIN');
-  await page.evaluate(() => window.eval(`nativeAuthSessionActive = true; nativeAuthProfile = { id:'synthetic-import-jd', username:'jd_jones', disabled_at:null, locked_until:null, must_change_password:false }; syncGoogleScriptButton();`));
-  await expect(button).toBeVisible();
-  await expect(button).toBeEnabled();
-  await button.click({ trial:true });
-  await app.seed('tony_bono', 'REP');
-  await expect(button).toBeHidden();
-  await expect(page.locator('#dashboard-sync-accordion')).toBeHidden();
+  const panel = page.locator('#dashboard-sync-accordion');
+  const modal = page.locator('#erp-sync-progress-modal');
+  for (const [username, role] of [['dylan_collyge', 'super-admin'], ['jd_jones', 'Admin'], ['megan_kelly', 'Admin']]) {
+    await app.seed(username, role);
+    await seedErpIdentity(page, username, role);
+    await expect(button).toBeVisible();
+    await button.click({ trial: true });
+    await panel.locator('#dashboard-sync-stamp').click();
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('[data-sync-file] strong')).toHaveText(['DRIVE', 'CAV', 'RESERVES', 'SOC', 'HL PO']);
+    await expect(modal.locator('[data-sync-run]')).toBeEnabled();
+    await page.evaluate(() => window.eval('manualSyncStartPending = true; syncGoogleScriptButton(); renderErpSyncProgressModal();'));
+    await expect(button).toBeDisabled();
+    await expect(modal.locator('[data-sync-run]')).toBeDisabled();
+    await page.evaluate(() => window.eval('manualSyncStartPending = false; syncGoogleScriptButton();'));
+    await modal.locator('[data-sync-close]').click();
+    await expect(modal).toBeHidden();
+  }
+  for (const [username, role] of [['home_admin_fixture', 'Admin'], ['tony_bono', 'REP']]) {
+    await app.seed(username, role);
+    await seedErpIdentity(page, username, role);
+    await expect(button).toBeHidden();
+    await expect(panel).toBeHidden();
+    await page.evaluate(() => window.eval('openErpSyncProgressModal()'));
+    await expect(modal).toBeHidden();
+  }
   app.assertClean();
 });
 

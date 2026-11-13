@@ -58,11 +58,23 @@ export function publishLoadedOfficeInventory(res, hasMaster) {
     }
 }
 
+let suspendSocDisplayIdentity = null;
+
+function getSuspendSocDisplayIdentity() {
+    return JSON.stringify([getSupabaseReadIdentityScope(), appAccessSnapshotState.snapshot?.dataPermissionVersion || '']);
+}
+
+export function getSuspendSocDisplayRows() {
+    if (!canReadSuspendQueue() || suspendSocDisplayIdentity !== getSuspendSocDisplayIdentity()) return null;
+    return socInventory;
+}
+
 export function publishLoadedDockInventory(res, hasMaster) {
     if (Object.hasOwn(res,'socData') || (hasMaster && socRawSourceRowsReady)) {
         if (Object.hasOwn(res,'socData')) {
             socRawSourceRows = cloneDockSourceRows(res.socData || []);
             socRawSourceRowsReady = true;
+            suspendSocDisplayIdentity = getSuspendSocDisplayIdentity();
         }
         const socSource = Object.hasOwn(res,'socData') ? cloneDockSourceRows(socRawSourceRows)
             : buildDockSourceRowsForMasterRefresh(socRawSourceRows, socInventory);

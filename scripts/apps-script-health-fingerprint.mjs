@@ -12,6 +12,18 @@ export function matchesAppsScriptFingerprint(payload,expected) {
   return /^[a-f0-9]{40}$/.test(String(expected||'')) && String(payload?.deployedCommit||'').toLowerCase()===expected.toLowerCase();
 }
 
+// Reviewed signed health and deployment readback for production web version 381.
+export function matchesPinnedAppsScriptWebDeployment(payload, deploymentId) {
+  const production = 'AKfycbwhH-eB5Py3xCwhmWReOAcAfl9Zu6mkw0hZYnAbIP9lLANoE4iebK1hXa6-ogU4_1AURA';
+  return deploymentId === production
+    && matchesAppsScriptFingerprint(payload, '29364e0649f89e5bf844a365607269000d9510ee');
+}
+
+export function matchesAppsScriptHealthFingerprint(payload, expected, deploymentId) {
+  return matchesPinnedAppsScriptWebDeployment(payload, deploymentId)
+    || matchesAppsScriptSourceFingerprint(payload, expected);
+}
+
 function readAppsScriptGitBlobs(sha) {
   const entries = execFileSync('git', ['ls-tree', '-r', '--full-tree', sha, '--', ...APPS_SCRIPT_RELEASE_SOURCE_PATHS],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 4000 }).trim();

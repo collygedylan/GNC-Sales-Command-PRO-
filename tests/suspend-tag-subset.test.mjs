@@ -79,8 +79,7 @@ test('Suspend queue eligibility follows the Suspend flag for every destination',
   assert.equal(ctx.isDockSuspendDcRequestSource({ SUSPEND:'HOLD', SUSPEND_TO:'dc' }), false);
 });
 
-test('master-only rehydration starts from raw SOC and recomputes assignment/link visibility while preserving SOC-owned values', () => {
-  const masters = new Map([['soc-1', { unique_id: 'master-1', APP_TAB_ASSIGNMENT: 'docks' }]]);
+function createMasterOnlySocContext(masters) {
   const context = vm.createContext({
     REQUEST_ROW_OWNED_SYNC_KEYS: ['AV_NOTE', 'MATCH', 'DATE_COMPLETED', 'PHOTO_LINK', 'PHOTO_NAME'],
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
@@ -104,7 +103,12 @@ test('master-only rehydration starts from raw SOC and recomputes assignment/link
     source('buildDockSourceRowsForMasterRefresh'),
     source('hydrateDockSourceRows'),
   ].join('\n'), context);
+  return context;
+}
 
+test('master-only rehydration starts from raw SOC and recomputes assignment/link visibility while preserving SOC-owned values', () => {
+  const masters = new Map([['soc-1', { unique_id: 'master-1', APP_TAB_ASSIGNMENT: 'docks' }]]);
+  const context = createMasterOnlySocContext(masters);
   const raw = [{ unique_id: 'soc-1', av_note: 'source note', dock_photo_link: 'https://example.test/photo.jpg', suspend: 'SUSPEND', suspend_to: 'DC', date_completed: null }];
   const initiallyHydrated = context.hydrateDockSourceRows(context.cloneDockSourceRows(raw));
   assert.equal(initiallyHydrated[0].APP_TAB_ASSIGNMENT, 'docks');
@@ -141,7 +145,10 @@ test('master-only rehydration starts from raw SOC and recomputes assignment/link
     'a locally pending insert absent from the last raw snapshot stays available during a master-only refresh');
   assert.equal(withPendingLocal[1].APP_TAB_ASSIGNMENT, undefined);
   assert.equal(withPendingLocal[1].MASTER_ID, undefined);
-  assert.match(html, /if \(hasSoc \|\| \(hasMaster && socRawSourceRowsReady\)\)/,
+});
+
+test('master refresh and session reset retain raw SOC ownership boundaries', () => {
+  assert.match(html, /if \(Object\.hasOwn\(res,'socData'\) \|\| \(hasMaster && socRawSourceRowsReady\)\)/,
     'master-only refresh does not fall back to possibly stale display rows after raw-source reset');
   assert.match(html, /socRawSourceRows = \[\];\s*suspendTagRawSourceRows = \[\];\s*socRawSourceRowsReady = false;\s*suspendTagRawSourceRowsReady = false;/,
     'identity/session reset clears both source snapshots and their initialized markers');

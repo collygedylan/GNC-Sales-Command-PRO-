@@ -9,9 +9,9 @@ function resolveExactSuspendOwner(item, code, state) {
         if (!projection && suspendTagInventory.some(row => getDockSuspendDcRequestSourceUid(row) === uid)) return 'Unassigned';
     }
     const ownerEvidence = projection || item;
-    const projected = normalizeEvalAssignableUser(ownerEvidence?.suspend_eval_owner || ownerEvidence?.SUSPEND_EVAL_OWNER);
+    const projected = validSuspendOwner(ownerEvidence?.suspend_eval_owner || ownerEvidence?.SUSPEND_EVAL_OWNER);
     if (projection?.suspend_owner_zone_override === true || projection?.SUSPEND_OWNER_ZONE_OVERRIDE === true) {
-        return projected && projected !== 'unassigned' ? projected : 'Unassigned';
+        return projected || 'Unassigned';
     }
     const linked = typeof getQueueCardInventoryRow === 'function' ? getQueueCardInventoryRow(item, 'request') : null;
     const target = linked && matchesSuspendTagInventoryIdentity(linked, getSuspendTagInventoryIdentity(item, item)) ? linked : item;
@@ -65,8 +65,8 @@ function normalizeSuspendOwnerCode(value) {
 }
 
 function validSuspendOwner(value) {
-    const owner = normalizeEvalAssignableUser(value);
-    return owner && !['none','null','unassigned','n_a'].includes(owner) ? owner : '';
+    const owner = normalizeSuspendQueueOwner(value);
+    return owner && !['none','null','Unassigned','n_a'].includes(owner) ? owner : '';
 }
 
 function suspendOwnerFromRow(row) {

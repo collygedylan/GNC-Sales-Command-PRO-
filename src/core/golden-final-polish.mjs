@@ -35,3 +35,8 @@ test('Invariant 655: every route keeps its dark appearance through device and ac
 
 test('Invariant 656: an automatic mobile update waits for the camera, claims the completed shell, and restores the draft', async () =>
   (await import('../../tests/helpers/pwa-shell-upgrade-contract.mjs')).browserWorkerUpgradeContract({automatic:true}));
+test('Invariant 657: Suspend fallback retains account, permission, owner aliases, and write-proof boundaries', async () => {
+  const { assertSuspendOwnerFallback, assertSuspendSocDisplayOwnership } = await import('../../tests/helpers/suspend-owner-fallback.mjs');
+  assertSuspendOwnerFallback();
+  assertSuspendSocDisplayOwnership();
+});

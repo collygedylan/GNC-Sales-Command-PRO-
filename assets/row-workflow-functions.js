@@ -1277,11 +1277,6 @@ function canUnlockCompletedRow(item = activeItem) {
 
 
 
-function applySuspendEvalUserFilter(items = []) {
-    const owner = getSuspendEvalUserFilter();
-    return owner === 'ALL' ? items : items.filter(row => isQueueOwnerVisible(row, 'suspend-tag'));
-}
-
 function isSuspendPullItemMatch(code, sourceCode) {
     const normalized = value => String(value || '').trim().toUpperCase().replace(/^(\d{6}\.\d{3})\.$/, '$1.1');
     return !!normalized(code) && normalized(code) === normalized(sourceCode);

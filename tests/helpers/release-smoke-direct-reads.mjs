@@ -285,6 +285,7 @@ function readDefaultOwnerFixture(request, url) {
 function readSupplementalFixture(request, url, cache) {
   const defaultOwners = readDefaultOwnerFixture(request, url);
   if (defaultOwners) return defaultOwners;
+    if (isActiveCustomerConsigneeRead(request, url)) return { rows: [] };
   const poRows = poManagementDirectReadFixture(request.method(), url.href);
   if (poRows && url.pathname.startsWith('/rest/v1/')) return { rows: poRows };
   if (request.method() !== 'POST' || url.pathname !== '/functions/v1/app-api'
@@ -298,6 +299,11 @@ function readSupplementalFixture(request, url, cache) {
   if (hasExactKeys(body, 'action,dataset,params') && body.action === 'dataset_read'
     && body.dataset === 'suspend_tag') return readSupplementalSuspendPage(cache, body.params);
   return null;
+}
+
+function isActiveCustomerConsigneeRead(request, url) {
+  return request.method() === 'GET' && url.pathname === '/rest/v1/ph_customer_consignee_sales_reps'
+    && url.search === '?select=unique_id%2Ccustomername%2Cconsigneename%2Csalesrepname%2Csalesrepid%2Ccustomeridentityid%2Cconsigneeid%2Cterritorycode%2Cterritorydesc%2Ccustomerstatus%2Cconsigneestatus&customerstatus=eq.A&consigneestatus=eq.A&order=customername.asc%2Cconsigneename.asc&limit=1000&offset=0';
 }
 
 function readSupplementalMasterPage(cache, params) {

@@ -67,10 +67,8 @@ export function liveInventoryCardValue(row, ...keys) {
     return '';
 }
 
-function resolveLiveInventoryCardPhotoMatch(primary, note, number, calculateMatch) {
+function resolveLiveInventoryCardPhotoMatch(primary, note, canonical, number, calculateMatch) {
     const evidence = {...primary,...(note || {})};
-    const pct = number(evidence,'MATCH_PCT','LOC_MATCH_PCT','MATCH');
-    const stored = number(evidence,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
     const noteStored = number(note,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
     const depleted = liveInventoryCardValue(evidence,
         'EVAL_BASELINE_AVAILABLE','INITIAL_LOC_PHOTO_MATCH','INITIAL_PHOTO_MATCH_QTY') !== '';
@@ -79,9 +77,8 @@ function resolveLiveInventoryCardPhotoMatch(primary, note, number, calculateMatc
     const photoTimestamp = liveInventoryCardValue(evidence,'AV_RULE_PHOTO_UPDATED_AT','PHOTO_DATE');
     if (!photos || !photoTimestamp) return null;
     if (depleted) return calculateMatch(primary,note);
-    const available = number(primary,'PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY');
-    if (photos && pct > 0) return Math.round(Math.min(100,pct)*available/100);
-    return stored > 0 ? stored : Math.round(Math.min(100,pct)*number(primary,'PTRONHAND','ON_HAND')/100);
+    const quantity = liveInventoryCardValue(canonical,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    return quantity === '' ? null : quantity;
 }
 
 export function hydrateLiveInventoryCardDisplay(primary, selected, atLocation, rows, options) {
@@ -115,7 +112,10 @@ export function hydrateLiveInventoryCardDisplay(primary, selected, atLocation, r
     const summedOpenStock = rows.filter(item=>/^(F1|S1)$/.test(lot(liveInventoryCardValue(item,'LOTCODE','LOT'))))
         .reduce((sum,item)=>sum+available(item),0);
     set(liveInventoryCardValue(primary,'S_LTS','OPEN_STOCK') || summedOpenStock,'S_LTS','OPEN_STOCK');
-    set(resolveLiveInventoryCardPhotoMatch(primary,note,number,options.calculateMatch),'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    const quantity = resolveLiveInventoryCardPhotoMatch(primary,note,options.canonical,number,options.calculateMatch);
+    set(quantity,'LOC_PHOTO_MATCH','LOC_MATCH_QTY');
+    if (result.SNAPSHOT) result.SNAPSHOT = {...result.SNAPSHOT, LOC_PHOTO_MATCH:quantity, loc_photo_match:quantity,
+        LOC_MATCH_QTY:quantity, loc_match_qty:quantity};
     return result;
 }
 

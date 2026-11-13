@@ -1,5 +1,6 @@
 import { extractRequestRuntimeFunction } from './helpers/request-runtime-function.mjs';
 import { calculateLiveLocPhotoMatch } from '../src/core/inventory-photo-domain.js';
+import { calculateCanonicalLocPhotoMatch } from '../src/engine/canonical-inventory-evidence.js';
 import { readComposedAppSource } from '../scripts/composed-app-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -128,7 +129,8 @@ test('Suspend card photo metrics use the captured master photo-evidence timestam
 
   const frozenNow = Date.parse('2026-10-20T13:51:37.298Z');
   const context = vm.createContext({
-    calculateLiveLocPhotoMatch, firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    calculateLiveLocPhotoMatch, calculateCanonicalLocPhotoMatch,
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
     parseAppNumber: value => value == null || String(value).trim() === '' ? null : Number(String(value).replace(/,/g, '')),
     parseLocMatchPercent: value => value == null || String(value).trim() === '' ? null : Number(String(value).replace('%', '').trim()),
     findLinkedMasterRow: () => null,

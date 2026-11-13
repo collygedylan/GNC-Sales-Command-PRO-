@@ -31,7 +31,34 @@ export function getQueueScopeFilter(tab) {
 
 export function isQueueOwnerVisible(row, tab = isDockSuspendDcRequestMirrorRow(row) ? 'suspend-tag' : 'pending') {
     const selected = getQueueScopeFilter(tab);
-    return selected === 'ALL' || !!selected && (getAssignedQueueOwner(row) || 'Unassigned') === selected;
+    const owner = getAssignedQueueOwner(row) || 'Unassigned';
+    return selected === 'ALL' || !!selected && (tab === 'suspend-tag' ? normalizeSuspendQueueOwner(owner) : owner) === selected;
+}
+
+export function normalizeSuspendQueueOwner(value) {
+    const owner = normalizeEvalAssignableUser(value);
+    if (owner === 'dc') return 'dylan_collyge';
+    if (owner === 'ms') return 'megan_kelly';
+    return owner === 'unassigned' ? 'Unassigned' : owner;
+}
+
+export function useAllSuspendOwnersIfPersonalEmpty(activeRows) {
+    const scope = queueAccessScope('suspend-tag');
+    if (!scope.all || getQueueScopeFilter('suspend-tag') !== scope.user || !activeRows.length) return;
+    const choice = getManagerAssignedColumnState().queueScopeFilters['suspend-tag'];
+    if (activeRows.some(row => isQueueOwnerVisible(row, 'suspend-tag'))) return;
+    choice.value = 'ALL';
+    requestScopedItemsCacheKey = '';
+}
+
+export function suspendQueueRowsForOwner(rows, activeRows) {
+    useAllSuspendOwnersIfPersonalEmpty(activeRows);
+    return getQueueScopeFilter('suspend-tag') === 'ALL' ? rows
+        : rows.filter(row => isQueueOwnerVisible(row, 'suspend-tag'));
+}
+
+export function applySuspendEvalUserFilter(rows = []) {
+    return suspendQueueRowsForOwner(rows, []);
 }
 
 export function prunePendingRequestCards(rows) {
@@ -143,12 +170,12 @@ export function scheduleQueCategoryRefresh(tab, navigationSeq) {
 }
 
 function refreshQueSuspendCategory(navigationSeq) {
-    loadDatasetTargetsWithLimit([{ key: 'suspendTag', mode: 'full' }, { key: 'soc', mode: 'full' }], {
+    loadDatasetTargetsWithLimit([{ key: 'suspendTag', mode: 'full' }, { key: 'master', mode: 'initial' }, { key: 'soc', mode: 'full' }], {
         force: true,
         preserveRequestedMode: true,
         allowWhileInteractive: true,
         retryReason: 'request-tab-suspend'
-    }, 1).then(() => {
+    }, 2).then(() => {
         if (isCurrentNavigationTransition(navigationSeq, 'request') && activeReqTab === 'suspend-tag') {
             scheduleRequestRender(0, 0, true);
         }

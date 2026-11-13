@@ -220,7 +220,7 @@ function reportManualErpStartFailure(error, start) {
 export async function runGoogleAppsScriptTrigger() {
     releaseStaleManualSyncClientStateIfNeeded();
     const recovering = isManualErpScanStalled(manualSyncStatusState || {});
-    if (!canViewDashboardSyncStatus() || !recovering && (manualSyncStartPending || window.googleScriptRunInFlight)) return false;
+    if (!canRunManualInventoryImport() || !recovering && (manualSyncStartPending || window.googleScriptRunInFlight)) return false;
     const start = beginManualErpStart();
     try {
         const authHeaders = await authorizeManualErpStart(start);
@@ -267,4 +267,15 @@ function reduceManualErpSliceLimit(current = 2500) {
     const rows = Number(current) || 2500;
     if (rows > 1250) return 1250;
     return 600;
+}
+export function canRunManualInventoryImport() {
+    const profile = nativeAuthProfile;
+    const username = String(currentUser || '').trim().toLowerCase();
+    if (!username || !canViewDashboardSyncStatus() || window.GncUserAccessControl?.getSelfState?.()?.denied === true) return false;
+    if (!profile?.id) return !!getCurrentAppSessionToken();
+    const lock = profile.locked_until ? Date.parse(profile.locked_until) : 0;
+    return nativeAuthSessionActive === true && profile.id === nativeAuthSessionUserId
+        && username === String(profile.username || '').trim().toLowerCase()
+        && profile.active !== false && !profile.disabled_at && profile.must_change_password === false
+        && Number.isFinite(lock) && lock <= Date.now();
 }

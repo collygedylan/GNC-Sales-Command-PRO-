@@ -174,10 +174,12 @@ function syncQueCategorySelect(toolbar, categories) {
         toolbar.prepend(control);
     }
     const select = control.querySelector('select');
-    const markup = categories.map(({ key, label, count }) =>
+    const secondary = categories.filter(({ key }) => key !== 'pending' && key !== 'suspend-tag');
+    control.hidden = secondary.length === 0;
+    const markup = '<option value="" disabled>Other views</option>' + secondary.map(({ key, label, count }) =>
         `<option value="${escapeHtml(key)}">${escapeHtml(label)} (${escapeHtml(formatRequestTabCount(count))})</option>`).join('');
     if (select.innerHTML !== markup) select.innerHTML = markup;
-    select.value = activeReqTab;
+    select.value = secondary.some(({ key }) => key === activeReqTab) ? activeReqTab : '';
 }
 
 function syncQueActiveCategory(toolbar = document.getElementById('request-filter-toolbar')) {
@@ -188,7 +190,7 @@ function syncQueActiveCategory(toolbar = document.getElementById('request-filter
         button.setAttribute('aria-pressed', String(active));
     }
     const select = toolbar.querySelector('#que-view-select');
-    if (select) select.value = activeReqTab;
+    if (select) select.value = ['pending', 'suspend-tag'].includes(activeReqTab) ? '' : activeReqTab;
 }
 
 function syncQueOwnerFallback(toolbar) {

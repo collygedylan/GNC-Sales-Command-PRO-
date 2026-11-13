@@ -73,7 +73,7 @@ test('manual sync completion paints idle and file receipt before hydration, with
 });
 
 test('foreground restoration immediately reuses authenticated sync status and Home metadata refreshes', () => {
-  const source = functionSource('refreshManualSyncOnForeground', '        function canRunManualInventoryImport(');
+  const source = functionSource('refreshManualSyncOnForeground', 'function handleDeferredManualSyncStart(');
   const calls = [];
   const context = vm.createContext({
     currentUser: 'dylan_collyge', document: { hidden: false }, navigator: { onLine: true },

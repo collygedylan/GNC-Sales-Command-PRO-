@@ -34,10 +34,21 @@ const versionPath = path.join(siteRoot, 'version.json');
 const version = JSON.parse(await readFile(versionPath, 'utf8'));
 if (version.release !== fingerprint.release) throw new Error('DEPLOYMENT_VERSION_RELEASE_MISMATCH');
 await Promise.all([
+  stampPublishedCommit('index.html', /\s*<meta name="agdata-source-commit" content="[a-f0-9]{40}">/, '</head>',
+    `<meta name="agdata-source-commit" content="${fingerprint.commit}">`),
+  stampPublishedCommit('sw.js', /^\/\/ AgData source commit: [a-f0-9]{40}\r?\n/m, 'const APP_SHELL_BUILD',
+    `// AgData source commit: ${fingerprint.commit}\n`),
   writeFile(versionPath, `${JSON.stringify({ ...version, commit: fingerprint.commit }, null, 2)}\n`, 'utf8'),
   writeFile(path.join(siteRoot, 'deployment.json'), serialized, 'utf8'),
   writeFile(path.join(siteRoot, 'deployment-fingerprint.json'), serialized, 'utf8'),
   writeFile(path.join(siteRoot, 'deployments', `${fingerprint.commit}.json`), serialized, 'utf8')
 ]);
+
+async function stampPublishedCommit(file, existing, anchor, stamp) {
+  const target = path.join(siteRoot, file);
+  const source = (await readFile(target, 'utf8')).replace(existing, '');
+  if (!source.includes(anchor)) throw new Error('DEPLOYMENT_COMMIT_STAMP_ANCHOR_MISSING_' + file);
+  await writeFile(target, source.replace(anchor, stamp + anchor), 'utf8');
+}
 
 console.log(`Wrote deployment fingerprint ${fingerprint.release} ${fingerprint.commit.slice(0, 7)}.`);

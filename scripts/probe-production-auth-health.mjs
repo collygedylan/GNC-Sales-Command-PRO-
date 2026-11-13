@@ -1,6 +1,6 @@
 import { readComposedAppSource } from './composed-app-source.mjs';
 import fs from 'node:fs';
-import {expectedAppsScriptCommit,matchesAppsScriptSourceFingerprint,verifyHeadOnlyAppsScript} from './apps-script-health-fingerprint.mjs';
+import {expectedAppsScriptCommit,matchesAppsScriptHealthFingerprint as matchesAppsScriptSourceFingerprint,verifyHeadOnlyAppsScript} from './apps-script-health-fingerprint.mjs';
 import { verifyPoManagementHealth } from './po-management-health.mjs';
 import { createSignedDeploymentHealthEnvelope, isSignedDeploymentHealthEnvelope } from './apps-script-signing.mjs';
 
@@ -77,16 +77,17 @@ function sanitizeCode(value = '') {
     .trim().toUpperCase().replace(/[^A-Z0-9_-]+/g, '_').slice(0, 64) || 'UNKNOWN';
 }
 
+async function matchesAppsScriptPublication(payload, expectedHead) {
+  if (matchesAppsScriptSourceFingerprint(payload,expectedHead,appsScriptDeploymentId)) return true;
+  if (!process.env.APPS_SCRIPT_CLASPRC_JSON || !process.env.APPS_SCRIPT_SCRIPT_ID) return false;
+  const { googleApiFromClasp } = await import('./google-clasp-api.mjs');
+  return verifyHeadOnlyAppsScript(payload,expectedHead,process.env.APPS_SCRIPT_SCRIPT_ID.trim(),appsScriptDeploymentId,await googleApiFromClasp());
+}
+
 async function probeAppsScriptDeploymentHealth() {
   if (!appsScriptDeploymentId) return null;
   const url = `https://script.google.com/macros/s/${encodeURIComponent(appsScriptDeploymentId)}/exec`;
   const expectedHead = expectedAppsScriptCommit();
-  async function matchesPublication(payload) {
-    if (matchesAppsScriptSourceFingerprint(payload,expectedHead)) return true;
-    if (!process.env.APPS_SCRIPT_CLASPRC_JSON || !process.env.APPS_SCRIPT_SCRIPT_ID) return false;
-    const { googleApiFromClasp } = await import('./google-clasp-api.mjs');
-    return verifyHeadOnlyAppsScript(payload,expectedHead,process.env.APPS_SCRIPT_SCRIPT_ID.trim(),appsScriptDeploymentId,await googleApiFromClasp());
-  }
   let lastCode = 'UNAVAILABLE';
   for (let attempt = 1; attempt <= 12; attempt += 1) {
     let stage = 'SIGNED_WEB';
@@ -98,26 +99,11 @@ async function probeAppsScriptDeploymentHealth() {
         body: JSON.stringify(createSignedDeploymentHealthEnvelope(serviceRoleKey))
       }, 20000);
       const text = await response.text();
-      let payload = null;
-      try { payload = text ? JSON.parse(text) : null; } catch {}
+      const payload = JSON.parse(text || 'null');
       stage = 'FINGERPRINT';
-      if (!response.ok || payload?.ok !== true) {
-        lastCode = `HTTP_${response.status}`;
-      } else if (!(await matchesPublication(payload))) {
-        lastCode = 'COMMIT_FINGERPRINT';
-      } else if (String(payload.lifecycleRecipientPolicyVersion || '').trim() !== expectedLifecyclePolicyVersion) {
-        lastCode = 'POLICY_VERSION';
-      } else if (Number(payload.requiredRecipientCount) !== expectedLifecycleRequiredRecipientCount) {
-        lastCode = 'RECIPIENT_COUNT';
-      } else {
-        return {
-          status: response.status,
-          commit: String(payload.deployedCommit).slice(0, 7),
-          triggerCommit: expectedHead.slice(0,7),
-          policyVersion: String(payload.lifecycleRecipientPolicyVersion),
-          requiredRecipientCount: Number(payload.requiredRecipientCount)
-        };
-      }
+      const outcome = await classifyAppsScriptHealth(response, payload, expectedHead);
+      if (outcome.result) return outcome.result;
+      lastCode = outcome.code;
     } catch (error) {
       const code = error?.message;
       const providerCode = /^GOOGLE_(?:(?:AUTH|API)_HTTP_[1-5]\d{2}|CLASP_JSON_INVALID|CLASP_CREDENTIALS_MISSING|AUTH_RESPONSE_INVALID|AUTH_ACCESS_TOKEN_MISSING)$/;
@@ -127,6 +113,17 @@ async function probeAppsScriptDeploymentHealth() {
     if (attempt < 12) await new Promise((resolve) => setTimeout(resolve, 5000));
   }
   throw new Error(`production_apps_script_deployment_unhealthy_${sanitizeCode(lastCode)}`);
+}
+
+async function classifyAppsScriptHealth(response, payload, expectedHead) {
+  if (!response.ok || payload?.ok !== true) return { code: `HTTP_${response.status}` };
+  if (!(await matchesAppsScriptPublication(payload, expectedHead))) return { code: 'COMMIT_FINGERPRINT' };
+  const policyVersion = String(payload.lifecycleRecipientPolicyVersion || '').trim();
+  const requiredRecipientCount = Number(payload.requiredRecipientCount);
+  if (policyVersion !== expectedLifecyclePolicyVersion) return { code: 'POLICY_VERSION' };
+  if (requiredRecipientCount !== expectedLifecycleRequiredRecipientCount) return { code: 'RECIPIENT_COUNT' };
+  return { result: { status: response.status, commit: String(payload.deployedCommit).slice(0, 7),
+    triggerCommit: expectedHead.slice(0, 7), policyVersion, requiredRecipientCount } };
 }
 
 const startedAt = Date.now();

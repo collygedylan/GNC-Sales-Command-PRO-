@@ -45,21 +45,31 @@ test('manual status remains readable without starting or unlocking an import', (
   assert.equal(f.invoke({ type: 'manual_status' }).active, false);
   assert.equal(f.calls.length, 1); assert.equal(f.calls[0], 'cleanup');
 });
-test('Run Script visibility requires an active matching native full administrator', () => {
-  const source = ['isFullAppAdministrator', 'canRunManualInventoryImport'].map(name => {
-    const found = html.match(new RegExp('        function ' + name + '\\([^]*?^        }', 'm'))?.[0];
+test('Run Script visibility matches the Edge allowlist and requires a valid account session', () => {
+  const source = ['canViewDashboardSyncStatus', 'canRunManualInventoryImport'].map(name => {
+    const found = html.match(new RegExp('^ *function ' + name + '\\([^]*?^ *}', 'm'))?.[0];
     assert.ok(found, name); return found;
   }).join('\n');
-  for (const username of ['dylan_collyge', 'jd_jones', 'rep_one', 'other_admin']) {
-    const role = username === 'rep_one' ? 'Sales Rep' : 'Admin';
-    const f = vm.createContext({ nativeAuthSessionActive: true, nativeAuthSessionUserId: 'fixture', currentUser: username,
+  for (const [username, role, allowed] of [['dylan_collyge', 'super-admin', true], ['jd_jones', 'Admin', true],
+    ['megan_kelly', 'Admin', true], ['rep_one', 'Sales Rep', false], ['other_admin', 'Admin', false],
+    ['other_super_admin', 'super-admin', false]]) {
+    const f = vm.createContext({ window: {}, nativeAuthSessionActive: true, nativeAuthSessionUserId: 'fixture', currentUser: username,
       nativeAuthProfile: { id: 'fixture', username, role, active: true, must_change_password: false, disabled_at: null, locked_until: null },
-      resolveUserAccessMatrix: () => ({ role }), isSuperAdminRoleValue: value => value === 'Admin', getCurrentAppSessionToken: () => '' });
+      getCurrentAppSessionToken: () => 'legacy-token' });
     vm.runInContext(source, f);
-    assert.equal(f.canRunManualInventoryImport(), role === 'Admin');
+    assert.equal(f.canRunManualInventoryImport(), allowed, username);
+    f.nativeAuthSessionUserId = 'mismatched-id'; assert.equal(f.canRunManualInventoryImport(), false);
+    f.nativeAuthSessionUserId = 'fixture';
+    f.window.GncUserAccessControl = { getSelfState: () => ({ denied: true }) };
+    assert.equal(f.canRunManualInventoryImport(), false);
+    delete f.window.GncUserAccessControl;
     f.nativeAuthProfile.disabled_at = '2026-10-12'; assert.equal(f.canRunManualInventoryImport(), false);
     f.nativeAuthProfile.disabled_at = null; f.nativeAuthProfile.locked_until = 'invalid'; assert.equal(f.canRunManualInventoryImport(), false);
     f.nativeAuthProfile.locked_until = null; f.nativeAuthProfile.must_change_password = true; assert.equal(f.canRunManualInventoryImport(), false);
     f.nativeAuthProfile.must_change_password = false; f.currentUser = 'another_user'; assert.equal(f.canRunManualInventoryImport(), false);
+    f.currentUser = username; f.nativeAuthProfile = null;
+    assert.equal(f.canRunManualInventoryImport(), allowed, `legacy ${username}`);
+    f.getCurrentAppSessionToken = () => '';
+    assert.equal(f.canRunManualInventoryImport(), false);
   }
 });
