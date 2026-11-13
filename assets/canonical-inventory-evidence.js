@@ -200,14 +200,10 @@ function resolveExactLiveInventoryCard(row) {
     if (!selected.length) return null;
     const state = getManagerAssignedColumnState();
     const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
-    const canonical = resolveCanonicalInventoryRow(target);
-    const display = hydrateLiveInventoryCardDisplay(target, selected, atLocation, rows, {
-        canonical, notes,
+    return hydrateLiveInventoryCardDisplay(target, selected, atLocation, rows, {
+        canonical:resolveCanonicalInventoryRow(target), notes,
         normalizeLocation:normalizeCanonicalInventoryPart, calculateMatch:calculateLiveLocPhotoMatch
     });
-    const quantity = canonicalInventoryValue(canonical, 'LOC_PHOTO_MATCH');
-    if (quantity !== '') applyCanonicalMetricFamily(display, display.SNAPSHOT, ['LOC_PHOTO_MATCH','loc_photo_match','LOC_MATCH_QTY','loc_match_qty'], quantity, false);
-    return display;
 }
 
 function applyCanonicalInventoryNotes(result, target, notes) {

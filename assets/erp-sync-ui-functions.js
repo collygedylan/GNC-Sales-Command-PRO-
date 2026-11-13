@@ -69,7 +69,7 @@ function driveManualErpSyncFromStatus(status = {}, resume = false) {
 function renderErpSyncProgressModal() {
     const modal = document.getElementById('erp-sync-progress-modal');
     if (!modal || modal.classList.contains('hidden')) return;
-    if (!canViewDashboardSyncStatus() || modal.dataset.owner !== getSupabaseReadIdentityScope()) {
+    if (!canRunManualInventoryImport() || modal.dataset.owner !== getSupabaseReadIdentityScope()) {
         closeErpSyncProgressModal();
         return;
     }
@@ -84,13 +84,12 @@ function renderErpSyncProgressModal() {
     badge.textContent = erpSyncProgressLabel(state, error, recovering);
     badge.classList.toggle('sync-error', !!error);
     modal.querySelector('[data-sync-overall]').value = overall;
-    const canStart = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
     const lastProgress = Date.parse(state.sourceProgress?.[state.currentStage]?.updatedAt || state.updatedAt || state.startedAt || '');
     const publishing = state.sourceProgress?.[state.currentStage]?.stage === 'publishing';
     const waiting = state.active && publishing && (state.errorCode === 'ERP_PUBLICATION_RETRY' || Date.now() - lastProgress >= 45000);
     modal.querySelector('[data-sync-elapsed]').textContent = overall + '% · ' + elapsed + 's'
         + (waiting ? ' · Waiting for publication confirmation. Staged rows are saved.' : '');
-    modal.querySelector('[data-sync-run]').disabled = !canStart || !recovering && (manualSyncStartPending || !!window.googleScriptRunInFlight);
+    modal.querySelector('[data-sync-run]').disabled = !recovering && (manualSyncStartPending || !!window.googleScriptRunInFlight);
     modal.querySelector('[data-sync-cards]').innerHTML = cards.map(renderErpSyncProgressCard).join('');
 }
 
@@ -147,7 +146,7 @@ function syncGoogleScriptButton() {
     const button = document.getElementById('run-google-script-btn');
     if (!button) return;
     const label = button.querySelector('[data-run-script-label]');
-    const isVisible = canRunManualInventoryImport() || (!nativeAuthProfile?.id && canViewDashboardSyncStatus());
+    const isVisible = canRunManualInventoryImport();
     const panel = document.getElementById('dashboard-sync-accordion');
     if (panel) bindErpHomeStatusPanel(panel);
     const localRunInFlight = !!isRunScriptActive || !!window.googleScriptRunInFlight;
@@ -160,7 +159,7 @@ function syncGoogleScriptButton() {
 }
 
 function openErpSyncProgressModal() {
-    if (!canViewDashboardSyncStatus()) return false;
+    if (!canRunManualInventoryImport()) return false;
     const modal = document.getElementById('erp-sync-progress-modal');
     if (!modal) return false;
     modal.dataset.owner = getSupabaseReadIdentityScope();
@@ -173,16 +172,35 @@ function openErpSyncProgressModal() {
     modal.style.display = 'flex';
     renderErpSyncProgressModal();
     if (manualSyncStatusState?.active) driveManualErpSyncFromStatus(manualSyncStatusState, true);
-    if (!window.erpSyncModalTimer) window.erpSyncModalTimer = setInterval(() => {
-        if (modal.classList.contains('hidden') || modal.style.display === 'none') { closeErpSyncProgressModal(); return; }
-        if (document.hidden) return;
-        renderErpSyncProgressModal();
-        void refreshManualSyncStatus(true).catch(() => {});
-    }, 5000);
-    void refreshManualSyncStatus(true).catch(() => {});
+    startErpSyncProgressPolling(modal);
     modal.querySelector('[data-sync-close]')?.focus();
     updateGlobalBackButton();
     return false;
+}
+
+function startErpSyncProgressPolling(modal) {
+    if (window.erpSyncModalTimer) return;
+    let inFlight = false;
+    let retryNotBefore = 0;
+    const poll = async () => {
+        if (modal.classList.contains('hidden') || modal.style.display === 'none'
+            || !canRunManualInventoryImport() || modal.dataset.owner !== getSupabaseReadIdentityScope()) {
+            closeErpSyncProgressModal();
+            return;
+        }
+        if (document.hidden || inFlight || Date.now() < retryNotBefore) return;
+        renderErpSyncProgressModal();
+        inFlight = true;
+        try {
+            await refreshManualSyncStatus(true);
+        } catch {
+            retryNotBefore = Date.now() + 15000;
+        } finally {
+            inFlight = false;
+        }
+    };
+    window.erpSyncModalTimer = setInterval(poll, 5000);
+    void poll();
 }
 
 function closeErpSyncProgressModal() {
