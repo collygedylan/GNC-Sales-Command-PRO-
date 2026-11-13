@@ -143,6 +143,17 @@ $probe$;
 create trigger assignment_fixture_group_write after update of master_unique_id,itemcode on public.ph_inventory_row_assignments
 for each row execute function pg_temp.record_assignment_fixture_group_write();
 
+create temporary table assignment_fixture_index_writes (master_unique_id text, operation text);
+create function pg_temp.record_assignment_fixture_index_write()
+returns trigger language plpgsql as $probe$
+begin
+  insert into pg_temp.assignment_fixture_index_writes values(new.master_unique_id,tg_op);
+  return new;
+end
+$probe$;
+create trigger assignment_fixture_index_write before insert or update of unique_id on public.ph_inventory_row_assignments
+for each row execute function pg_temp.record_assignment_fixture_index_write();
+
 do $next_revision$
 declare run_key uuid := 'a3047000-0000-4000-8000-000000000002'; source_rev bigint; prior_audits integer;
 begin
@@ -158,8 +169,12 @@ begin
   perform public.finish_dataset_import_with_sources_v1(run_key,
     '[{"key":"ph_master_inventory","fileName":"erp-3047-next.xlsx","fileId":"erp-3047-next"}]');
   if (select array_agg(master_unique_id) from assignment_fixture_group_writes) is distinct from array['erp-assignment-prior']
+    or exists(select 1 from assignment_fixture_index_writes where master_unique_id<>'erp-assignment-prior')
+    or (select array_agg(operation order by operation) from assignment_fixture_index_writes)
+      is distinct from array['INSERT','UPDATE']
     or exists(select 1 from assignment_fixture_previous p join public.ph_inventory_row_assignments a using(master_unique_id)
       where a.revision<>p.revision+1 or a.source_revision<>source_rev
+        or a.unique_id is distinct from p.unique_id or a.policy_revision is distinct from p.policy_revision
         or (a.assignedto,a.assignment_reason,a.review_required) is distinct from (p.assignedto,p.assignment_reason,p.review_required))
     or not exists(select 1 from public.ph_inventory_row_assignments where master_unique_id='erp-assignment-prior'
       and plant_group_code='NEW_FIXTURE_GROUP')

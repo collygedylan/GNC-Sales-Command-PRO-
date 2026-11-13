@@ -291,4 +291,85 @@ revoke all on function private.prepare_drive_lineage_work_v3082(),
   private.prepare_drive_pending_ack_v3084(),private.filter_drive_upsert_candidates_v3084(text),
   private.filter_drive_update_candidates_v3084(text)
 from public,anon,authenticated,service_role;
+
+-- Post-upsert DDL. The installed lineage prefix and this section can be
+-- applied separately; neither operation publishes staged inventory.
+create or replace function private.reconcile_drive_item6_location_notes_v3084(p_run_id uuid)
+returns void language plpgsql set search_path='' set enable_nestloop=off as $notes$
+begin
+  create temp table drive_item6_note_delta_v3084 on commit drop as
+    with staged_notes as materialized (
+      select mapped.canonical_unique_id,s.raw_values->'locationnote' as raw_note
+      from pg_temp.ph_master_bulk_map_v1 mapped
+      join pg_temp.ph_master_bulk_stage_v1 s using(row_number)
+      where mapped.canonical_unique_id is not null and s.raw_item6_fields @> array['locationnote']
+    )
+    select n.canonical_unique_id,n.raw_note from staged_notes n
+    join app_sync_private.ph_master_inventory_item6_source_v7 i using(canonical_unique_id)
+    where i.field_values->'locationnote' is distinct from n.raw_note;
+  create unique index on pg_temp.drive_item6_note_delta_v3084(canonical_unique_id);
+  analyze pg_temp.drive_item6_note_delta_v3084;
+
+  update app_sync_private.ph_master_inventory_item6_source_v7 i
+  set field_values=jsonb_set(i.field_values,'{locationnote}',n.raw_note,true),
+      imported_at=clock_timestamp(),import_run_id=p_run_id
+  from pg_temp.drive_item6_note_delta_v3084 n
+  where i.canonical_unique_id=n.canonical_unique_id
+    and i.field_values->'locationnote' is distinct from n.raw_note;
+end
+$notes$;
+
+do $notes_owner$
+declare
+  definition text := pg_get_functiondef('public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)'::regprocedure);
+  opening constant text := E'    with notes as (\n      select distinct on (mapped.canonical_unique_id)';
+  closing constant text := E'      and i.field_values->''locationnote'' is distinct from notes.raw_note;';
+  start_at integer := strpos(definition,opening);
+  end_at integer := strpos(definition,closing);
+  original_sql text;
+begin
+  if strpos(definition,'private.reconcile_drive_item6_location_notes_v3084(p_run_id)')>0 then return; end if;
+  if start_at=0 or end_at<=start_at or cardinality(string_to_array(definition,opening))<>2
+    or cardinality(string_to_array(definition,closing))<>2 then
+    raise exception 'DRIVE_ITEM6_NOTE_OWNER_CHANGED';
+  end if;
+  original_sql := substr(definition,start_at,end_at+length(closing)-start_at);
+  execute overlay(definition placing E'    if private.has_drive_work_binding_v3078(true) then\n'
+    ||E'      perform private.reconcile_drive_item6_location_notes_v3084(p_run_id);\n'
+    ||E'    else\n'||original_sql||E'\n    end if;'
+    from start_at for length(original_sql));
+end
+$notes_owner$;
+
+revoke all on function private.reconcile_drive_item6_location_notes_v3084(uuid)
+from public,anon,authenticated,service_role;
+
+do $assignment$
+declare
+  definition text := pg_get_functiondef('private.apply_drive_row_assignment_plan_v3047(bigint)'::regprocedure);
+  wide constant text := '    select p.*, (a.master_unique_id is not null and (a.itemcode,';
+  stamp constant text := 'update public.ph_inventory_row_assignments a set unique_id=p.unique_id,policy_revision=p.policy_revision,';
+  stamp_source constant text := '    from row_decisions p where p.stamp_only and a.master_unique_id=p.master_unique_id';
+  write_source constant text := '   from row_decisions where not stamp_only order by master_unique_id on conflict';
+begin
+  if cardinality(string_to_array(definition,wide))<>2 or cardinality(string_to_array(definition,stamp))<>2
+    or cardinality(string_to_array(definition,stamp_source))<>2 or cardinality(string_to_array(definition,write_source))<>2
+    or not exists(select 1 from pg_constraint where conrelid='public.ph_inventory_row_assignments'::regclass
+      and conname='ph_inventory_row_assignments_uid_alias' and convalidated
+      and pg_get_constraintdef(oid)='CHECK ((unique_id = master_unique_id))') then
+    raise exception 'DRIVE_ASSIGNMENT_NARROW_STAMP_OWNER_CHANGED';
+  end if;
+  definition:=replace(definition,wide,
+    '    select p.master_unique_id as decision_uid, (a.master_unique_id is not null and (a.itemcode,');
+  definition:=replace(definition,stamp,
+    'update public.ph_inventory_row_assignments a set policy_revision=p.policy_revision,');
+  definition:=replace(definition,stamp_source,
+    '    from pg_temp.drive_row_assignments_v3047 p join row_decisions d on d.decision_uid=p.master_unique_id
+    where d.stamp_only and a.master_unique_id=p.master_unique_id');
+  definition:=replace(definition,write_source,
+    '   from pg_temp.drive_row_assignments_v3047 p join row_decisions d on d.decision_uid=p.master_unique_id
+    where not d.stamp_only order by p.master_unique_id on conflict');
+  execute definition;
+end
+$assignment$;
 commit;
