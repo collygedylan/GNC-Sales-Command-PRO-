@@ -10,6 +10,8 @@ const ticks = async () => { for(let n=0;n<8;n++) await Promise.resolve(); };
 function checkCompletionReturn(runtime) {
   for(const origin of ['drive','av','request','tasks','docks','av-photo']) {
    let restored;const context={window:{},activeItem:{UNIQUE_ID:'exact'},lastView:origin,detailReturnState:{viewId:origin,scrollTop:714},detailHydrationToken:1,
+    activeDetailSourceView:origin,isRequestDetailItem:()=>origin==='request',isDockSuspendDcRequestMirrorRow:()=>false,
+    optimisticCompletedRowIds:new Set(),getItemUniqueId:item=>item.UNIQUE_ID,
     beginInternalPerfMeasure:()=>0,cancelDriveEvidenceSavesForItem:()=>{},teardownDetailPresentation:()=>{},clearPendingDetailHydration:()=>{},markDetailTransitionActivity:()=>{},setDetailEditingChromeState:()=>{},resetDetailOverviewFieldSearch:()=>{},getViewElementById:()=>({}),isTouchConstrainedDevice:()=>false,recordInternalPerfDuration:()=>{},fastBackToView:(view,options)=>{restored={view,top:options.targetScrollTop};}};
    vm.runInNewContext(extract(runtime,'goBackFromDetail'),context);context.goBackFromDetail();
    assert.deepEqual(restored,{view:origin,top:714});assert.equal(context.activeItem,null);

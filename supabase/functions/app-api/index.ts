@@ -10,8 +10,8 @@ import { executeManagerTableManagement } from "../../../src/core/erp-action-disc
 import { handleScopedPhotoUpload } from "../../../src/services/photo-upload-handler.ts";
 import { authorizePhotoUpload, type PhotoAuthorizationDependencies } from "../../../src/services/photo-upload-authorization.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.79";
-const APP_RUNTIME_RELEASE = "AgData v3.0.79";
+const APP_RUNTIME_VERSION = "3.0.80";
+const APP_RUNTIME_RELEASE = "AgData v3.0.80";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_EDITABLE_FIELDS_POLICY } from "../../../services/reclassEditableFields.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
@@ -1176,7 +1176,7 @@ async function handleDatasetRead(
   canonicalAccess: CanonicalUserAccess | null = null,
   verifiedActor: Record<string, unknown> | null = null,
   revisionRetry = false,
-) {
+): Promise<Response> {
   if (!session) return errorResponse("Unauthorized", 401, { code: "DATASET_READ_UNAUTHORIZED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
   let actor: Record<string, unknown>;
@@ -1445,7 +1445,7 @@ async function finishDatasetPage(context: DatasetReadContext, data: Record<strin
     ...(deliveredInventoryRevision === null ? {} : { inventoryRevision: deliveredInventoryRevision }) } });
 }
 
-async function handleDatasetPageFailure(context: DatasetReadContext, error: unknown) {
+async function handleDatasetPageFailure(context: DatasetReadContext, error: unknown): Promise<Response> {
   const { session, payload, request, canonicalAccess, actor, dataset, parsed, revisionRetry } = context;
   const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
   if (code.includes("LOC_ON_HAND_REVISION_CHANGED")) {

@@ -88,6 +88,23 @@ function transportFixture({cellular = false, timerScale = 1, nativeDeadline = fa
     return {context, calls, timers, get traces() { return traces; }, get upgrades() { return upgrades; }};
 }
 
+test('direct table reads retry transient responses within the same account', async () => {
+    const fixture = transportFixture({nativeDeadline:true});
+    const {context} = fixture;
+    const statuses = [500, 504, 200, 403];
+    const send = async () => new Response('{}', {status:statuses.shift()});
+    const url = context.SUPABASE_URL + '/rest/v1/ph_master_inventory';
+    assert.equal((await context.recoverDirectOperationalRead(url, {method:'GET'}, send)).status, 200);
+    assert.equal((await context.recoverDirectOperationalRead(url, {method:'GET'}, send)).status, 403);
+    assert.equal(statuses.length, 0);
+    await assert.rejects(context.recoverDirectOperationalRead(url, {method:'GET'}, async () => {
+        context.nativeAuthRecoveryEpoch++;
+        return new Response('{}', {status:500});
+    }), {code:'REQUEST_SCOPE_CHANGED'});
+    const write = () => new Response('{}', {status:504});
+    assert.equal((await context.recoverDirectOperationalRead(url, {method:'PATCH'}, write)).status, 504);
+});
+
 test('all signed Supabase paths fetch directly without cache or referrer; unrelated traces remain', async () => {
     const fixture = transportFixture({nativeDeadline:true});
     for (const path of ['/rest/v1/app_dataset_revisions','/rest/v1/rpc/get_my_dataset_revisions_v1',

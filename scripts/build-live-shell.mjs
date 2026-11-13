@@ -8,7 +8,7 @@ import { prepareLiveIslandAssets } from './live-island-assets.mjs';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 import { prepareReleaseSiteDirectory } from './release-disk-policy.mjs';
 
-const RELEASE = 'AgData v3.0.79';
+const RELEASE = 'AgData v3.0.80';
 const RELEASE_QUERY = RELEASE.replace(/^AgData v/, '');
 // Each release owns one immutable query version across all shell assets.
 const ASSET_QUERY_OVERRIDES = Object.freeze({});
@@ -60,9 +60,8 @@ const shellStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}">`
 const asyncStylesheetMarkup = (href) => `<link rel="stylesheet" href="${href}" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
     <noscript><link rel="stylesheet" href="${href}"></noscript>`;
 
-// Wait for the login image and styles, then give the browser two paint opportunities
-// before parsing the multi-megabyte legacy runtime. Starting at DOMContentLoaded can
-// monopolize the main thread before the already-downloaded LCP image is painted.
+// Give the login image and styles a brief head start. Optional resources and
+// background-tab animation frames cannot hold the required runtime indefinitely.
 const runtimeTag = `<script>
 (() => {
   window.__gncAppRuntimeExecuted = false;
@@ -79,6 +78,7 @@ const runtimeTag = `<script>
   const reload = document.getElementById('login-runtime-reload');
   let ready = false;
   let started = false;
+  let optionalResourceDeadline;
   const guardedEvents = ['click', 'pointerup', 'touchend', 'keydown'];
   const guardLogin = (event) => {
     if (ready) return;
@@ -117,6 +117,8 @@ const runtimeTag = `<script>
   const boot = () => {
     if (started) return;
     started = true;
+    clearTimeout(optionalResourceDeadline);
+    window.removeEventListener('load', afterPaint);
     bootTiming.state = 'loading';
     bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
@@ -156,6 +158,7 @@ const runtimeTag = `<script>
     document.body.appendChild(runtime);
   };
   const afterPaint = () => requestAnimationFrame(() => requestAnimationFrame(boot));
+  optionalResourceDeadline = setTimeout(boot, 1200);
   if (document.readyState !== 'complete') {
     window.addEventListener('load', afterPaint, { once: true });
   } else {

@@ -124,6 +124,9 @@ export function harness(options = {}) {
   ctx.window.localStorage = ctx.localStorage;
   vm.runInContext(readFileSync(new URL('../../assets/queue-completion-state.js', import.meta.url), 'utf8'), ctx);
   vm.runInContext(readFileSync(new URL('../../assets/suspend-receipt-domain.js', import.meta.url), 'utf8'), ctx);
+  vm.runInContext(readFileSync(new URL('../../assets/request-inventory-card.js', import.meta.url), 'utf8'), ctx);
+  vm.runInContext(readFileSync(new URL('../../assets/row-publication-branches.js', import.meta.url), 'utf8'), ctx);
+  vm.runInContext(readFileSync(new URL('../../assets/canonical-inventory-evidence.js', import.meta.url), 'utf8'), ctx);
   vm.runInContext(between('function applyExplicitAvNotePayload(', 'function mergeConfirmedRowEvaluationUploads('), ctx);
   const transport = between('function currentSuspendSourceSnapshot(', 'function getManagerAssignedSelectionSnapshot(');
   const falseBlock = between("function isFalseBlockLocation(", 'function ');

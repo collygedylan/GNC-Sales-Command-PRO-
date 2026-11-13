@@ -16,7 +16,8 @@ function openDisplayOnlyNavigation(viewId, options = {}) {
     }
     if (previous === 'managers') cancelManagerModuleReads();
     showOnlyPrimaryView(viewId);
-    syncNavigationDisplayStatus(getViewElementById(viewId), 'This module will load when your access is available.');
+    const host = getViewElementById(viewId);
+    syncNavigationDisplayStatus(host, ensureViewRenderState(viewId).initialized ? '' : 'Loading module access…');
     updateFooterNavState(viewId);
     syncGlobalHeaderChrome({ reason: `view-display:${viewId}`, force: true });
     repairAppShellScrollState(`view-display:${viewId}`, { resetGestureState: previous !== viewId });

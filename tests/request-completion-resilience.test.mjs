@@ -8,8 +8,8 @@ import test from 'node:test';
 const root = process.cwd();
 const html = readComposedAppSource();
 const saveData = html.slice(
-  html.indexOf('async function saveData('),
-  html.indexOf('function getPendingEditsCache(')
+  html.indexOf('async function persistConfirmedRowEvaluation('),
+  html.indexOf('function getPendingEditsCache(', html.indexOf('async function persistConfirmedRowEvaluation('))
 );
 const completionSchemaProbe = html.slice(
   html.indexOf('async function ensureRequestCompletionUserColumnsReady('),

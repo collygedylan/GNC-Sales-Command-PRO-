@@ -98,12 +98,14 @@ export function navigationVisibilityFixture({ username = 'worker', role = 'stand
     context.sessionStorage = { getItem: key => session.get(key) || null, setItem: (key, value) => session.set(key, value), removeItem: key => session.delete(key) };
     context.getCurrentVisibleViewId = () => context.currentPrimaryViewId;
     context.getViewElementById = view => dom.window.document.getElementById('view-' + view);
+    context.ensureViewRenderState = () => ({ initialized: false });
     context.showOnlyPrimaryView = view => { context.currentPrimaryViewId = view; };
     context.setMenuOpenState = value => { context.menuOpen = value; };
     for (const file of ['access-display-cache', 'navigation-visibility', 'navigation-routing']) {
         vm.runInContext(read('src/ui/' + file + '.js').replace(/^export /gm, ''), context);
     }
     vm.runInContext((read('assets/access-matrix-policy.js')+'\n'+read('assets/user-access-control.js')), context);
+    vm.runInContext(read('assets/row-access-policy.js'), context);
     context.resolveUserAccessMatrix = (...args) => context.window.GncUserAccessControl.resolveUserAccessMatrix(...args);
     loadRuntimeOwners(context);
     if (legacy) {

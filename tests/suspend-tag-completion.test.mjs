@@ -359,18 +359,7 @@ test('Complete Tag attempts closure despite an incomplete review or failed uploa
   }
 });
 
-test('Suspend actions respect row access for reviewed and denied users', () => {
-  const h = harness();
-  vm.runInContext(between('function canCurrentUserWorkRequestItem(', 'function parseRequestCustomerFolderParts('), h.ctx);
-  for (const status of ['awaiting_rep', 'approved']) {
-    h.mirror.suspend_tag_status = status;
-    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'close'), true);
-    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'edit'), true);
-    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'complete'), true);
-  }
-  h.ctx.allowed = false;
-  assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'close'), false);
-});
+await import('../src/core/suspend-row-access-contract.mjs');
 
 test('an incomplete close acknowledgement cannot remove the card or report completion', async () => {
   const h = harness({ api: () => acknowledgement({ suspend: 'SUSPEND', suspend_to: 'DC' }) });

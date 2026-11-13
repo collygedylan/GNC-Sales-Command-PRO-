@@ -236,7 +236,8 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = SUPABASE_WRITE_TI
     if (options.signal?.aborted) throw Object.assign(new Error(`${label} cancelled.`), { code: 'REQUEST_ABORTED' });
     const photoTimeout = typeof document !== 'undefined' && /photo|upload/i.test(label);
     try {
-        return await fetchTimedTransport(url, options, timeoutMs, photoTimeout && !options.photoUploadAttempt, consumeResponse);
+        const send = () => fetchTimedTransport(url, options, timeoutMs, photoTimeout && !options.photoUploadAttempt, consumeResponse);
+        return await recoverDirectOperationalRead(url, options, send, consumeResponse);
     } catch (error) {
         if (error && error.name === 'AbortError') {
             const leftView = !photoTimeout && startedView && startedView !== document.body?.dataset?.currentView;

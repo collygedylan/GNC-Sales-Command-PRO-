@@ -6784,14 +6784,4 @@ test('Invariant 646: a prior DRIVE alias requires unique matching lineage and re
   (await import('./helpers/erp-prior-drive-alias-release.mjs')).assertPriorDriveAliasRelease());
 test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
   (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
-test('Invariant 648: six field photos transfer in order with bounded retries and verified preview fallback', async () =>
-  (await import('./helpers/ordered-detail-photo-contract.mjs')).assertOrderedDetailPhotoUploads());
-test('Invariant 649: Request completion transports exact queued photo IDs and reports a missing registration receipt', async () =>
-  (await import('./helpers/request-photo-intent-contract.mjs')).assertRequestPhotoIntentContract());
-
-test('Invariant 650: warm AV uses the active account and a final Suspend receipt clears only its exact order', async () => {
-  const {assertWarmAvAndFinalSuspendReceipt} = await import('../src/core/warm-av-suspend-receipt-fixture.mjs');
-  assertWarmAvAndFinalSuspendReceipt();
-});
-test('Invariant 651: Eval overview and drills, Bloom cart continuity, and Project presets work in Chromium', async () =>
-  (await import('../src/views/eval-bloom-project-browser-fixture.mjs')).verifyEvalBloomProjectBrowser());
+await import('../src/core/golden-final-polish.mjs');

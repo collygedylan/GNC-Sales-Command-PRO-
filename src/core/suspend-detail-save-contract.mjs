@@ -124,7 +124,8 @@ async function detailLateChecks() {
 }
 
 export async function suspendUploadFailureChecks() {
-  const uploadFailed = harness();
+  const uploadFailed = harness({api:()=>({...acknowledgement({date_completed:null,suspend_tag_status:'pending'}),
+    inventoryRows:[{unique_id:'master-1',itemcode:source().ITEMCODE,locationcode:source().LOCATIONCODE,lotcode:source().LOTCODE,spec:'saved'}]})});
   prepareDetail(uploadFailed);
   uploadFailed.ctx.getPendingPhotoUploadsForItem = () => { throw new Error('Suspend saves must not inspect the photo queue'); };
   assert.equal(await uploadFailed.ctx.saveDockSuspendDcRequestMirrorData(true, uploadFailed.mirror), true);

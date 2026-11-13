@@ -33,6 +33,15 @@ export async function retryOperationalRpc(send, {safe, current, signal, wait = w
     return runOperationalRpcRetry(send, {safe,current,signal,wait,random,isTransient:isOperationalTransientError});
 }
 
+export function recoverDirectOperationalRead(url, options, send, consumeResponse) {
+    const target = String(url?.url || url);
+    if (consumeResponse || !target.startsWith(SUPABASE_URL + '/rest/v1/')
+        || target.includes('/rest/v1/rpc/') || !/^(GET|HEAD)$/i.test(options.method || 'GET')) return send();
+    const owner = getSupabaseReadIdentityScope(), epoch = nativeAuthRecoveryEpoch;
+    const current = () => owner === getSupabaseReadIdentityScope() && epoch === nativeAuthRecoveryEpoch;
+    return retryOperationalRpc(send, {safe:true, current, signal:options.signal});
+}
+
 export function isRecoverableOperationalRead(body = {}) {
     return ['dataset_read','inventory_read','manual_sync_status'].includes(body.action)
         || body.action === 'request_work' && body.operation === 'capabilities';

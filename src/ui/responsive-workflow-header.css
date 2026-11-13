@@ -329,3 +329,48 @@ html body.current-view-request #app-wrapper #global-header-search-row #request-f
   margin: 0 !important;
   padding: 0 18px 0 6px !important;
 }
+
+html body.ops-precision-pilot #app-wrapper :is(#view-home, #view-drive, #view-av, #app-top-chrome .nav-header) {
+  background: linear-gradient(135deg, #103220, #081c12) !important;
+  color: #ecfdf5 !important;
+  color-scheme: dark;
+}
+
+html body.ops-precision-pilot #app-wrapper :is(#view-home, #view-drive, #view-av) :is(.home-dashboard-tile, .app-card-shell, .app-smart-card, .drill-item) {
+  background: #103220 !important;
+  color: #ecfdf5 !important;
+  border-color: #358463 !important;
+}
+
+html body.ops-precision-pilot #view-detail:not(.detail-request-reference) #det-tabs-container:not(.hidden) {
+  position: relative;
+  inset-block-start: auto;
+  scroll-margin-block-start: var(--app-top-chrome-height, 64px);
+}
+
+html body.ops-precision-pilot #view-detail .av-note-dropdown-panel {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: min(260px, calc(100vw - 20px));
+}
+
+html body.ops-precision-pilot #view-detail .av-note-dropdown-panel .av-note-dropdown-option {
+  display: block;
+  width: 100%;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+  text-align: start;
+}
+
+html body.ops-precision-pilot #view-detail button[aria-label="Delete photo"] {
+  inset: 0 0 auto auto;
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+}
+
+html body.ops-precision-pilot #view-detail button[aria-label="Delete photo"] > span {
+  display: none;
+}

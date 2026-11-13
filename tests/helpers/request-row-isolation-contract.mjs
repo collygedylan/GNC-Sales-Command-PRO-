@@ -12,6 +12,7 @@ export function assertRequestRowIsolation() {
     getSupabaseReadIdentityScope:()=>'actor',getPhotoUrlList:v=>String(v||'').split(',').filter(Boolean),
     getPhotoEntryDateMs:()=>Date.now(),getPhotoRetentionFallbackDateMs:()=>Date.now()});
   vm.runInContext(fs.readFileSync(new URL('../../assets/canonical-inventory-evidence.js',import.meta.url),'utf8'),context);
+  vm.runInContext(fs.readFileSync(new URL('../../assets/confirmed-evaluation-ui.js',import.meta.url),'utf8'),context);
   assert.equal(context.projectCanonicalInventoryRow(s1).PHOTO_LINK,'s1-photo');
   assert.equal(context.projectCanonicalInventoryRow(s1).SPEC,'S1');
   assert.equal(context.resolveCanonicalInventoryTarget({...s1,MASTER_ID:'f1'},context.masterInventoryById,context.masterInventoryByItemCode),null);

@@ -24,7 +24,7 @@ export function depletionContract(){
 
 export function completionLockContract(){
  const item={UNIQUE_ID:'one',DATE_COMPLETED:'2026-11-02T19:00:00Z',PHOTO_LINK:'https://fixture/photo.jpg',LOC_PHOTO_MATCH:5,PTRONHAND:5,MATCH:100};
- const c=context(['hasLockableInventoryEvidence','calculateLiveLocPhotoMatch','isProtectedSectionLocked','isProtectedSectionCompleted','isProtectedUnlocked','getCompletedRowUnlockKey','canRemoveProtectedPhoto','canReorderProtectedPhoto'],{getPhotoUrlList:v=>String(v||'').split(',').filter(Boolean),activeItem:item,protectedEditState:{},isRowPhotoEvaluationExpired:()=>false,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),currentUser:'evaluator',resolveCanonicalRowAccess:()=>({canEditAnyRow:false}),getVisiblePhotoLinkCsvForPrefix:()=>item.PHOTO_LINK,canEditRowDetails:()=>true,canUsePhotoDeleteOverride:()=>true,isDriveModePhotoDataEditContext:()=>true,sectionHasProtectedData:()=>true});
+ const c=context(['hasLockableInventoryEvidence','calculateLiveLocPhotoMatch','isProtectedSectionLocked','isProtectedSectionCompleted','isProtectedUnlocked','getCompletedRowUnlockKey','canRemoveProtectedPhoto','canReorderProtectedPhoto'],{isAvDetailReadOnlyContext:()=>false,getPhotoUrlList:v=>String(v||'').split(',').filter(Boolean),activeItem:item,protectedEditState:{},isRowPhotoEvaluationExpired:()=>false,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),currentUser:'evaluator',resolveCanonicalRowAccess:()=>({canEditAnyRow:false}),getVisiblePhotoLinkCsvForPrefix:()=>item.PHOTO_LINK,canEditRowDetails:()=>true,canUsePhotoDeleteOverride:()=>true,isDriveModePhotoDataEditContext:()=>true,sectionHasProtectedData:()=>true});
  assert.equal(c.isProtectedSectionLocked('ssn-'),true,'administrators lock after completion');
  assert.equal(c.canRemoveProtectedPhoto('ssn-'),false,'photo override does not bypass completion');
  assert.equal(c.canReorderProtectedPhoto('ssn-'),false);
@@ -45,6 +45,7 @@ export function fixedKeypadContract(){
 export function optimisticCompletionContract(){
  const row={UNIQUE_ID:'one',PTRAVAILABLE:'1000',PTRONHAND:'1000',MATCH:'50'},sibling={UNIQUE_ID:'other',MATCH:'80'};
  let blur=0,lock=0;const c=context(['beginOptimisticCompletedRow','restoreOptimisticCompletedFields','getEditorLocMatchQtyValue','getCompletedRowUnlockKey','isCompletedInventoryRow'],{activeItem:row,fullInventory:[row,sibling],masterInventoryById:new Map([['one',row],['other',sibling]]),getManagerAssignedColumnState:()=>({}),parseAppNumber:v=>v==null?null:Number(v),getCardPtrAvailableValue:r=>r.PTRAVAILABLE,firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&x!==''),clearDetailMeasurementKeyboardKeepAlive(){},closeDetailMeasurementKeyboard(){},document:{querySelectorAll:selector=>selector==='input,textarea,[contenteditable="true"]'?[{blur(){blur++;}}]:[]},PROTECTED_EDIT_CONFIG:{'ssn-':{}},protectedEditState:{},applyProtectedEditState(){lock++;},refreshProtectedSections(){lock++;},showToast(){}});
+ vm.runInContext(readFileSync(new URL('../../assets/canonical-inventory-evidence.js',import.meta.url),'utf8'),c);
  const payload={match:50},undo=c.beginOptimisticCompletedRow(row,'ssn-',payload);assert.equal(row.completed,true);assert.equal(row.initial_loc_photo_match,500);assert.equal(row.eval_baseline_available,1000);assert.equal(blur,1);assert.equal(lock,1);assert.equal(sibling.completed,undefined);
  undo();assert.equal(row.completed,undefined);assert.equal(row.DATE_COMPLETED,undefined);assert.equal(row.MATCH,'50','a failed save retains the evaluation draft');
 }
@@ -58,13 +59,15 @@ export async function ownerAndSuspendContract(){
  const inventory = [{ITEMCODE:'003129.070.1',default_owner:'wrong'}, {ITEMCODE:'004733.020.1',default_owner:'dylan_collyge',effective_worker:'wrong'},
    {ITEMCODE:'003521.030.1',eval_user:'charlie_robertson'}, {ITEMCODE:'003521.050.1',default_owner:'charley_robertson'},
    ...Array(8).fill({ITEMCODE:'003521.070.1',default_owner:'mitch_kaiser'})];
- const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','resolveSuspendOwner','resolveExactSuspendOwner','getSuspendEvalOwner','buildEvalOwnerBadge',
+ state.fullInventory=inventory;
+ const c=context(['normalizeEvalAssignableUser','getCardEvalOwnerIndex','buildEvalOwnerBadge',
    'firstDockNonEmpty','firstDockValue','normalizeDockViewDockKey','normalizeDockSuspendRequestValue','getDockSuspendValue','isDockSuspendDcRequestMirrorRow','queueAccessScope','getQueueScopeFilter','getSuspendEvalUserFilter','applySuspendEvalUserFilter','getAssignedQueueOwner','isQueueOwnerVisible','buildSuspendEvalUserFilter','setSuspendEvalUserFilter','canUseRequestSuspendTagAssignedToFilter','canReadSuspendQueue'],{
    getManagerAssignedColumnState:()=>state, fullInventory:inventory, getSupabaseReadIdentityScope:()=>'session:'+c.currentUser,
    buildManagerEvalAssignmentKey:x=>String(x||'').trim().toUpperCase(), EVAL_TASK_USER_ALIASES:{charlie_robertson:'charley_robertson',kayla_knapp:'kayla_knepp',abigail_vasquez:'abigail_vazquez'},
    isDockSuspendDcRequestSource:r=>r?.suspend==='SUSPEND', getDockSuspendToValue:r=>r?.suspend_to,
    currentUser:'dylan_collyge', activeReqTab:'suspend-tag', requestSuspendEvalUserFilter:'ALL', suspendEvalFilterScope:'', SUSPEND_EVAL_ROSTER:SUSPEND_ROSTER_FIXTURE,
    isAuthenticatedExecutiveUser:()=>false, canAccessView:()=>true, escapeHtml:String, markViewDirty(){},renderRequest(){},paintFooterRequestBadgeOnly(){},requestScopedItemsCacheKey:''});
+ vm.runInContext(readFileSync(new URL('../../assets/suspend-exact-owner.js',import.meta.url),'utf8'),c);
  const tag={itemcode:' 004733.020.1 ',eval_user:'stale'};
  for (const [row,owner] of [[tag,'dylan_collyge'],[{ITEMCODE:'003129.070.1'},'nelly_aguilar'],[{ITEMCODE:'003521.999.1'},'charley_robertson'],
    [{ITEMCODE:'999999',assigned_user:'abigail_vasquez'},'abigail_vazquez'],[{eval_user:'kayla_knapp'},'kayla_knepp'],
@@ -100,10 +103,13 @@ export async function ownerAndSuspendContract(){
 }
 
 export function rowCapabilityInitializationContract(){
- const c=context(['canUserMakeLiveChangesOnRow','canUserEditRow','resolveCanonicalRowAccess'],{GLOBAL_LIVE_CHANGE_USER_KEYS:new Set(['dylan_collyge']),normalizeEvalAssignableUser:v=>v,resolveInventoryRowOwner:r=>r.UNIQUE_ID==='one'?'eval':'other',resolveUserAccessMatrix:()=>({edit_any_row:'Y'}),currentUser:'dylan_collyge',currentUserDisplay:'Dylan',currentRole:'super-admin'});
+ const matrix={verified:true,profile_id:'profile',edit_any_row:'Y',view_permissions:{view_drive_mode:'Y'}};
+ const c=context(['canUserMakeLiveChangesOnRow','canUserEditRow'],{resolveUserAccessMatrix:()=>matrix,currentUser:'dylan_collyge',currentUserDisplay:'Dylan',currentRole:'super-admin',nativeAuthSessionActive:true,nativeAuthSessionUserId:'profile',nativeAuthProfile:{id:'profile',username:'dylan_collyge'}});
+ vm.runInContext(readFileSync(new URL('../../assets/row-access-policy.js',import.meta.url),'utf8'),c);
  assert.equal(c.canUserMakeLiveChangesOnRow('dylan_collyge',{UNIQUE_ID:'one'}),true);
- c.resolveUserAccessMatrix=()=>({edit_any_row:'N',edit_assigned_rows_only:'N',verified:true});assert.equal(c.canUserMakeLiveChangesOnRow('rep',{UNIQUE_ID:'one'}),false);
- c.resolveUserAccessMatrix=()=>({edit_any_row:'N',edit_assigned_rows_only:'Y',verified:true});c.isRowAssignedToUser=(_u,r)=>r.UNIQUE_ID==='one';assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'one'}),true);assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'two'}),false);
+ matrix.edit_any_row='N';c.currentUser=c.nativeAuthProfile.username='rep';assert.equal(c.canUserMakeLiveChangesOnRow('rep',{UNIQUE_ID:'one'}),false);
+ matrix.edit_assigned_rows_only='Y';c.currentUser=c.nativeAuthProfile.username='eval';c.resolveInventoryRowOwner=r=>r.UNIQUE_ID==='one'?'eval':'other';
+ assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'one'}),true);assert.equal(c.canUserMakeLiveChangesOnRow('eval',{UNIQUE_ID:'two'}),false);
 }
 
 export function keyboardCloseDoesNotMeasureContract(){

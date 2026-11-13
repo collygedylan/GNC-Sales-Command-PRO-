@@ -104,6 +104,7 @@ export function nextPreferenceTimestamp() {
   }
 
 export function getEffectiveTheme() {
+    if (['home', 'drive', 'av', 'av-photo'].includes(shared.state.activeView)) return 'dark';
     if (!shared.state.eligible && !shared.state.provisional) return readRememberedDeviceTheme();
     return shared.state.preferences.themeMode === 'light' ? 'light' : 'dark';
   }
@@ -173,7 +174,7 @@ export function applyUiState() {
     if (themeColorMeta) {
       themeColorMeta.setAttribute('content', effectiveTheme === 'dark' ? '#050806' : '#f4fbf7');
     }
-    writeRememberedDeviceTheme(effectiveTheme);
+    writeRememberedDeviceTheme(shared.state.preferences.themeMode);
     if (typeof window.syncGlobalHeaderChrome === 'function') {
       window.requestAnimationFrame(() => {
         window.syncGlobalHeaderChrome({ reason: 'ops-precision-state', force: true });

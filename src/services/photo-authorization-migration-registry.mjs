@@ -1,12 +1,14 @@
+import { suspendOrderReceiptMigrationName, suspendOrderReceiptMigrationContract } from './suspend-order-migration-registry.mjs';
+
 export const photoAuthorizationMigrationName='20261111173946_photo_request_table_authorization.sql';
 export const accessDefaultsWatchdogMigrationName='20261111174727_access_defaults_watchdog_read.sql';
 export const photoUploadServiceMigrationName='20261111181931_photo_upload_service_authority.sql';
-export const photoAuthorizationMigrationNames=[photoAuthorizationMigrationName,accessDefaultsWatchdogMigrationName,photoUploadServiceMigrationName];
+export const photoAuthorizationMigrationNames=[photoAuthorizationMigrationName,accessDefaultsWatchdogMigrationName,photoUploadServiceMigrationName,suspendOrderReceiptMigrationName];
 
 export function photoAuthorizationMigrationContract(name) {
     if (name===photoUploadServiceMigrationName) return photoUploadServiceContract();
     if (name===accessDefaultsWatchdogMigrationName) return accessDefaultsWatchdogContract();
-    if (name!==photoAuthorizationMigrationName) return null;
+    if (name!==photoAuthorizationMigrationName) return suspendOrderReceiptMigrationContract(name);
     return `SELECT
       to_regprocedure('private.current_evidence_actor_v3074()') IS NOT NULL
       AND to_regprocedure('private.can_work_request_row_v3074(jsonb)') IS NOT NULL
