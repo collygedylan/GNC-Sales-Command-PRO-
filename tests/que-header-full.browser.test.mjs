@@ -44,6 +44,10 @@ async function installQueueRoutes(page) {
         let data;
         if (body.action==='projects_read') data={projects:[],rows:[]};
         if (body.action==='bunch_note_workflow' && ['list_discrepancies','queue'].includes(body.operation)) data={rows:[],reviews:[],total:0,has_more:false};
+        if (body.action === 'report_read_v2' && body.operation === 'capabilities') data = { surfaces: ['eval2'] };
+        if (body.action === 'report_read_v2' && body.query?.surface === 'eval2') {
+            data = { sourceRevision: 'fixture-eval2', metadata: {}, rows: [], total: 0, hasMore: false };
+        }
         if (!data) return route.fallback();
         return route.fulfill({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify({ok:true,data})});
     });
@@ -140,6 +144,114 @@ async function assertQuickCategorySwitch(page, tab) {
     assert.equal(elapsed.active, tab);
     return elapsed.ms;
 }
+
+async function readDarkView(page, selector) {
+    const view = page.locator(selector);
+    await view.waitFor({ state: 'visible', timeout: 5000 });
+    return view.evaluate(node => {
+        const root = document.documentElement;
+        const surfaces = [node, ...node.querySelectorAll('*')];
+        const light = surfaces.filter(el => {
+            if (!el.getClientRects().length || getComputedStyle(el).visibility !== 'visible') return false;
+            const style = getComputedStyle(el);
+            return /^(rgb\(255, 255, 255\)|rgb\(248, 250, 252\))$/.test(style.backgroundColor)
+                || /rgb\((255, 255, 255|248, 250, 252)\)/.test(style.backgroundImage);
+        }).map(el => el.id || el.classList.value || el.tagName);
+        let surface = node;
+        while (surface.parentElement && getComputedStyle(surface).backgroundColor === 'rgba(0, 0, 0, 0)') {
+            surface = surface.parentElement;
+        }
+        return { dark: root.classList.contains('dark') && root.dataset.theme === 'dark'
+            && document.body.dataset.opsTheme === 'dark', background: getComputedStyle(surface).backgroundColor, light };
+    });
+}
+
+async function verifyRestorationViews(page, baseURL) {
+    await page.addInitScript(() => {
+        localStorage.setItem('gnc_last_theme_v1', 'light');
+        localStorage.setItem('gnc_outdoor_mode_v1', '1');
+    });
+    const master = [hlMaster('hetzi-theme-fixture', { commonname: 'Hetzi Column Juniper', contsize: '#3' })];
+    const rows = pendingQueueRows();
+    const fixture = await installHlOrderFixture(page, baseURL, {
+        master, role: 'ADMIN', username: 'dylan_collyge',
+        appPermissions: ['home', 'drive', 'av', 'request', 'communication', 'managers', 'docks'].map(moduleKey => ({
+            permissionKey: 'module.' + moduleKey + '.view', kind: 'module', moduleKey, allowed: true
+        })),
+        beforeNavigate: async () => {
+            await installQueueRoutes(page);
+            await installPendingQueueRead(page, rows);
+            await page.route('**/rest/v1/user_access?**', route => route.fulfill({ json: [{
+                username: 'dylan_collyge', role: 'Admin', view_all_requests: 'Y',
+                view_permissions: { view_drive_mode: 'Y', view_av: 'Y', view_que: 'Y', view_que_request: 'Y',
+                    view_que_suspend: 'Y', view_managers: 'Y', view_eval_reports_2: 'Y', view_docks: 'Y' }
+            }], headers: { 'access-control-allow-origin': '*' } }));
+        }
+    });
+    const views = {};
+    views.home = await readDarkView(page, '#view-home');
+    await page.evaluate(() => switchView('drive'));
+    views.drive = await readDarkView(page, '#view-drive');
+    await page.waitForFunction(() => GncUserAccessControl.getSelfState().verified === true);
+    await page.evaluate(() => openDetail('hetzi-theme-fixture', 'drive'));
+    views.detail = await readDarkView(page, '#view-detail');
+    const detail = await page.locator('#view-detail').innerText();
+    assert.match(detail, /Hetzi Column Juniper/i);
+    assert.doesNotMatch(detail, /view only|setTimeout\(|document\.getElementById|saveData\(/i);
+    await page.locator('#view-detail input[id$="-av-note"]:visible').first().waitFor({ state: 'visible' });
+    await page.evaluate(() => switchView('av'));
+    views.av = await readDarkView(page, '#view-av');
+    await page.evaluate(pending => {
+        processAndLoadData(buildDatasetPayload('requests', pending));
+        switchView('request');
+    }, rows);
+    await assertPendingQueue(page, true);
+    views.request = await readDarkView(page, '#view-request');
+    await assertQuickCategorySwitch(page, 'suspend-tag');
+    views.suspend = await readDarkView(page, '#view-request');
+    await page.evaluate(() => switchView('communication'));
+    views.comm = await readDarkView(page, '#view-communication');
+    await page.evaluate(() => openManagersModules());
+    views.managers = await readDarkView(page, '#view-managers');
+    await page.evaluate(() => setHomeTab('eval-reports-2'));
+    assert.equal(await page.evaluate(() => activeHomeTab), 'eval-reports-2');
+    await page.locator('.eval-aggregate-card').first().waitFor({ state: 'visible', timeout: 5000 });
+    views.eval2 = await readDarkView(page, '#view-managers');
+    await page.evaluate(() => switchView('docks'));
+    views.docks = await readDarkView(page, '#view-docks');
+    await assertCollapsedDockFilter(page);
+    assert.deepEqual(fixture.blockedMutations, []);
+    return views;
+}
+
+async function assertCollapsedDockFilter(page) {
+    const disclosure = page.locator('#view-docks .docks-filter-disclosure');
+    await disclosure.waitFor({ state: 'visible' });
+    assert.deepEqual(await disclosure.evaluate(node => ({
+        open: node.open,
+        beforeCards: node.getBoundingClientRect().bottom <= document.getElementById('docks-content').getBoundingClientRect().top,
+        header: node.parentElement.classList.contains('freeze-panel')
+    })), { open: false, beforeCards: true, header: true });
+}
+
+test('restored dark shell covers the full navigation with OS light and stored Outdoor Mode', async t => {
+    const server = await fixtureServer();
+    const browser = await chromium.launch({ headless: true });
+    try {
+        const page = await browser.newPage({ colorScheme: 'light', viewport: { width: 390, height: 844 } });
+        const views = await verifyRestorationViews(page, 'http://127.0.0.1:' + server.address().port);
+        t.diagnostic(JSON.stringify(views));
+        for (const [name, view] of Object.entries(views)) {
+            assert.equal(view.dark, true, name);
+            const channels = view.background.match(/\d+/g)?.map(Number);
+            assert.ok(channels?.length === 3 && Math.max(...channels) < 50, name + ': ' + view.background);
+            assert.deepEqual(view.light, [], name);
+        }
+    } finally {
+        await browser.close();
+        await new Promise(resolve => server.close(resolve));
+    }
+});
 
 async function verifyColdPendingQueue(page, baseURL) {
     let verified = false;

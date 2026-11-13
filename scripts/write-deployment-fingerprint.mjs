@@ -30,7 +30,11 @@ if (v2Manifest.version !== release || v2Manifest.start_url !== `./?shellv=${enco
 
 await mkdir(path.join(siteRoot, 'deployments'), { recursive: true });
 const serialized = `${JSON.stringify(fingerprint, null, 2)}\n`;
+const versionPath = path.join(siteRoot, 'version.json');
+const version = JSON.parse(await readFile(versionPath, 'utf8'));
+if (version.release !== fingerprint.release) throw new Error('DEPLOYMENT_VERSION_RELEASE_MISMATCH');
 await Promise.all([
+  writeFile(versionPath, `${JSON.stringify({ ...version, commit: fingerprint.commit }, null, 2)}\n`, 'utf8'),
   writeFile(path.join(siteRoot, 'deployment.json'), serialized, 'utf8'),
   writeFile(path.join(siteRoot, 'deployment-fingerprint.json'), serialized, 'utf8'),
   writeFile(path.join(siteRoot, 'deployments', `${fingerprint.commit}.json`), serialized, 'utf8')

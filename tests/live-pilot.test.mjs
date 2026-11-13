@@ -323,18 +323,11 @@ test('all users receive Light/Dark and Cards/Grid with a preserved Dylan dark de
   assert.match(css, /--ops-wide-content: 1880px/);
 });
 
-test('all users receive one menu-only Light and Dark selector with legacy System mapped to Dark', () => {
-  const themeButtons = html.match(/data-ops-theme-mode="[^"]+"/g) || [];
-  assert.deepEqual(themeButtons, ['data-ops-theme-mode="light"', 'data-ops-theme-mode="dark"']);
-  assert.doesNotMatch(html, /data-ops-theme-mode="system"/);
-  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="light"[\s\S]*ph-duotone ph-sun[\s\S]*<span>Light<\/span>/);
-  assert.match(html, /class="ops-theme-choice" data-ops-theme-mode="dark"[\s\S]*ph-duotone ph-moon[\s\S]*<span>Dark<\/span>/);
-  assert.match(client, /return mode === 'light' \? 'light' : 'dark'/);
-  assert.match(client, /querySelectorAll\('button\[data-ops-theme-mode\]'\)/);
-  assert.match(client, /querySelectorAll\('button\[data-ops-display-mode\]'\)/);
+test('the shell paints dark before boot and keeps list display preferences available', () => {
+  assert.match(html, /<html lang="en" class="dark" data-theme="dark">/);
+  assert.match(html, /<body[^>]+data-ops-theme="dark"/);
+  assert.doesNotMatch(html, /data-ops-theme-mode="/);
   assert.match(client, /body\.dataset\.opsTheme = effectiveTheme/);
-  assert.match(css, /\.ops-theme-selector[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(css, /\.ops-theme-choice\[aria-pressed="true"\][\s\S]*content: "Active"/);
 });
 
 test('light and dark modes provide theme-aware command, pill, chat, form, and navigation tokens', () => {
@@ -939,7 +932,7 @@ test('top banners and sticky module controls use semantic surfaces in both theme
   assert.match(finalCascade, /#app-top-chrome :is\(\.nav-header, #global-header-search-row\)[\s\S]*background: transparent !important/);
   assert.match(finalCascade, /\.ui-panel,[\s\S]*background: var\(--ui-surface\) !important;[\s\S]*background-image: none !important/);
   assert.match(read('index.html'), /<meta name=\"theme-color\" content=\"#04140d\">/);
-  assert.match(client, /themeColorMeta\.setAttribute\('content', effectiveTheme === 'dark' \? '#050806' : '#f4fbf7'\)/);
+  assert.match(client, /themeColorMeta\.setAttribute\('content', '#050806'\)/);
 });
 
 test('active Chat is a full-height iPhone-style conversation with keyboard-safe composing', () => {

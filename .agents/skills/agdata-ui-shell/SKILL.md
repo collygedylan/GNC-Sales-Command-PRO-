@@ -40,6 +40,10 @@ and any required browser geometry. Source-only CSS checks do not prove layout.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Keep the root, active view, and shell dark before and after hydration. A
+  saved light preference or Outdoor Mode must never give another route a
+  light canvas or panel (Invariant 655).
+
 - Never expand the docked Request strip beyond 48px, pin a cloned field that does not receive keystrokes, or hide only an AV Note list while leaving its sheet overlay active. Keep the actual focused control above the keyboard and restore its layout on blur (Invariant 619).
 
 - Keep AV Stock and inventory fields first in one horizontal, keyboard-accessible filter rail above the cards. Full-width controls or nested wrapping field bars can fill the mobile viewport before the first card. Keep 44px targets, reuse the current account's synchronous facets, and open native dropdowns above the scroll rail so their options remain clickable.

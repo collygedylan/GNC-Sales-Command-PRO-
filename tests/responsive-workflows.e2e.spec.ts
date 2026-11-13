@@ -1,3 +1,4 @@
+import { measureNavigationFallback } from './helpers/navigation-theme-fallback';
 import { expect, test } from '@playwright/test';
 
 import { installDriveCardLayoutFixture, renderDriveLayoutCard, renderSharedHlDriveLayoutCard } from './fixtures/drive-card-layout';
@@ -3535,61 +3536,27 @@ test('module filters sit below the command search with responsive breathing room
   }
 });
 
-test('light and dark navigation use explicit semantic fallback colors', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+test('navigation uses the dark semantic fallback with either saved theme', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   for (const theme of ['light', 'dark']) {
     await page.goto(`${fixtureUrl}?view=drive&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
-    await expect.poll(() => page.locator('body').getAttribute('data-ops-theme')).toBe(theme);
-    await expect.poll(() => page.locator('#bottom-nav').getAttribute('data-resolved-theme')).toBe(theme);
+    await expect.poll(() => page.locator('body').getAttribute('data-ops-theme')).toBe('dark');
+    await expect.poll(() => page.locator('#bottom-nav').getAttribute('data-resolved-theme')).toBe('dark');
     // This assertion validates the resolved fallback colors, not their transition.
     // Disable transitions so WebKit cannot sample a mid-animation color value.
     await page.addStyleTag({ content: '#bottom-nav, #bottom-nav * { transition: none !important; }' });
     // Match the production shell's prepaint state before removing its runtime theme.
-    await page.locator('html').evaluate((root, resolvedTheme) => {
-      (root as HTMLElement).dataset.opsPrepaintTheme = resolvedTheme;
-    }, theme);
-    await page.locator('body').evaluate((body) => body.removeAttribute('data-ops-theme'));
-    const navState = await page.locator('#bottom-nav').evaluate((nav) => {
-      const toRgba = (value: string) => (value.match(/[\d.]+/g) || []).map(Number);
-      const luminance = (channels: number[]) => {
-        const linear = channels.map((channel) => {
-          const normalized = channel / 255;
-          return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
-        });
-        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-      };
-      const contrast = (foreground: string, background: string, surface: string) => {
-        const surfaceRgb = toRgba(surface).slice(0, 3);
-        const backgroundRgba = toRgba(background);
-        const alpha = backgroundRgba[3] ?? 1;
-        const compositedBackground = backgroundRgba.slice(0, 3).map((channel, index) => channel * alpha + surfaceRgb[index] * (1 - alpha));
-        const [lighter, darker] = [luminance(toRgba(foreground)), luminance(compositedBackground)].sort((a, b) => b - a);
-        return (lighter + 0.05) / (darker + 0.05);
-      };
-      const inactive = nav.querySelector('.footer-nav-btn:not(.active)') as HTMLElement;
-      const active = nav.querySelector('.footer-nav-btn.active') as HTMLElement;
-      const label = inactive.querySelector('span') as HTMLElement;
-      const navStyle = getComputedStyle(nav);
-      const inactiveStyle = getComputedStyle(inactive);
-      const activeStyle = getComputedStyle(active);
-      return {
-        background: navStyle.backgroundColor,
-        border: navStyle.borderTopColor,
-        inactiveColor: inactiveStyle.color,
-        activeColor: activeStyle.color,
-        activeBackground: activeStyle.backgroundColor,
-        inactiveContrast: contrast(inactiveStyle.color, navStyle.backgroundColor, navStyle.backgroundColor),
-        activeContrast: contrast(activeStyle.color, activeStyle.backgroundColor, navStyle.backgroundColor),
-        labelOpacity: getComputedStyle(label).opacity,
-        resolvedTheme: (nav as HTMLElement).dataset.resolvedTheme,
-      };
+    await page.locator('html').evaluate(root => {
+      (root as HTMLElement).dataset.opsPrepaintTheme = 'dark';
     });
-    expect(navState.background).toBe(theme === 'dark' ? 'rgb(10, 18, 14)' : 'rgba(255, 255, 255, 0.88)');
+    await page.locator('body').evaluate((body) => body.removeAttribute('data-ops-theme'));
+    const navState = await measureNavigationFallback(page);
+    expect(navState.background).toBe('rgb(10, 18, 14)');
     expect(navState.border).not.toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
     expect(navState.inactiveContrast).toBeGreaterThanOrEqual(4.5);
     expect(navState.activeContrast).toBeGreaterThanOrEqual(4.5);
     expect(navState.activeBackground).not.toBe(navState.background);
     expect(navState.labelOpacity).toBe('1');
-    expect(navState.resolvedTheme).toBe(theme);
+    expect(navState.resolvedTheme).toBe('dark');
   }
 });
 
@@ -3610,9 +3577,8 @@ test('non-Dylan users receive Appearance controls with phone-safe Grid behavior'
   await page.goto(`${fixtureUrl}?pilot=1&monitoring=0&theme=light&display=cards&reset=1`, { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.locator('body').getAttribute('data-qa-ready')).toBe('true');
   await expect(page.locator('#ops-pilot-settings')).toBeVisible();
-  await expect(page.locator('button[data-ops-theme-mode="light"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('button[data-ops-theme-mode]')).toHaveCount(0);
   await expect(page.locator('button[data-ops-display-mode="grid"]')).toBeDisabled();
-  await page.locator('button[data-ops-theme-mode="dark"]').click();
   await expect(page.locator('body')).toHaveAttribute('data-ops-theme', 'dark');
 
   await page.setViewportSize({ width: 1366, height: 768 });

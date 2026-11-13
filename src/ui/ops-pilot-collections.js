@@ -1,5 +1,5 @@
 import { BROWSE_RAIL_SELECTOR, LIST_ROOT_IDS, LIST_VIEWS, RECORD_CLASS_PATTERN, compactBrowseRailOpenState, compactBrowseRailState, shared } from './ops-pilot-state.js';
-import { applyUiState, getEffectiveDisplayMode, gridIsSupportedHere, nextPreferenceTimestamp, normalizeDisplayMode, normalizePreferences, normalizeThemeMode, readCachedPreferences, schedulePremiumDecorations, writeCachedPreferences } from './ops-pilot-appearance.js';
+import { applyUiState, getEffectiveDisplayMode, gridIsSupportedHere, nextPreferenceTimestamp, normalizeDisplayMode, normalizePreferences, readCachedPreferences, schedulePremiumDecorations, writeCachedPreferences } from './ops-pilot-appearance.js';
 import { scheduleLayoutHealthCheck } from './ops-pilot-layout.js';
 
 export function isRecordNode(element) {
@@ -227,20 +227,19 @@ export function schedulePreferenceRetry() {
     }, delay);
   }
 
-export function updatePreference(kind, value) {
+function updateDisplayPreference(value) {
     if (!shared.state.eligible) return false;
-    if (kind === 'theme' && !shared.state.flags.preferences) return false;
-    if (kind === 'display' && (!shared.state.flags.card_grid || (normalizeDisplayMode(value) === 'grid' && !gridIsSupportedHere()))) return false;
+    const displayMode = normalizeDisplayMode(value);
+    if (!shared.state.flags.card_grid || (displayMode === 'grid' && !gridIsSupportedHere())) return false;
     const next = {
       ...shared.state.preferences,
+      displayMode,
       updatedAt: nextPreferenceTimestamp()
     };
-    if (kind === 'theme') next.themeMode = normalizeThemeMode(value);
-    if (kind === 'display') next.displayMode = normalizeDisplayMode(value);
     shared.state.preferences = next;
     writeCachedPreferences(next, true);
     applyUiState();
-    if (kind === 'display' && shared.state.activeView === 'drive' && typeof window.scheduleDriveRender === 'function') {
+    if (shared.state.activeView === 'drive' && typeof window.scheduleDriveRender === 'function') {
       window.setTimeout(() => window.scheduleDriveRender(0, 0), 0);
     }
     requestPreferenceSave();
@@ -248,15 +247,10 @@ export function updatePreference(kind, value) {
   }
 
 export function installControlHandlers() {
-    document.querySelectorAll('button[data-ops-theme-mode]').forEach((button) => {
-      if (button.dataset.opsBound === 'true') return;
-      button.dataset.opsBound = 'true';
-      button.addEventListener('click', () => updatePreference('theme', button.getAttribute('data-ops-theme-mode')));
-    });
     document.querySelectorAll('button[data-ops-display-mode]').forEach((button) => {
       if (button.dataset.opsBound === 'true') return;
       button.dataset.opsBound = 'true';
-      button.addEventListener('click', () => updatePreference('display', button.getAttribute('data-ops-display-mode')));
+      button.addEventListener('click', () => updateDisplayPreference(button.getAttribute('data-ops-display-mode')));
     });
   }
 

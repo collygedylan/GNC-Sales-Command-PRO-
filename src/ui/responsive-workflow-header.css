@@ -229,6 +229,13 @@ html body.current-view-docks #app-wrapper #view-docks > .freeze-panel:has(> .doc
   cursor: pointer;
   padding: 8px 4px;
 }
+html[data-theme="dark"] body #app-wrapper #view-wrapper > [id^="view-"] {
+  background-color: var(--ops-canvas) !important;
+}
+html[data-theme="dark"] body #app-wrapper #view-docks #docks-crumb {
+  background: var(--ops-surface) !important;
+  color: var(--ops-text) !important;
+}
 html body:not(.current-view-request) #global-header-search-row > #request-filter-toolbar {
   display: none !important;
 }

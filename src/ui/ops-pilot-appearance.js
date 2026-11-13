@@ -104,9 +104,7 @@ export function nextPreferenceTimestamp() {
   }
 
 export function getEffectiveTheme() {
-    if (['home', 'drive', 'av', 'av-photo'].includes(shared.state.activeView)) return 'dark';
-    if (!shared.state.eligible && !shared.state.provisional) return readRememberedDeviceTheme();
-    return shared.state.preferences.themeMode === 'light' ? 'light' : 'dark';
+    return 'dark';
   }
 
 export function clearPrepaintTheme() {
@@ -130,9 +128,6 @@ export function getEffectiveDisplayMode() {
   }
 
 export function updateControlState() {
-    document.querySelectorAll('button[data-ops-theme-mode]').forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.getAttribute('data-ops-theme-mode') === shared.state.preferences.themeMode));
-    });
     const gridSupported = gridIsSupportedHere();
     const effectiveDisplayMode = getEffectiveDisplayMode();
     document.querySelectorAll('button[data-ops-display-mode]').forEach((button) => {
@@ -153,6 +148,8 @@ export function applyUiState() {
     const body = document.body;
     if (!body) return;
     const effectiveTheme = getEffectiveTheme();
+    document.documentElement.classList.add(effectiveTheme);
+    document.documentElement.dataset.theme = effectiveTheme;
     const effectiveDisplay = getEffectiveDisplayMode();
     const skinActive = true;
     body.classList.toggle('ops-pilot-active', shared.state.eligible && !shared.state.provisional);
@@ -172,7 +169,7 @@ export function applyUiState() {
     }
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', effectiveTheme === 'dark' ? '#050806' : '#f4fbf7');
+      themeColorMeta.setAttribute('content', '#050806');
     }
     writeRememberedDeviceTheme(shared.state.preferences.themeMode);
     if (typeof window.syncGlobalHeaderChrome === 'function') {
@@ -183,11 +180,7 @@ export function applyUiState() {
     }
     body.dataset.opsView = shared.state.activeView;
     const panel = document.getElementById('ops-pilot-settings');
-    const themeGroup = document.getElementById('ops-theme-settings');
-    const displayGroup = document.getElementById('ops-display-settings');
-    if (panel) panel.classList.toggle('hidden', shared.state.provisional || !shared.state.eligible || (!shared.state.flags.preferences && !shared.state.flags.card_grid));
-    if (themeGroup) themeGroup.classList.toggle('hidden', !shared.state.flags.preferences);
-    if (displayGroup) displayGroup.classList.toggle('hidden', !shared.state.flags.card_grid);
+    if (panel) panel.classList.toggle('hidden', shared.state.provisional || !shared.state.eligible || !shared.state.flags.card_grid);
     updateControlState();
     schedulePremiumDecorations();
     scheduleDecorateRecordCollections();

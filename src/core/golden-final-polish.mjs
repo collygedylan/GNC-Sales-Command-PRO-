@@ -29,3 +29,6 @@ test('Invariant 653: signed-in power and scoped row editors survive cold permiss
 
 test('Invariant 654: Pending Request all-user scope survives cold matrix reads and remains separate from Suspend', async () =>
   (await import('../../tests/helpers/que-header-contract.mjs')).assertQueueOwnerScopes());
+
+test('Invariant 655: every route keeps its dark appearance through device and account preference changes', async () =>
+  (await import('../../tests/helpers/dark-emerald-theme-contract.mjs')).assertDarkEmeraldTheme());
