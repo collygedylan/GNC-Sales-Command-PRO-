@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.80';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.81';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -761,7 +761,7 @@
                 setInventoryConsolidationFilter('cropTier', String(action.filters.cropTier).toUpperCase());
             }
             if (view === 'request' && ['suspend-tag','recount','bunch-notes'].includes(String(action.filters?.queueCategory || ''))) {
-                document.querySelector(`#request-filter-toolbar [data-request-category="${String(action.filters.queueCategory)}"]`)?.click();
+                setReqTab(String(action.filters.queueCategory));
             }
             if (view === 'tasks' && typeof action.filters?.taskView === 'string') setTaskView(action.filters.taskView);
             if (view === 'historical-requests' && ['requests','orders','reserves','drive'].includes(String(action.filters?.archiveTab || ''))) {
@@ -24703,7 +24703,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.80';
+        const APP_VERSION = '3.0.81';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -31166,7 +31166,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const toolbar = document.getElementById('request-filter-toolbar');
             if (toolbar) toolbar.scrollLeft = 0;
             // Opening a newly created Request must not reset Suspend's filters.
-            syncRequestTabButtons();
+            if (safeOptions.deferCategoryCounts) syncQueActiveCategory();
+            else syncRequestTabButtons();
             if (safeOptions.clearSelection) clearSelection();
         }
 
@@ -45537,10 +45538,7 @@ let avTopControlsRenderToken = 0;
             }
             const exact = getActiveAssignedQueueCounts();
             const queueCount = getRequestQueueAlertCount(exact);
-            for (const [tab, count] of Object.entries(exact)) {
-                const chip = document.querySelector('.request-category-chip[data-request-category="' + tab + '"] .request-category-chip__count');
-                if (chip) { chip.textContent = String(count); chip.classList.toggle('has-count', count > 0); }
-            }
+            if (isViewVisible('request')) syncQueCategoryCounts(exact, counts);
             if (queueCount > 0) {
                 badge.textContent = String(queueCount);
                 badge.classList.remove('hidden');
@@ -76444,54 +76442,25 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
 
         function setReqTab(tab) {
-            if (!['archived','reps'].includes(tab) && !getAuthorizedRequestCategories().includes(normalizeRequestTabValue(tab))) { showToast('Access unavailable','You do not have permission to open this queue.',true); return false; }
+            const nextTab = normalizeRequestTabValue(tab);
+            if (!['archived', 'reps'].includes(tab) && !getAuthorizedRequestCategories().includes(nextTab)) {
+                showToast('Access unavailable', 'You do not have permission to open this queue.', true);
+                return false;
+            }
             window.BunchNote?.disposeView();
-            if (tab === 'archived') return switchView('historical-requests');
-            if (tab === 'reps') return switchView('request-history');
+            if (tab === 'archived' || tab === 'reps') return switchView(tab === 'archived' ? 'historical-requests' : 'request-history');
             resetQueueReadCooldowns();
             lastViewSwitchAt = Date.now();
-            const nextTab = normalizeRequestTabValue(tab);
             if (nextTab !== 'eval-work') unsubscribeEvalWorkRealtime();
             if (nextTab !== 'reps') requestSalesRepsManagerMode = false;
-            if (nextTab === 'pending') forcePendingRequestRoot({ clearSelection: true });
-            else {
-                activeReqTab = nextTab;
-                syncRequestTabButtons();
-            }
-            if (isViewVisible('request')) renderViewContent('request', false, true);
-            const scheduled = runDirectTrackedNavigation('request', `request-tab:${nextTab}`, () => {
-                activeReqTab = nextTab;
-                if (nextTab === 'eval-work') subscribeEvalWorkRealtime();
-                activeLocationMoveQueDetailUid = '';
-                activeLocationWorkJobId = '';
-                activeShearQueDetailId = '';
-                activeAvOptionEvalDetailId = '';
-                if (nextTab !== 'eval-work') activeEvalWorkDetailId = '';
-                syncRequestTabButtons();
-                requestViewLevel = 0;
-                selectedReqFolder = null;
-                selectedReqRepView = null;
-                selectedReqCustView = null;
-                selectedReqConsigneeView = null;
-                selectedReqFolderView = null;
-                requestFolderSearchTerm = '';
-                requestRepSearchTerm = '';
-                requestCustomerSearchTerm = '';
-                requestConsigneeSearchTerm = '';
-                requestFolderDateFilter = '';
-                if (nextTab === 'suspend-tag') {
-                    requestDylanFilterMode = 'all';
-                    requestDylanFilterValue = '';
-                    requestDylanSalesRepValue = '';
-                    requestDylanFilterMenuOpen = '';
-                }
-                clearSelection();
-            }, {
+            if (nextTab === 'pending') forcePendingRequestRoot({ deferCategoryCounts: true });
+            else activateQueCategory(nextTab);
+            const scheduled = runDirectTrackedNavigation('request', `request-tab:${nextTab}`, () => resetQueCategoryDrills(nextTab), {
                 delay: 0,
                 typingDelay: 32,
                 forceRender: true,
-                preferImmediate: true,
-                yieldToPaint: false,
+                preferImmediate: false,
+                yieldToPaint: true,
                 interactiveCritical: true,
                 resetScrollTopAfterRender: true,
                 scrollResetKey: `request-tab:${nextTab}`,
@@ -76500,31 +76469,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 scrollDelayMs: 40
             });
             scheduleRequestRenderSideData();
-            if (nextTab === 'projects') { ensureQueueInventoryProjectsData(true); return scheduled; }
-            if (window.BunchQueueShell?.isTab(nextTab)) return scheduled;
-            if (nextTab === 'archived') {
-                loadRequestArchivePage(0, true).catch((error) => console.warn('Archived request page failed', error));
-                return scheduled;
-            }
-            if (nextTab === 'eval-work') {
-                loadEvalWorkAssignments(true).catch(() => {});
-                return scheduled;
-            }
-            if (nextTab === 'suspend-tag') {
-                loadDatasetTargetsWithLimit([{ key: 'suspendTag', mode: 'full' }, { key: 'soc', mode: 'full' }], {
-                    force: true,
-                    preserveRequestedMode: true,
-                    allowWhileInteractive: true,
-                    retryReason: 'request-tab-suspend'
-                }, 1).then(() => {
-                    if (isViewVisible('request') && activeReqTab === 'suspend-tag') scheduleRequestRender(0, 0, true);
-                }).catch(() => {});
-            }
-            forceRefreshRequestsForView('request-tab', {
-                force: true,
-                allowWhileInteractive: true,
-                minIntervalMs: 0
-            }).catch(() => {});
+            scheduleQueCategoryRefresh(nextTab, navTransitionSeq);
             return scheduled;
         }
 
