@@ -1,3 +1,21 @@
+import { calculateCanonicalLocPhotoMatch, canonicalInventoryRowUid, canonicalInventorySameLot } from './canonical-inventory-evidence.js';
+
+export function withCanonicalEvaluationMatchQuantity(target, patch) {
+    const match = patch?.match ?? patch?.match_pct ?? patch?.loc_match_pct;
+    const quantity = calculateCanonicalLocPhotoMatch(target, match);
+    return quantity == null ? patch : { ...patch, match, loc_match_qty: quantity };
+}
+
+export function resolveSuspendEvaluationInventoryIdentity(item, target, identity) {
+    if (matchesSuspendTagInventoryIdentity(target, identity)) return identity;
+    const display = getQueueDisplayEvidenceRow(item);
+    const masterUid = canonicalInventoryRowUid(target);
+    if (!masterUid || canonicalInventoryRowUid(display) !== masterUid || !canonicalInventorySameLot(display, target)) {
+        throw new Error('Exact inventory row is required.');
+    }
+    return { ...window.AgMetricQueueInventory.identity(target), masterUid };
+}
+
 export function resolveEvaluationProjectionTarget(row, source) {
     const indexed = resolveCanonicalInventoryTarget(row, masterInventoryById, masterInventoryByItemCode);
     if (indexed) return indexed;
@@ -36,7 +54,7 @@ function buildEvaluationProjectionFields(target, patch) {
     set(['LOCATION_NOTE','LOCATIONNOTE'],patch.location_note ?? patch.locationnote);
     const match = patch.match ?? patch.match_pct ?? patch.req_match ?? patch.loc_match_pct;
     set(['MATCH','MATCH_PCT','LOC_MATCH_PCT'],match);
-    set(['LOC_MATCH_QTY','LOC_PHOTO_MATCH'],getEditorLocMatchQtyValue(target,match) ?? patch.loc_match_qty);
+    set(['LOC_MATCH_QTY','LOC_PHOTO_MATCH'],calculateCanonicalLocPhotoMatch(target,match) ?? patch.loc_match_qty);
     const clear = patch.force_clear_photos === true;
     const incoming = patch.photo_link ?? patch.req_photo_link ?? patch.dock_photo_link ?? getPhotoUrlList(patch.photos || []).join(',');
     const photos = clear ? String(incoming) : mergePhotoCsvList([target.PHOTO_LINK,target.photo_link,target.SAVED_PHOTO_LINK,incoming]);
@@ -100,6 +118,8 @@ function collectEvaluationProjectionRows(target, context) {
     groups.push([suspend.filter(match),'suspend'],[requests.filter(match),'request']);
     if (Array.isArray(state.requestsInventory)) groups.push([state.requestsInventory.filter(match),'request']);
     if (Array.isArray(state.suspendInventory)) groups.push([state.suspendInventory.filter(match),'suspend']);
+    if (Array.isArray(state.docksInventory)) groups.push([state.docksInventory.filter(match),'master']);
+    if (typeof dockDisplayInventory !== 'undefined') groups.push([dockDisplayInventory.filter(match),'master']);
     if (typeof socInventory !== 'undefined') groups.push([socInventory.filter(match),'suspend']);
     if (typeof flyerFolderInventory !== 'undefined') groups.push([flyerFolderInventory.filter(match),'flyer']);
     if (source && source !== target && match(source)) groups.push([[source],context.prefix === 'flyer-' ? 'flyer' : 'source']);
@@ -144,10 +164,12 @@ function removeProjectedEvaluationNote(state, notes, code, note) {
     if (state.locationSalesNotes === notes && notes.get(code)?.includes(note)) notes.set(code,notes.get(code).filter(row => row !== note));
 }
 
-export function confirmEvaluationProjection(result, uid, rollback, onConfirmed, scope) {
+export function confirmEvaluationProjection(result, target, rollback, onConfirmed, scope) {
     if (scope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
     if (result?.noOp === true) rollback.commit?.();
-    if (result?.canonicalConfirmed !== true || canonicalInventoryRowUid(result.row) !== uid) return;
+    if (result?.canonicalConfirmed !== true) return;
+    if (canonicalInventoryRowUid(result.row) !== canonicalInventoryRowUid(target)
+        || !canonicalInventorySameLot(result.row, target)) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
     rollback.commit?.();
     onConfirmed?.();
 }
@@ -272,7 +294,7 @@ export async function publishSeasonSalesOfficeEvaluation(item, patch, options) {
 export async function publishRequestWorkEvaluation(item, patch, options) {
     const scope = options.scope || getSupabaseReadIdentityScope();
     const target = findLinkedMasterRow(item);
-    const evidence = target ? buildRequestMasterUpdatePayloadFromSave(item, patch, target) : null;
+    const evidence = target ? withCanonicalEvaluationMatchQuantity(target, buildRequestMasterUpdatePayloadFromSave(item, patch, target)) : null;
     if (evidence && patch?.explicit_av_note === true) { evidence.explicit_av_note = true; evidence.av_note = String(patch.av_note ?? ''); }
     const rollback = options.memoryRollback || beginRowEvaluationMemoryPublication(target, evidence, scope);
     let outcome, completedReceipt = false, photoReceipt = false;

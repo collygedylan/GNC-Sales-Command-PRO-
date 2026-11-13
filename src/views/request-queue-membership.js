@@ -5,7 +5,7 @@ export function prunePendingRequestCards(rows) {
     const pendingIds = new Set(rows.filter(isRequestPendingVisible).map(getItemUniqueId));
     const removed = new Set();
     for (const card of container.querySelectorAll('[data-request-uid]')) {
-        if (pendingIds.has(card.getAttribute('data-request-uid'))) continue;
+        if (pendingIds.delete(card.getAttribute('data-request-uid'))) continue;
         removed.add(card.closest('.request-swipe-row') || card);
     }
     if (!removed.size) return false;

@@ -44305,8 +44305,8 @@ let avTopControlsRenderToken = 0;
                     </div>
                     <div id="mark-done-confirm-body" class="max-h-[62vh] overflow-y-auto p-5 text-slate-800"></div>
                     <div class="grid grid-cols-2 gap-3 border-t border-slate-100 bg-slate-50 p-4">
-                        <button type="button" class="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-slate-600 shadow-sm active:scale-[0.98]" onpointerdown="event.preventDefault();closeMarkDoneConfirmModal('cancel')" onclick="closeMarkDoneConfirmModal('cancel')">Cancel</button>
-                        <button type="button" class="rounded-2xl bg-emerald-700 px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-[0.98]" onpointerdown="event.preventDefault();closeMarkDoneConfirmModal('ok')" onclick="closeMarkDoneConfirmModal('ok')">OK</button>
+                        <button type="button" class="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-slate-600 shadow-sm active:scale-[0.98]" onclick="closeMarkDoneConfirmModal('cancel')">Cancel</button>
+                        <button type="button" class="rounded-2xl bg-emerald-700 px-4 py-4 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg active:scale-[0.98]" onclick="closeMarkDoneConfirmModal('ok')">OK</button>
                     </div>
                 </div>`;
             document.body.appendChild(modal);
@@ -85840,27 +85840,6 @@ function getDocksSuspendSyncAudit() {
             });
         }
 
-        function calculateMatchQty(prefix) {
-            if(!activeItem)return;
-            let matchEl=document.getElementById(prefix+'match');
-            let displayEl=document.getElementById(prefix+'match-display');
-            let valEl=document.getElementById(prefix+'match-qty-val');
-            if (matchEl) markLocMatchInputValidity(matchEl);
-            if(matchEl&&matchEl.value!==""){
-                if (parseLocMatchPercent(matchEl.value) == null) {
-                    if(displayEl)displayEl.classList.add('hidden');
-                    return;
-                }
-                const qty = prefix === 'req-' && isDockSuspendDcRequestMirrorRow(activeItem)
-                    ? calculateDockSuspendDcRequestLocMatchQty(buildQueueInventoryMetricsHtml(activeItem,'request',{detailMetrics:true}),matchEl.value)
-                    : getEditorLocMatchQtyValue(activeItem, matchEl.value);
-                if(valEl)valEl.innerText=qty == null ? 'Not verified' : qty;
-                if(displayEl)displayEl.classList.remove('hidden');
-            }else{
-                if(displayEl)displayEl.classList.add('hidden');
-            }
-        }
-
         // HL selections mirror into the isolated server-backed HL Cart only,
         // never into the ordinary Bloom Picker selection set.
         let hlOrderSelections = new Map();
@@ -94886,55 +94865,6 @@ function getDocksSuspendSyncAudit() {
                 scheduleTasksRender(0, 0, true);
             }
             return false;
-        }
-
-        function resolveDetailItemBySource(uid, sourceView = '', options = {}) {
-            const normalizedSourceView = String(sourceView || '').trim();
-            const normalizedUid = String(uid || '').trim();
-            if (!normalizedUid) return null;
-            const exactMasterDetailRow = options && options.__masterDetailRow;
-            if (exactMasterDetailRow && String(firstNonEmptyValue(exactMasterDetailRow.UNIQUE_ID, exactMasterDetailRow.unique_id, '') || '').trim() === normalizedUid) {
-                const sourceRow = resolveDetailItemBySource(normalizedUid, normalizedSourceView, { ...options, __masterDetailRow: null });
-                return mergeExactMasterDetailRow(sourceRow, exactMasterDetailRow);
-            }
-            if (normalizedSourceView === 'tasks') {
-                const sourceDomId = String((options && options.sourceDomId) || '').trim();
-                const taskRow = sourceDomId ? getRememberedTaskRenderedRow(sourceDomId, normalizedUid) : null;
-                if (taskRow) return taskRow;
-            }
-            if (normalizedSourceView === 'request') {
-                const sourceDomId = String((options && options.sourceDomId) || '').trim();
-                const domMatchedRequestItem = sourceDomId
-                    ? findItemByDomId(sourceDomId)
-                    : null;
-                const requestItem = domMatchedRequestItem
-                    || findRequestRowByUniqueId(normalizedUid)
-                    || (sourceDomId ? (requestsInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === sourceDomId) || null) : null)
-                    || (sourceDomId ? (requestHistoryInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === sourceDomId) || null) : null)
-                    || requestsInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === normalizedUid)
-                    || requestHistoryInventory.find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === normalizedUid)
-                    || null;
-                if (requestItem && hasEvalTaskRequestMeta(requestItem)) hydrateEvalTaskRequestRowFromMeta(requestItem);
-                return requestItem || findItemByUniqueId(normalizedUid);
-            }
-            if (normalizedSourceView === 'sales-office') {
-                return salesOfficeInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
-            }
-            if (normalizedSourceView === 'docks') {
-                return dockDisplayInventoryById.get(normalizedUid) || socInventoryById.get(normalizedUid) || findItemByUniqueId(normalizedUid);
-            }
-            return findItemByUniqueId(normalizedUid);
-        }
-
-        function mergeExactMasterDetailRow(sourceRow, exactRow) {
-            if (!sourceRow) return exactRow;
-            const merged = { ...sourceRow, ...exactRow };
-            const masterFields = exactRow.__masterDetailColumns;
-            if (!(masterFields instanceof Set)) return merged;
-            for (const key of Object.keys(sourceRow)) {
-                if (!masterFields.has(String(key || "").toLowerCase())) merged[key] = sourceRow[key];
-            }
-            return merged;
         }
 
         function clearPendingDetailHydration() {
@@ -121278,39 +121208,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function openRequestSwipeRowDetail(row = null, event = null) {
-            if (!row || row.classList.contains('swipe-open')) return true;
-            if (typeof shouldSuppressFastPressSessionClick === 'function' && shouldSuppressFastPressSessionClick(event)) {
-                if (event) {
-                    if (typeof event.preventDefault === 'function') event.preventDefault();
-                    if (typeof event.stopPropagation === 'function') event.stopPropagation();
-                    if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-                }
-                return false;
-            }
-            const target = event && event.target ? event.target : null;
-            if (target && target.closest('input, textarea, select, button, label, a, .card-checkbox-container, .app-card-bottom-rail, [data-fast-press-ignore]')) return true;
-            const requestUid = resolveRequestSwipeUidFromRow(row);
-            const domId = String(row.dataset && row.dataset.domId || '').trim();
-            if (!requestUid) {
-                showToast('Open Failed', 'That request row could not be found. Refreshing Que now.', true);
-                triggerRequestRealtimeUiRefresh(0);
-                return false;
-            }
+            if (!row || row.classList.contains('swipe-open') || getCurrentVisibleViewId() !== 'request') return true;
+            const encoded = row.dataset.cardDetail;
+            if (!encoded) return true;
+            const target = event?.target;
+            if (target?.closest('input, textarea, select, button, label, a, [data-fast-press-ignore]')) return true;
             closeAllRequestSwipes(row);
-            if (event) {
-                if (typeof event.preventDefault === 'function') event.preventDefault();
-                if (typeof event.stopPropagation === 'function') event.stopPropagation();
-                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
-            }
-            if (isIosPhoneRequestFlowView('request')) clearIosPhoneRequestFlowState('request-swipe-open-before-detail', { resetScroll: false });
-            openDetail(requestUid, 'request', { preferredTab: 'request', sourceDomId: domId, requestSummaryIntent: captureRequestSummaryIntent(requestUid) });
-            if (isIosPhoneRequestFlowView('detail')) clearIosPhoneRequestFlowState('request-swipe-open-after-detail', { resetScroll: true });
-            scheduleRequestDetailEntryVisible('request-swipe-open', { skipOptionLoad: true });
-            if (!activeItem || String(activeDetailSourceView || '').trim().toLowerCase() !== 'request') {
-                showToast('Open Failed', 'That request row could not be opened. Refreshing Que now.', true);
-                triggerRequestRealtimeUiRefresh(0);
-            }
-            return false;
+            return activateExactInventoryCard(event, encoded);
         }
 
         function decorateIosPhoneRequestRemoveButtons(container = null) {
@@ -121394,7 +121298,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const pendingRow = requestSwipeDesktopClickRow;
                 requestSwipeDesktopClickTimer = null;
                 requestSwipeDesktopClickRow = null;
-                if (pendingRow && pendingRow.isConnected) openRequestSwipeRowDetail(pendingRow, null);
+                if (pendingRow?.isConnected) openRequestSwipeRowDetail(pendingRow, null);
             }, 210);
             if (event) {
                 if (typeof event.preventDefault === 'function') event.preventDefault();

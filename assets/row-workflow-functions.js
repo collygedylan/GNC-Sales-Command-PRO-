@@ -33,36 +33,6 @@ function openInlineAvNoteList(prefix, options = {}) {
     return false;
 }
 
-function captureEvaluationDetailReturn(item) {
-    const editor = activeItem;
-    const text=(row,key)=>String(row?.[key] || row?.[key.toLowerCase()] || '').trim().toUpperCase();
-    const sameTuple=!!text(editor,'ITEMCODE') && ['ITEMCODE','LOCATIONCODE','LOTCODE'].every(key=>text(editor,key)===text(item,key));
-    const ownsEditor=!!editor && (editor===item || String(editor.UNIQUE_ID || editor.unique_id || '')===String(item.UNIQUE_ID || item.unique_id || '') || sameTuple);
-    const viewId=String(detailReturnState?.viewId || lastView || activeDetailSourceView || '').trim();
-    return { ownsEditor, editor, token:detailHydrationToken, scope:getSupabaseReadIdentityScope(), viewId:viewId==='detail'?'':viewId,
-        scrollTop:Math.max(0,Number(detailReturnState?.scrollTop)||0) };
-}
-
-function returnFromConfirmedEvaluationDetail(snapshot) {
-    const nav=snapshot?.detailNavigation;
-    if (!nav?.ownsEditor || nav.scope!==getSupabaseReadIdentityScope() || !isViewVisible('detail')) return false;
-    // A hydration may replace the display UID with the exact master UID. The captured
-    // editor generation owns Back; the persistence target's UID never owns navigation.
-    if (activeItem!==nav.editor && detailHydrationToken!==nav.token) return false;
-    const parent=nav.viewId && getViewElementById(nav.viewId) ? nav.viewId : String(lastView || '').trim();
-    if (!parent || parent==='detail') return false;
-    lastView=parent;detailReturnState={viewId:parent,scrollTop:nav.scrollTop};
-    goBackFromDetail();
-    if (isViewVisible('detail')) {
-        // Shared overlays can consume Back; completion still owns exactly one parent return.
-        teardownDetailPresentation('confirmed-evaluation-return',{preserveDraft:true});
-        clearPendingDetailHydration();detailHydrationToken+=1;setDetailEditingChromeState(false);
-        activeItem=null;activeDetailSourceView='';activeDetailTab='overview';
-        fastBackToView(parent,{targetScrollTop:nav.scrollTop,skipFilterPersist:true,renderDelay:0});
-    }
-    return !isViewVisible('detail');
-}
-
 function applyExplicitAvNotePayload(payload,row,options = {}) {
     const captured=options.markDoneSnapshot?.payload;
     if (captured?.explicit_av_note === true) {
@@ -206,15 +176,8 @@ function ensurePhotoTakenDateBadges(root = document) {
 
 function getEditorLocMatchQtyValue(item = null, matchValue = '') {
     if (!item) return null;
-    const exact = (typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null)
-        || (typeof getQueueCardInventoryRow === 'function' && typeof isDockSuspendDcRequestMirrorRow === 'function' && isDockSuspendDcRequestMirrorRow(item) ? getQueueCardInventoryRow(item,'request') : null);
-    const row = exact || item;
-    const rawPct = String(matchValue ?? '').trim();
-    const pct = Number(rawPct.replace(/%$/, ''));
-    if (!/^(?:\d+(?:\.\d*)?|\.\d+)%?$/.test(rawPct) || pct > 100) return null;
-    if (pct === 0) return 0;
-    const onHand = parseAppNumber(firstNonEmptyValue(row.PTRONHAND,row.ptronhand,row.ON_HAND,row.on_hand,row.onhand,row.ONHAND,''));
-    return onHand == null ? null : Math.round(Math.max(0,onHand)*pct/100);
+    const exact = typeof findLinkedMasterRow === 'function' ? findLinkedMasterRow(item) : null;
+    return calculateCanonicalLocPhotoMatch(exact || item, matchValue);
 }
 
 async function postPhotoUploadWithTransientRetry(formData, options = {}) {
@@ -310,12 +273,8 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
         const target = findLinkedMasterRow(item) || getQueueCardInventoryRow(item,'request')
             || await resolveSuspendTagInventoryRow(item,source,identity);
         if (!target) throw new Error('Exact inventory row is required.');
-        let inventoryIdentity = identity;
-        if (!matchesSuspendTagInventoryIdentity(target,identity)) {
-            const display = getQueueDisplayEvidenceRow(item);
-            if (!display || String(display.UNIQUE_ID || display.unique_id) !== String(target.UNIQUE_ID || target.unique_id)) throw new Error('Exact inventory row is required.');
-            inventoryIdentity = {...window.AgMetricQueueInventory.identity(target),masterUid:String(target.UNIQUE_ID || target.unique_id)};
-        }
+        const inventoryIdentity = resolveSuspendEvaluationInventoryIdentity(item, target, identity);
+        patch = withCanonicalEvaluationMatchQuantity(target, patch);
         const rollback = options?.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,completionScope);
         try {
             const result = await runSuspendTagRowCommand('save',item,patch,options?.photoProof ? getDockSuspendCompletionRevision(options.photoProof.row) : getDockSuspendCompletionRevision(item),{
@@ -332,11 +291,12 @@ function mergeActiveItemDetailPhotoFields(row, prefix = '') {
     const uid = String(target.UNIQUE_ID || target.unique_id || '').trim();
     if (!uid || !['','ph_master_inventory'].includes(String(target.SOURCE_TABLE || target.source_table || ''))) throw new Error('Exact inventory row is required.');
     if (options.receipt?.row && String(options.receipt.row.UNIQUE_ID || options.receipt.row.unique_id || '') !== uid) throw new Error('EVALUATION_RECEIPT_IDENTITY_MISMATCH');
+    if (!options.receipt) patch = withCanonicalEvaluationMatchQuantity(target, patch);
     const baseline = options.receipt ? null : options.baseline ?? buildSecureDriveEvidenceBaseline(target);
     const rollback = !options.receipt && options.photoOnly !== true ? options.memoryRollback || beginRowEvaluationMemoryPublication(target,patch,scope) : () => {};
     try {
         const result = options.receipt || await saveSecureDriveEvidence(target, options.prefix, patch, options.complete, baseline);
-        confirmEvaluationProjection(result,uid,rollback,options.onConfirmed,scope);
+        confirmEvaluationProjection(result,target,rollback,options.onConfirmed,scope);
         if (options.isCurrent && !options.isCurrent()) return {result,applied:null};
         if (options.photoOnly === true) {
             const canonical = getCommittedDriveEvidenceReceipt(result,target).row;

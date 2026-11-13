@@ -78,14 +78,12 @@ export function projectCanonicalInventoryRow(row) {
     const ranked = rankCanonicalInventoryNotes(target, notes);
     const result = {...row,...target,__canonicalInventoryResolved:true};
     const stored = val(target,'LOC_PHOTO_MATCH') !== '' ? val(target,'LOC_PHOTO_MATCH') : val(target,'LOC_MATCH_QTY');
-    const depleted = stored !== '' && Number(String(stored).replace(/,/g,'')) === 0;
     applyCanonicalInventoryNotes(result, target, ranked);
+    const liveQuantity = canonicalInventoryPhotoMatchQuantity(target, val(result,'MATCH'), stored);
+    const depleted = liveQuantity === 0;
     const photos = collectCanonicalInventoryPhotos(target, ranked, depleted, {val, getPhotoUrlList, getPhotoEntryDateMs});
     applyCanonicalInventoryPhotos(result, photos, {val, getPhotoRetentionFallbackDateMs});
-    const onHand = Number(String(['PTRONHAND','ON_HAND','ONHAND'].map(key => val(target,key)).find(value => value !== '')).replace(/,/g,''));
-    const pct = Number(String(val(result,'LOC_MATCH_PCT') || val(result,'MATCH_PCT') || val(result,'MATCH')).replace(/[% ,]/g,''));
-    const quantity = stored !== '' ? stored : photos.size && onHand > 0 && pct > 0 ? Math.round(Math.min(100,pct)*onHand/100) : undefined;
-    applyCanonicalInventoryMetricAliases(row, target, result, quantity);
+    applyCanonicalInventoryMetricAliases(row, target, result, liveQuantity ?? undefined);
     return applyActiveDetailEvaluationDraft(result,row);
 }
 
@@ -97,6 +95,27 @@ function canonicalAvLotNumber(row, keys) {
         if (Number.isFinite(number)) return Math.max(0, number);
     }
     return null;
+}
+
+export function calculateCanonicalLocPhotoMatch(row, match, stock = canonicalAvLotNumber(row, ['PTRONHAND','PTR_ON_HAND','ON_HAND','ONHAND'])) {
+    const value = String(match ?? '').trim();
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)\s*%?$/.test(value)) return null;
+    const pct = Number(value.replace(/%$/, '').trim());
+    if (pct > 100) return null;
+    if (pct === 0) return 0;
+    return stock == null ? null : Math.round(pct * stock / 100);
+}
+
+function canonicalInventoryPhotoMatchQuantity(row, match, stored, stock) {
+    const baseline = canonicalAvLotNumber(row, ['EVAL_BASELINE_AVAILABLE']);
+    const available = canonicalAvLotNumber(row, ['PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY']);
+    const parsed = stored === '' || stored == null ? NaN : Number(String(stored).replace(/,/g, ''));
+    const saved = Number.isFinite(parsed) ? parsed : null;
+    const quantity = calculateCanonicalLocPhotoMatch(row, match, stock);
+    if (quantity === 0) return 0;
+    if (saved === 0 && !canonicalInventoryValue(row,'PHOTO_LINK')) return 0;
+    if (saved != null && baseline != null && available != null && baseline > available) return saved;
+    return quantity ?? saved;
 }
 
 function hasCurrentCanonicalAvLotPhotos(row, dependencies) {
@@ -116,15 +135,10 @@ function sumCanonicalAvLotMetric(rows, keys) {
     return values.some(value => value == null) ? null : values.reduce((sum, value) => sum + value, 0);
 }
 
-function getCanonicalAvLotMatch(primary, onHand, hasPhotos) {
+function getCanonicalAvLotMatch(primary, onHand) {
     const stored = canonicalAvLotNumber(primary, ['LOC_PHOTO_MATCH','LOC_MATCH_QTY']);
     const pct = canonicalAvLotNumber(primary, ['LOC_MATCH_PCT','MATCH_PCT','MATCH']);
-    const physical = canonicalAvLotNumber(primary, ['PTRONHAND','ON_HAND','ONHAND']);
-    const baseline = canonicalAvLotNumber(primary, ['EVAL_BASELINE_AVAILABLE']);
-    const available = canonicalAvLotNumber(primary, ['PTRAVAILABLE','AVAILABLE','AVAILABLE_QTY']);
-    if (!hasPhotos || !stored || !pct || !physical || onHand == null || (baseline != null && available != null && baseline > available)) return stored;
-    const expected = quantity => Math.round(Math.min(100, pct) * quantity / 100);
-    return Math.min(onHand, stored + expected(onHand) - expected(physical));
+    return canonicalInventoryPhotoMatchQuantity(primary, pct, stored ?? '', onHand);
 }
 
 function preserveCanonicalAvLotPhotoOwner(result, primary) {
@@ -157,7 +171,7 @@ export function hydrateCanonicalAvLotCard(card, dependencies) {
         const value = sumCanonicalAvLotMetric(rows, keys);
         for (const name of keys) aggregate[name] = aggregate[name.toLowerCase()] = value;
     }
-    const quantity = getCanonicalAvLotMatch(primary, aggregate.PTRONHAND, photoRows.includes(primary));
+    const quantity = getCanonicalAvLotMatch(primary, aggregate.PTRONHAND);
     applyCanonicalInventoryMetricAliases(card, aggregate, result, quantity ?? undefined);
     return result;
 }
@@ -187,10 +201,14 @@ export function resolveExactLiveInventoryCard(row) {
     if (!selected.length) return null;
     const state = getManagerAssignedColumnState();
     const notes = state.noteScope === getSupabaseReadIdentityScope() ? state.locationSalesNotes?.get(code) || [] : [];
-    return hydrateLiveInventoryCardDisplay(target, selected, atLocation, rows, {
-        canonical:resolveCanonicalInventoryRow(target), notes,
+    const canonical = resolveCanonicalInventoryRow(target);
+    const display = hydrateLiveInventoryCardDisplay(target, selected, atLocation, rows, {
+        canonical, notes,
         normalizeLocation:normalizeCanonicalInventoryPart, calculateMatch:calculateLiveLocPhotoMatch
     });
+    const quantity = canonicalInventoryValue(canonical, 'LOC_PHOTO_MATCH');
+    if (quantity !== '') applyCanonicalMetricFamily(display, display.SNAPSHOT, ['LOC_PHOTO_MATCH','loc_photo_match','LOC_MATCH_QTY','loc_match_qty'], quantity, false);
+    return display;
 }
 
 function applyCanonicalInventoryNotes(result, target, notes) {

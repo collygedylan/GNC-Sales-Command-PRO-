@@ -69,7 +69,7 @@ export function renderAvInventoryCardMarkup(context) {
     const priceHtml = !isEvalSensitiveDataRestricted() && activePriceText && activePriceText !== '-'
         ? `<div class="app-av-catalog-price"><span class="app-av-catalog-price-label">${escapeHtml(priceLabel)}</span><span class="app-av-catalog-price-value">${escapeHtml(activePriceText)}</span></div>`
         : '';
-    const avQuantityRowHtml = kiosk ? '' : buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true, missingValue: 'N/A' });
+    const avQuantityRowHtml = kiosk ? '' : buildInventoryQuantityChipsHtml(item, { layout: 'row', compact: true, locationMetricItem: item, sourceView, preserveUnknown: true, missingValue: 'N/A', knownLocationPhotoMatch: getCanonicalCardMatchDisplay(item, sourceView) });
     const seasonOhHtml = !kiosk && showSeasonOh ? `<div class="app-av-catalog-season-oh"><span>Season OH</span><strong>${escapeHtml(seasonOhText)}</strong></div>` : '';
     const priorityHtml = `<span class="app-av-priority-badge">PRI ${escapeHtml(firstNonEmptyValue(item.PRIORITY, item.priority, '—'))}</span>`;
     const avSpecHtml = specText

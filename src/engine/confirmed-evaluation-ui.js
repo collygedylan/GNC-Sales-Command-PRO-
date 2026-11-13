@@ -1,4 +1,4 @@
-import { canonicalInventoryRowUid, canonicalInventoryLinkedUid, canonicalInventoryLot, canonicalInventorySameLot } from './canonical-inventory-evidence.js';
+import { calculateCanonicalLocPhotoMatch, canonicalInventoryRowUid, canonicalInventoryLinkedUid, canonicalInventoryLot, canonicalInventorySameLot } from './canonical-inventory-evidence.js';
 import { beginRowEvaluationMemoryPublication, resolveEvaluationProjectionTarget } from './row-publication-branches.js';
 
 export function applyRequestWorkValuesToItem(item, values = {}) {
@@ -18,15 +18,15 @@ export function applyRequestWorkValuesToItem(item, values = {}) {
 
 function startEvaluationRequestRemoval(uid, scope) {
     if (!uid || optimisticCompletedRowIds.has(uid)) return null;
-    const removed = requestsInventory.filter(item => canonicalInventoryRowUid(item) === uid);
+    const removed = requestsInventory.find(item => canonicalInventoryRowUid(item) === uid);
     const release = () => {
         if (scope === getSupabaseReadIdentityScope()) clearOptimisticCompletedRows([uid]);
     };
     const rollback = () => {
         if (scope !== getSupabaseReadIdentityScope()) return;
         release();
-        if (!requestsInventory.some(item => canonicalInventoryRowUid(item) === uid)) {
-            requestsInventory.push(...removed.filter(item => !hasConfirmedRequestCompletion(item)));
+        if (removed && !hasConfirmedRequestCompletion(removed) && !requestsInventory.some(item => canonicalInventoryRowUid(item) === uid)) {
+            requestsInventory.push(removed);
         }
         refreshRealtimeDetailLookupIndexes(ACTIVE_REQUEST_TABLE);
         refreshLocalRequestViewState('request-complete-retry',{forceRender:true,preferImmediate:true,userAction:true});
@@ -181,7 +181,6 @@ export async function saveData(isComplete = false, prefix, isSilentAutoSave = fa
             try {
                 let snapshot = captureConfirmedRowEvaluation(item,prefix);
                 const plan = prepareMarkDoneCompletionPrompt(snapshot.row,prefix);
-                // This call paints the confirmation before any coordinator, upload or RPC await.
                 if (!await openMarkDoneConfirmModal(plan)) return false;
                 if (snapshot.scope !== getSupabaseReadIdentityScope()) return false;
                 snapshot = await settleDetailEvaluationPhotos(snapshot);
@@ -320,7 +319,7 @@ export function applyActiveDetailEvaluationDraft(result, row) {
             result[key] = result[key.toLowerCase()] = value;
         }
         if (field !== 'match') continue;
-        const quantity = getEditorLocMatchQtyValue(result,value);
+        const quantity = calculateCanonicalLocPhotoMatch(result,value);
         result.LOC_PHOTO_MATCH = result.loc_photo_match = result.LOC_MATCH_QTY = result.loc_match_qty = quantity;
     }
     return result;
