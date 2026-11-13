@@ -1,4 +1,5 @@
 import { erpPriorDayPruneContracts } from './erp-prior-day-prune-contract.mjs';
+import { erpDriveLineageWorkContract, erpDriveLineageWorkMigration } from './erp-drive-lineage-work-contract.mjs';
 import { erpFinalInputCertificateContract, erpFinalInputCertificateMigration } from './erp-final-input-certificate-contract.mjs';
 import { erpPriorDriveAliasContract, erpPriorDriveAliasMigration } from './erp-prior-drive-alias-contract.mjs';
 import { erpCompiledDriveOrderDeltaContract, erpCompiledDriveOrderDeltaMigration } from './erp-compiled-drive-order-delta-contract.mjs';
@@ -41,5 +42,6 @@ export const erpIncrementalDrivePreparationContracts = [
   [erpDriveReadinessWithoutAnalyzeMigration, erpDriveReadinessWithoutAnalyzeContract],
   [erpFinalInputCertificateMigration, erpFinalInputCertificateContract],
   [erpPriorDriveAliasMigration, erpPriorDriveAliasContract],
-  [erpCompiledDriveOrderDeltaMigration, erpCompiledDriveOrderDeltaContract]
+  [erpCompiledDriveOrderDeltaMigration, erpCompiledDriveOrderDeltaContract],
+  [erpDriveLineageWorkMigration, erpDriveLineageWorkContract]
 ];

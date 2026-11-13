@@ -40,3 +40,5 @@ test('Invariant 657: Suspend fallback retains account, permission, owner aliases
   assertSuspendOwnerFallback();
   assertSuspendSocDisplayOwnership();
 });
+test('Invariant 658: compiled DRIVE filters unchanged rows before conflict while retaining pending acknowledgements and guarded legacy writes', async () =>
+  (await import('../../tests/helpers/erp-drive-upsert-candidates.mjs')).assertDriveUpsertCandidates());

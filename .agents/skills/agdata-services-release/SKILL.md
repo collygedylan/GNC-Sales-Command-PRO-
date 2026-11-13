@@ -40,6 +40,7 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never combine DRIVE lineage DDL with publication of staged inventory. Install the schema in its own transaction, then materialize the changed canonical candidates before the master write so untouched rows do not enter conflict arbitration. Keep the final conflict predicate and indexed pending acknowledgment lookup (Invariant 658).
 - Do not let a locked-down Windows release load native Rollup addons or leave a vendor-only patch outside the lockfile. Pin the official WASM package through the shared Rollup dependency and verify actual Workbox bundling with native addon loading rejected (Invariant 620).
 
 - Never queue completion delivery for one row while the folder still has pending members, trust a partial worker payload, or ship a companion wrapper without its exact module. Gate on complete durable history membership, retain one versioned event, and recheck all members at dispatch (Invariant 618).
