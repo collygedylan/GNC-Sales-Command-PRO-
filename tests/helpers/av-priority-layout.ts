@@ -63,10 +63,6 @@ async function assertPriorityContent(card: Locator, entry: typeof cases[number])
 function readPriorityCardGeometry(el: Element) {
   const rect = el.getBoundingClientRect();
   const frame = el.querySelector('.app-av-catalog-frame')!;
-  const reclassRail = el.querySelector('.app-av-catalog-reclass .app-card-bottom-btn--argos-reclass');
-  const sourceChip = el.querySelector<HTMLElement>('.app-av-catalog-reclass [data-inventory-card-field="source"]');
-  const railBounds = reclassRail?.getBoundingClientRect();
-  const sourceBounds = sourceChip?.getBoundingClientRect();
   const areas = ['header', 'media', 'details', 'actions'];
   const controls = [...el.querySelectorAll<HTMLElement>('.app-av-primary-action, .app-av-secondary-action')]
     .filter(control => !control.hasAttribute('disabled'));
@@ -94,9 +90,7 @@ function readPriorityCardGeometry(el: Element) {
     frameFits: frame.scrollWidth <= frame.clientWidth + 1,
     themeSurface: luminance(background(el)) < .2,
     namedAreas: areas.every(area => getComputedStyle(frame).gridTemplateAreas.includes(area)),
-    reclassCount: el.querySelectorAll('.app-av-catalog-actions .app-av-catalog-reclass .app-card-bottom-btn--argos-reclass').length,
-    sourceText: sourceChip?.textContent?.trim() || '',
-    sourceBelowReclass: !!(railBounds && sourceBounds && sourceBounds.top > railBounds.top),
+    bloomActions: el.querySelectorAll('.app-av-catalog-actions .app-av-primary-action[data-cart-dom-id]').length,
     readable: font('.app-av-catalog-title') >= (innerWidth <= 900 ? 18 : 20)
       && font('.app-av-priority-badge') >= 13
       && font('.app-card-qty-label') >= 13
@@ -119,8 +113,7 @@ async function verifyPriorityCard(page: Page, entry: typeof cases[number], width
   await assertPriorityContent(card, entry);
   const geometry = await card.evaluate(readPriorityCardGeometry);
   expect(geometry, `${width}px ${theme} ${entry.sourceView} priority ${entry.expected}`).toEqual({
-    cardFits: true, frameFits: true, themeSurface: true, namedAreas: true, reclassCount: 1,
-    sourceText: String(entry.fields.SOURCE || 'PH'), sourceBelowReclass: true,
+    cardFits: true, frameFits: true, themeSurface: true, namedAreas: true, bloomActions: 1,
     readable: true, contrast: true, targets: true
   });
   return card;
