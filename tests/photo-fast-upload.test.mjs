@@ -4,7 +4,7 @@ import {context} from './helpers/photo-pipeline-context.mjs';
 const jpeg = () => new Blob([new Uint8Array([255,216,255,1])], {type:'image/jpeg'});
 const transportNames = ['assertCurrentPhotoUpload', 'isTransientPhotoUploadFailure', 'uploadNativeDrivePhotoPart'];
 
-test('Storage posts the JPEG Blob directly with a four-second wall-clock attempt and one fast retry', async () => {
+test('Storage posts the JPEG Blob directly with a 25-second wall-clock attempt and one fast retry', async () => {
     const file = jpeg(), calls = [];
     const c = context(transportNames, {
         SUPABASE_URL:'https://kzrnyjsosryejjejliii.supabase.co',
@@ -26,7 +26,7 @@ test('Storage posts the JPEG Blob directly with a four-second wall-clock attempt
         assert.equal(init.headers['cache-control'], 'max-age=31536000');
         assert.equal(init.headers.Authorization, 'Bearer verified');
         assert.equal(init.photoUploadAttempt, true);
-        assert.equal(timeout, 4000);
+        assert.equal(timeout, 25000);
     }
 });
 
@@ -75,7 +75,7 @@ test('cellular and hidden-tab handling cannot widen a photo attempt deadline', a
     assert.equal(observed[1].timeout, 15000, 'unrelated operational transport retains its existing mobile budget');
 });
 
-test('exact-row preflight aborts at 500ms and never guesses an upload identity', async () => {
+test('exact-row preflight has a bounded independent deadline and never guesses an upload identity', async () => {
     const timers = [], job = {prefix:'req-', uploadController:new AbortController()};
     let signal;
     const c = context(['assertOperationalRequestCurrent', 'waitForOperationalPrerequisite', 'prepareQueuedRowPhoto'], {
@@ -86,7 +86,7 @@ test('exact-row preflight aborts at 500ms and never guesses an upload identity',
         resolveQueuedRowPhotoMaster:(_job, value) => { signal = value; return new Promise(() => {}); }
     });
     const prepared = c.prepareQueuedRowPhoto(job);
-    assert.ok(timers.every(timer => timer.ms === 500));
+    assert.ok(timers.every(timer => timer.ms === 25000));
     timers[0].callback();
     await assert.rejects(prepared, error => error.code === 'TRANSPORT_TIMEOUT');
     assert.equal(signal.aborted, true);
@@ -133,7 +133,7 @@ test('photo preflight preserves non-Request routing and canonical physical UID a
     assert.equal(await prepare({...tuple, UNIQUE_ID:'request'}), null, 'two physical UIDs sharing the tuple remain ambiguous');
 });
 
-test('a stalled native credential refresh stops at 500ms without dispatching a photo', async () => {
+test('a stalled native credential refresh stops at 25 seconds without dispatching a photo', async () => {
     const timers = [];
     let headerReads = 0, binaries = 0;
     const c = context(['assertOperationalRequestCurrent', 'waitForOperationalPrerequisite', 'assertCurrentPhotoUpload',
@@ -148,7 +148,7 @@ test('a stalled native credential refresh stops at 500ms without dispatching a p
     while (headerReads < 2) await new Promise(resolve => setImmediate(resolve));
     timers.at(-1).callback();
     await assert.rejects(upload, error => error.code === 'TRANSPORT_TIMEOUT');
-    assert.ok(timers.every(timer => timer.ms === 500));
+    assert.ok(timers.every(timer => timer.ms === 25000));
     assert.equal(binaries, 0);
 });
 
@@ -156,13 +156,14 @@ test('Storage success flips the slot before canonical publication settles, retai
     const item = {UNIQUE_ID:'request-1'}, file = jpeg(), preview = {id:'photo-1', url:'blob:original', status:'Uploading'};
     const job = {id:'photo-1', preview, item, identity:{UNIQUE_ID:'request-1'}, prefix:'req-', scope:'account', file, fileName:'photo.jpg'};
     const jobs = new Map([[job.id, job]]), options = [];
-    const c = context(['uploadRowPhotoAttachment', 'acceptQueuedRowPhotoUpload', 'setDrivePhotoAttachmentStatus', 'getRowPhotoUploadIdentity','capturedPhotoSourceFields',
+    const c = context(['uploadRowPhotoAttachment', 'isQueuedDetailPhoto', 'retainPreparedRowPhoto', 'acceptQueuedRowPhotoUpload', 'setDrivePhotoAttachmentStatus', 'getRowPhotoUploadIdentity','capturedPhotoSourceFields',
         'getScopedDetailRowPhotoJobs', 'getDetailRowPhotoUploadPromises', 'hasUnsettledDetailRowPhotos'], {
         drivePhotoAttachments:jobs, getSupabaseReadIdentityScope:() => 'account',
         isCurrentDrivePhotoAttachment:target => jobs.get(target.id) === target,
         getPendingPhotoPreviewEntries:() => [preview], refreshPendingPhotoUiForItem() {},
         SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),
         isDockSuspendDcRequestMirrorRow:() => false,
+        optimizePhotoBlobForUpload:async () => ({blob:file}), retainDetailPhotoBlob:async () => true,
         prepareQueuedRowPhoto:async () => ({UNIQUE_ID:'master-1'}), getQueuedRowPhotoHeaders:async () => ({Authorization:'Bearer verified'}),
         normalizeStoragePublicUrl:url => url,
         uploadPhotoViaAppApi:async (_prefix, blob, _name, _type, value) => {
@@ -175,7 +176,7 @@ test('Storage success flips the slot before canonical publication settles, retai
     assert.equal(preview.status, 'Uploaded');
     assert.equal(preview.url, 'blob:original');
     assert.equal(preview.storageUrl, 'https://photos.invalid/photo.jpg');
-    assert.equal(options[0].timeoutMs, 4000);
+    assert.equal(options[0].timeoutMs, 25000);
     assert.equal(options[0].formFields.requestId,'request-1');
     assert.equal(c.getDetailRowPhotoUploadPromises(item, 'req-')[0], job.promise);
     assert.equal(c.hasUnsettledDetailRowPhotos(item, 'req-'), true, 'binary confirmation alone cannot release MARK DONE');
@@ -188,12 +189,12 @@ test('a failed photo keeps its Blob and one-tap retry job while another account 
     const job = {id:'photo-1', preview, item, identity:{UNIQUE_ID:'request-1'}, prefix:'req-', scope:'account', file};
     const jobs = new Map([[job.id, job]]), sent = [];
     let owner = 'account', fail = true;
-    const c = context(['retryDrivePhotoAttachment', 'setDrivePhotoAttachmentStatus', 'getScopedDetailRowPhotoJobs',
+    const c = context(['retryDrivePhotoAttachment', 'isQueuedDetailPhoto', 'isSuspendDetailPhoto', 'setDrivePhotoAttachmentStatus', 'getScopedDetailRowPhotoJobs',
         'getDetailRowPhotoUploadPromises', 'hasUnsettledDetailRowPhotos'], {
         drivePhotoAttachments:jobs, getSupabaseReadIdentityScope:() => owner,
         isCurrentDrivePhotoAttachment:target => target.scope === owner && jobs.get(target.id) === target,
         getPendingPhotoPreviewEntries:() => owner === 'account' ? [preview] : [], refreshPendingPhotoUiForItem() {},
-        SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(), registerPendingPhotoUpload() {}, showToast() {},
+        SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(), isDockSuspendDcRequestMirrorRow:() => false, registerPendingPhotoUpload() {}, showToast() {},
         formatPhotoUploadErrorMessage:error => error.message,
         runRowPhotoAttachmentWithRetry:async target => { sent.push(target.file); if (fail) throw new Error('Mobile connection failed'); }
     });
@@ -226,7 +227,7 @@ test('a transient fast native Storage attempt cannot divert into Edge or a long 
     });
     await assert.rejects(c.uploadDrivePhotoWithNativeSession(new Map([['prefix','lsn-'], ['masterUid','exact'],
         ['file',file], ['thumbnail144',file], ['thumbnail320',file]]), {singleUploadAttempt:true}), /timed out/);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 1, 'a failed primary upload leaves its thumbnails unstarted');
     assert.ok(calls.every(url => url.includes('/storage/v1/object/')));
     assert.equal(c.uploadDrivePhotoWithNativeSession.state.storageGatewayCooldownUntil, 0,
         'one mobile dropout cannot disable direct Storage for the next retry');
@@ -289,13 +290,13 @@ test('a Storage denial may use only the existing same-session recovery RPC and s
     assert.equal(badges.length, 0, 'a denied Storage object never confirms the binary badge');
     assert.equal(calls.length, 2);
     assert.match(calls[1].url, /\/rest\/v1\/rpc\/store_drive_photo_blob_v1$/);
-    assert.equal(calls[1].timeout, 4000);
+    assert.equal(calls[1].timeout, 25000);
     assert.ok(calls.every(call => call.init.headers.Authorization === 'Bearer verified'));
     denied = true;
     await assert.rejects(c.uploadDrivePhotoWithNativeSession(form, {singleUploadAttempt:true}), /row permission denied/);
 });
 
-test('canonical photo persistence settles before MARK DONE finishes without a circular wait', async () => {
+test('MARK DONE can proceed before canonical photo persistence without a circular wait', async () => {
     const row = {UNIQUE_ID:'physical-1'}, jobs = new Map(), textWrites = [];
     const job = {id:'photo-1', prefix:'lsn-', scope:'account', item:row, identity:{UNIQUE_ID:'physical-1'}};
     jobs.set(job.id, job);
@@ -319,8 +320,11 @@ test('canonical photo persistence settles before MARK DONE finishes without a ci
     const completion = c.settleDetailEvaluationPhotos(snapshot);
     await Promise.resolve();
     assert.equal(typeof publishPhoto, 'function', 'photo publication must start while the completion token is held');
-    assert.deepEqual(textWrites, [false], 'typed fields persist independently while completion waits');
+    assert.deepEqual(textWrites, [], 'the photo gate does not issue a redundant draft write');
+    assert.equal((await completion).uploads.length, 0);
+    assert.equal(jobs.size, 1);
     publishPhoto();
-    assert.equal((await completion).photosMerged, true);
+    await job.promise;
+    assert.equal(jobs.size, 0);
     finishAction();
 });

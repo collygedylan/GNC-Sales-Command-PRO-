@@ -104,7 +104,7 @@ test('SOC normalization and Suspend aliases retain exact source values', () => {
 test('photo depletion preserves authoritative zero and positive alias fallback', () => {
   const source = readFileSync(new URL('../src/core/inventory-photo-domain.js', import.meta.url), 'utf8');
   const classic = readFileSync(new URL('../assets/inventory-photo-domain.js', import.meta.url), 'utf8');
-  assert.equal(classic, source.replace(/^export /gm, ''));
+  assert.equal(classic, source.replace(/^import .*;\r?\n/gm, '').replace(/^export /gm, ''));
   assert.equal(calculateLiveLocPhotoMatch({ PTRONHAND:0, on_hand:51, PTRAVAILABLE:347, MATCH:80 }), 0);
   assert.equal(calculateLiveLocPhotoMatch({ on_hand:51, MATCH:80 }), 41);
   assert.equal(calculateLiveLocPhotoMatch({ onhand:1000, available:750, match_pct:50, eval_baseline_available:1000, initial_loc_photo_match:500 }), 250);

@@ -12,14 +12,8 @@ async function resolveSuspendPhotoMaster(item, signal) {
     return master;
 }
 
-async function prepareSuspendDetailSource(row,options,writeScope,isSilentAutoSave) {
+async function prepareSuspendDetailSource(row,options,writeScope) {
     const source = findDockSuspendDcRequestSourceRow(row) || row;
-    // Accepted text writes and blur autosaves do not wait on the photo jobs
-    // that append confirmed evidence separately to the same physical row.
-    if (!options.markDoneConfirmationAccepted && !isSilentAutoSave) {
-        const uploads = [...new Set([...getPendingPhotoUploadsForItem(row,'req-'), ...getPendingPhotoUploadsForItem(source,'req-')])];
-        await Promise.all(uploads);
-    }
     if (options.markDoneSnapshot) mergeConfirmedRowEvaluationUploads(options.markDoneSnapshot);
     if (writeScope !== getSupabaseReadIdentityScope()) return null;
     if (options.force_clear_photos !== true) {
@@ -89,7 +83,7 @@ function handleSuspendDetailSaveError(error,options,undo,isSilentAutoSave,writeS
     }
     undo?.();
     options.optimisticCompletion?.rollback();
-    if (!isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast('Save Stopped', suspendTagErrorMessage(error), true);
+    if (!isSilentAutoSave && writeScope === getSupabaseReadIdentityScope()) showToast('Evaluation not saved', suspendTagErrorMessage(error), true);
     return false;
 }
 
@@ -117,7 +111,7 @@ async function saveDockSuspendDcRequestMirrorData(isComplete = false, item = act
             if (button && completing) button.disabled = true;
             let undoOptimisticEvidence = null;
             try {
-                const source = await prepareSuspendDetailSource(row,options,writeScope,isSilentAutoSave);
+                const source = await prepareSuspendDetailSource(row,options,writeScope);
                 if (!source) return false;
                 const patch = buildSuspendDetailPatch(row,source,values,options,completing);
                 const draftKey=getSuspendTagFormDraftKey();

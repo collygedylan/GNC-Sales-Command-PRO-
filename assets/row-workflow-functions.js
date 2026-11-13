@@ -1639,41 +1639,6 @@ function isRowPhotoEvaluationExpired(item = null, prefix = '') {
     return match != null && calculateLiveLocPhotoMatch(item) <= 0;
 }
 
-function persistCameraDetailSession(input = null) {
-    if (!activeItem || !currentUser) return;
-    const state = window.GncCameraState;
-    if (state) {
-        state.captureId = (Number(state.captureId) || 0) + 1;
-        if (input?.type === 'file') input.__gncCameraCaptureId = state.captureId;
-        state.cameraCaptureInFlight = true; state.returnUntil = Date.now() + 15_000;
-    }
-    persistAppFilterStateNow();
-    try {
-        sessionStorage.setItem('agdata_camera_detail_v1',JSON.stringify({owner:getSupabaseReadIdentityScope(),captureId:state?.captureId || 0,createdAt:Date.now(),row:{...activeItem},rowUid:getCompletedRowUnlockKey(activeItem),source:activeDetailSourceView || lastView || 'drive',tab:activeDetailTab,scrollY:getMainAreaScrollTop(),filterKey:getAppFilterStateStorageKey(),filters:JSON.stringify(readAppFilterStateSnapshot())}));
-        window.persistCameraCaptureState?.();
-    } catch (_) { /* Camera capture remains usable when storage is disabled. */ }
-}
-
-function restoreCameraDetailSession() {
-    if (!currentUser) return false;
-    try {
-        const saved = JSON.parse(sessionStorage.getItem('agdata_camera_detail_v1') || 'null');
-        if (!saved) return false;
-        if (saved.owner !== getSupabaseReadIdentityScope() || Date.now()-saved.createdAt > 30*60_000) { sessionStorage.removeItem('agdata_camera_detail_v1'); return false; }
-        sessionStorage.removeItem('agdata_camera_detail_v1');
-        const row = fullInventory.find(item => getCompletedRowUnlockKey(item) === saved.rowUid) || saved.row;
-        if (!row || getCompletedRowUnlockKey(row) !== saved.rowUid) return false;
-        if (saved.filters && saved.filterKey === getAppFilterStateStorageKey()) {
-            try { localStorage.setItem(saved.filterKey,saved.filters); restorePersistedAppFilterStateForCurrentUser(true); } catch (_) { /* Restore the row even if filter storage is unavailable. */ }
-        }
-        openDetail(saved.rowUid,saved.source,{__masterDetailRow:row,preferredTab:saved.tab || 'location'});
-        requestAnimationFrame(() => setMainAreaScrollTop(Number(saved.scrollY)||0));
-        window.finishCameraCapture?.();
-        return true;
-    } catch (_) { return false; }
-}
-
-
 function notifyManagerUnassignedItemsAfterSync(completedRunId = '') {
     if (!currentUser || !completedRunId || !['home','managers'].includes(getCurrentVisibleViewId())) return 0;
     const key = 'gnc_unassigned_completed_sync_v1:' + getSupabaseReadIdentityScope();

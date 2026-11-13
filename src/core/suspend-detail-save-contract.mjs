@@ -16,8 +16,8 @@ function installPublisher(h) {
 }
 
 export async function detailSaveChecks() {
-  let finishPhoto, failRead = true;
-  const photo = new Promise(resolve => { finishPhoto = resolve; });
+  let failRead = true;
+  const photo = new Promise(() => {});
   const h = harness({ live: true, proof: false, api: body => {
     if (failRead) throw new Error('verification timed out');
     return { ...acknowledgement({ ...body.payload.patch, suspend_tag_status: 'pending' }), inventoryRows:[{unique_id:'master-1'}] };
@@ -33,12 +33,9 @@ export async function detailSaveChecks() {
     buildDockSuspendDcRequestNote: () => 'captured comment',
   });
   vm.runInContext(readFileSync(new URL('../../assets/suspend-detail-save-domain.js', import.meta.url), 'utf8'), h.ctx);
-  const pending = h.ctx.saveDockSuspendDcRequestMirrorData(false, h.mirror);
-  await new Promise(setImmediate);
-  assert.equal(h.calls.length, 0);
   h.row.DOCK_PHOTO_LINK = 'old.jpg,new.jpg'; h.row.DOCK_PHOTO_NAME = 'old,new';
   h.ctx.remoteRow.dock_photo_link = h.row.DOCK_PHOTO_LINK; h.ctx.remoteRow.dock_photo_name = h.row.DOCK_PHOTO_NAME;
-  finishPhoto(); await pending;
+  await h.ctx.saveDockSuspendDcRequestMirrorData(false, h.mirror);
   assert.match(h.toasts[0][1], /timed out/);
   const attempted = h.calls.filter(call => call.name === 'save');
   assert.equal(attempted.length, 4, 'automatic retries are bounded');
@@ -121,7 +118,7 @@ async function detailLateChecks() {
   prepareDetail(failed);
   await failed.ctx.saveDockSuspendDcRequestMirrorData(true, failed.mirror);
   assert.equal(failed.ctx.detailBackCalls, 1, 'the optimistic return happens before rejection');
-  assert.ok(failed.toasts.some(([title]) => title === 'Save Stopped'));
+  assert.ok(failed.toasts.some(([title]) => title === 'Evaluation not saved'));
 
   await suspendUploadFailureChecks();
 }
@@ -129,9 +126,10 @@ async function detailLateChecks() {
 export async function suspendUploadFailureChecks() {
   const uploadFailed = harness();
   prepareDetail(uploadFailed);
-  uploadFailed.ctx.getPendingPhotoUploadsForItem = () => [Promise.reject(new Error('Upload failed'))];
-  await uploadFailed.ctx.saveDockSuspendDcRequestMirrorData(true, uploadFailed.mirror);
-  assert.equal(uploadFailed.ctx.detailBackCalls, 0, 'a failed photo upload keeps the user in the editor');
+  uploadFailed.ctx.getPendingPhotoUploadsForItem = () => { throw new Error('Suspend saves must not inspect the photo queue'); };
+  assert.equal(await uploadFailed.ctx.saveDockSuspendDcRequestMirrorData(true, uploadFailed.mirror), true);
+  assert.equal(uploadFailed.ctx.detailBackCalls, 1, 'the evaluation returns while the detached photo job settles');
+  assert.equal(uploadFailed.calls.filter(call => call.name === 'save').length, 1);
   assert.equal(uploadFailed.calls.filter(call => call.name === 'complete').length, 0);
 }
 

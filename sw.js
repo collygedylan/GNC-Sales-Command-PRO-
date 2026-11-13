@@ -162,7 +162,7 @@ const STATIC_ASSETS = [
     "./assets/manager-workspace.css",
     "./assets/public-photo-share.js", "./assets/access-display-cache.js", "./assets/navigation-visibility.js", "./assets/navigation-routing.js",
     "./assets/operational-rpc-retry.js", "./assets/rpc-recovery-domain.js", "./assets/canonical-row-unlock.js",
-    "./assets/app-api-transport.js",
+    "./assets/app-api-transport.js", "./assets/detail-photo-attachments.js",
     "./assets/reclass-move-outbox.js",
     "./assets/reclass-move-worksheet.js", "./assets/reclass-move-command.js",
     "./assets/reclass-access-policy.js", "./assets/reclass-modal-open.js", "./assets/reclass-submission.js",

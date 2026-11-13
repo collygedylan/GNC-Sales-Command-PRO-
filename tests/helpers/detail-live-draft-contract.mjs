@@ -38,6 +38,7 @@ function fixture() {
         getRowSaveCoordinatorKey:() => 'row-key',getRowSaveCoordinatorState:() => ({}),ROW_SAVE_COMPLETE_INTENT_MS:1000,
         prepareMarkDoneCompletionPrompt:() => ({}),openMarkDoneConfirmModal:async () => true,
         getPendingPhotoUploadsForItem:() => [],getDetailRowPhotoUploadPromises:() => [],hasUnsettledDetailRowPhotos:() => false,
+        SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),
         mergeConfirmedRowEvaluationUploads() {},showToast:(title,message) => events.push({title,message}),
         SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-','ssn-','na-']),getDriveEvidenceConflictState:() => null,
         isLagSensitiveDetailPrefix:() => true

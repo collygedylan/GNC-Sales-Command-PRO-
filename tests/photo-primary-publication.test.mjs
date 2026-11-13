@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {context} from './helpers/photo-pipeline-context.mjs';
 
 const owners = ['assertCurrentPhotoUpload', 'getDrivePhotoGatewayState', 'rememberDrivePhotoGatewayFailure',
-    'getNativeDrivePhotoObject', 'uploadDrivePhotoWithNativeSession', 'uploadRowPhotoAttachment', 'acceptQueuedRowPhotoUpload',
+    'getNativeDrivePhotoObject', 'uploadDrivePhotoWithNativeSession', 'uploadRowPhotoAttachment', 'isQueuedDetailPhoto', 'retainPreparedRowPhoto', 'acceptQueuedRowPhotoUpload',
     'getRowPhotoUploadIdentity', 'capturedPhotoSourceFields', 'setDrivePhotoAttachmentStatus', 'retryPhotoOperation', 'runRowPhotoAttachmentWithRetry',
     'retryDrivePhotoAttachment', 'enqueueRowPhotoSave', 'rowPhotoSaveKey', 'persistQueuedRowPhoto'];
 
@@ -16,9 +16,10 @@ test('main ACK enters the canonical publisher immediately while thumbnail failur
     c = context(owners, {
         drivePhotoAttachments:jobs, drivePhotoSaveChains:new Map(), nativeAuthRecoveryEpoch:0,
         SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']), PHOTO_BUCKETS:{'lsn-':'location_sales_notes_photos'},
-        ROW_PHOTO_TRANSFER_RETRY_DELAYS:[], ROW_PHOTO_SAVE_RETRY_DELAYS:[],
+        DETAIL_PHOTO_RETRY_DELAYS:[], ROW_PHOTO_SAVE_RETRY_DELAYS:[], detailPhotoTransferTail:Promise.resolve(),
         getSupabaseReadIdentityScope:() => 'account', isCurrentDrivePhotoAttachment:target => jobs.get(target.id) === target,
         getPendingPhotoPreviewEntries:() => [preview], refreshPendingPhotoUiForItem() {},
+        optimizePhotoBlobForUpload:async () => ({blob:file}), retainDetailPhotoBlob:async () => true,
         prepareQueuedRowPhoto:async () => null, getQueuedRowPhotoHeaders:async () => ({Authorization:'Bearer verified'}),
         normalizeStoragePublicUrl:url => url, SUPABASE_URL:'https://kzrnyjsosryejjejliii.supabase.co',
         uploadPhotoViaAppApi:async (_prefix, blob, _name, _type, options) => {
@@ -31,7 +32,7 @@ test('main ACK enters the canonical publisher immediately while thumbnail failur
             if (path.includes('-w320.')) return new Promise(resolve => { releaseThumbnail = resolve; });
             primaryWrites++;
         },
-        isRetryablePhotoTransfer:() => false, isRetryablePhotoSave:() => false,
+        isRetryableDetailPhotoTransfer:() => false, isRetryablePhotoSave:() => false,
         registerPendingPhotoUpload:(_item,_prefix,promise,independent) => { registered.push({promise,independent}); },
         persistDrivePhotoAttachment:async target => {
             canonicalWrites++;

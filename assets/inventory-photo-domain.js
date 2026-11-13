@@ -47,17 +47,36 @@ function hasDetachedDrivePhotoWrite(uid) {
 
 function queueDetailRowPhoto(item, prefix, file) {
     const normalized = String(prefix || '').trim().toLowerCase();
-    if (!SECURE_DRIVE_EVIDENCE_PREFIXES.has(normalized)) return queueRowPhotoUpload(item,prefix,file);
-    const fileName = buildInventoryRowPhotoFileName(item,file,{ extension:getInventoryPhotoFileExtension(file,'jpg') });
+    if (!isQueuedDetailPhoto(normalized)) return globalThis.queueRowPhotoUpload(item,prefix,file);
+    if (normalized === 'req-') {
+        if (!canCurrentUserWorkRequestItem(item, 'photo')) return false;
+        const owner = getRequestPhotoOwnerItem(item) || item;
+        if (owner !== item) mergeRequestPhotoFields(item, owner);
+        item = owner;
+    }
+    const fileName = buildInventoryRowPhotoFileName(item,file,{extension:'jpg'});
     return queueDrivePhotoAttachment(item,normalized,file,fileName);
 }
 
 const ROW_PHOTO_TRANSFER_RETRY_DELAYS = [300, 800];
+const DETAIL_PHOTO_RETRY_DELAYS = [1000, 2500, 5000];
 const ROW_PHOTO_SAVE_RETRY_DELAYS = [300, 800, 1500];
+let detailPhotoTransferTail = Promise.resolve();
+
+function isQueuedDetailPhoto(prefix) {
+    return prefix === 'req-' || SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix);
+}
 
 function isRetryablePhotoTransfer(error) {
     if (error?.name === 'AbortError' || ['REQUEST_ABORTED', 'DATASET_READ_SCOPE_CHANGED'].includes(error?.code)) return false;
     return isTransientPhotoUploadFailure(error) || Number(error?.status) === 544;
+}
+
+function isRetryableDetailPhotoTransfer(error) {
+    if (error?.name === 'AbortError' || ['REQUEST_ABORTED', 'DATASET_READ_SCOPE_CHANGED'].includes(error?.code)) return false;
+    const status = Number(error?.status);
+    if (status >= 400 && status < 500 && status !== 408 && status !== 429) return false;
+    return (status >= 500 && status < 600) || isRetryablePhotoTransfer(error);
 }
 
 function isRetryablePhotoSave(error) {
@@ -152,10 +171,11 @@ async function prepareQueuedRowPhoto(job) {
     const controller = new AbortController();
     const cancel = () => controller.abort(job.uploadController.signal.reason);
     job.uploadController.signal.addEventListener('abort', cancel, {once:true});
-    const timer = setTimeout(() => controller.abort(), 500);
+    const timeoutMs = job.prefix === 'req-' ? 25000 : 500;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
         return await waitForOperationalPrerequisite(() => resolveQueuedRowPhotoMaster(job, controller.signal), {
-            signal:controller.signal, current:() => isCurrentDrivePhotoAttachment(job), timeoutMs:500
+            signal:controller.signal, current:() => isCurrentDrivePhotoAttachment(job), timeoutMs
         });
     } catch (error) {
         if (controller.signal.aborted && !job.uploadController.signal.aborted) {
@@ -170,9 +190,10 @@ async function prepareQueuedRowPhoto(job) {
 
 function acceptQueuedRowPhotoUpload(job, uploaded) {
     if (!isCurrentDrivePhotoAttachment(job)) return;
-    if (!uploaded.publicUrl) throw new Error('Photo upload did not return a saved photo.');
+    const publicUrl = normalizeStoragePublicUrl(uploaded.publicUrl);
+    if (!publicUrl) throw new Error('Photo upload did not return a saved photo.');
     job.upload = {
-        publicUrl:normalizeStoragePublicUrl(uploaded.publicUrl), fileName:String(uploaded.filePath || job.fileName).split('/').pop(),
+        publicUrl, fileName:String(uploaded.filePath || job.fileName).split('/').pop(),
         filePath:uploaded.filePath, receipt:uploaded.receipt
     };
     setDrivePhotoAttachmentStatus(job,'Uploaded');
@@ -185,33 +206,51 @@ async function getQueuedRowPhotoHeaders(job) {
         return {apikey:SUPABASE_KEY, Authorization:'Bearer ' + nativeAuthAccessToken};
     }
     return waitForOperationalPrerequisite(() => getNativeAuthRequestHeaders(), {
-        signal:job.uploadController.signal, current:() => isCurrentDrivePhotoAttachment(job), timeoutMs:500
+        signal:job.uploadController.signal, current:() => isCurrentDrivePhotoAttachment(job), timeoutMs:25000
     });
+}
+
+async function retainPreparedRowPhoto(job, optimized) {
+    if (!isCurrentDrivePhotoAttachment(job)) return;
+    await job.blobBackup;
+    if (!isCurrentDrivePhotoAttachment(job)) return;
+    job.optimizedPhoto = optimized;
+    job.blobBackup = retainDetailPhotoBlob(job, optimized.blob);
+    await job.blobBackup;
 }
 
 async function uploadRowPhotoAttachment(job) {
     setDrivePhotoAttachmentStatus(job,'Uploading');
     job.uploadController = new AbortController();
+    const detailPhoto = isQueuedDetailPhoto(job.prefix);
+    if (detailPhoto && !job.optimizedPhoto) {
+        const optimized = await optimizePhotoBlobForUpload(job.file, job.fileName, {mainOnly:false});
+        await retainPreparedRowPhoto(job, optimized);
+    }
+    if (!isCurrentDrivePhotoAttachment(job)) return;
     const master = await prepareQueuedRowPhoto(job);
-    const nativeHeaders = master || SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) ? await getQueuedRowPhotoHeaders(job) : null;
+    const nativeHeaders = SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) ? await getQueuedRowPhotoHeaders(job) : null;
     if (!isCurrentDrivePhotoAttachment(job)) return;
     const identity = getRowPhotoUploadIdentity(job, master);
-    const nativeMaster = master ? { UNIQUE_ID: identity.UNIQUE_ID } : null;
+    const nativeMaster = master && SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) ? { UNIQUE_ID: identity.UNIQUE_ID } : null;
     const uploaded = await uploadPhotoViaAppApi(job.prefix, job.file, job.fileName, job.file.type || 'image/jpeg', {
-        timeoutMs:4000, signal:job.uploadController.signal, isCurrent:() => isCurrentDrivePhotoAttachment(job),
+        timeoutMs:detailPhoto ? 25000 : 4000,
+        signal:job.uploadController.signal, isCurrent:() => isCurrentDrivePhotoAttachment(job),
         singleUploadAttempt:job.prefix !== 'dock-',
+        preparedPhoto:job.optimizedPhoto,
         nativeMaster, nativeHeaders, onStorageUploaded:uploaded => acceptQueuedRowPhotoUpload(job, uploaded),
         formFields:{...(job.formFields || {masterUid:identity.UNIQUE_ID,itemCode:identity.ITEMCODE,
             locationCode:identity.LOCATIONCODE,lotCode:identity.LOTCODE}),...capturedPhotoSourceFields(job)}
     });
     acceptQueuedRowPhotoUpload(job, uploaded);
     if (!uploaded.thumbnailUploads) return;
-    const thumbnails = uploaded.thumbnailUploads.then(results => {
+    job.thumbnailSettlement = uploaded.thumbnailUploads.then(results => {
         if (results.some(result => result.status === 'rejected')) {
             globalThis.reportHandledRuntimeIssue?.('uploadRowPhotoAttachment','PHOTO_THUMBNAIL_UPLOAD_FAILED');
         }
     });
-    registerPendingPhotoUpload(job.item,job.prefix,thumbnails,true);
+    registerPendingPhotoUpload(job.item,job.prefix,job.thumbnailSettlement,true);
+    if (detailPhoto) globalThis.protectCameraPhotoUpload?.(job.thumbnailSettlement);
 }
 
 function capturedPhotoSourceFields(job) {
@@ -257,7 +296,12 @@ function runRowPhotoAttachmentWithRetry(job) {
         await upload();
         return enqueueRowPhotoSave(job, null, globalThis.persistDrivePhotoAttachment);
     }, [0], isTransientPhotoUploadFailure);
-    const uploaded = retryPhotoOperation(job, upload, ROW_PHOTO_TRANSFER_RETRY_DELAYS, isRetryablePhotoTransfer);
+    if (!isQueuedDetailPhoto(job.prefix)) {
+        return enqueueRowPhotoSave(job, retryPhotoOperation(job, upload, ROW_PHOTO_TRANSFER_RETRY_DELAYS, isRetryablePhotoTransfer));
+    }
+    const transfer = () => retryPhotoOperation(job, upload, DETAIL_PHOTO_RETRY_DELAYS, isRetryableDetailPhotoTransfer);
+    const uploaded = detailPhotoTransferTail.then(transfer);
+    detailPhotoTransferTail = Promise.allSettled([uploaded]).then(() => job.thumbnailSettlement);
     return enqueueRowPhotoSave(job, uploaded);
 }
 
@@ -271,13 +315,18 @@ function retryDrivePhotoAttachment(id) {
     job.promise = run;
     // An exact-row Drive job owns its append independently of the text evaluation.
     // Keep it in the shared activity registry for update and session safety.
-    registerPendingPhotoUpload(job.item,job.prefix,run,SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix));
+    registerPendingPhotoUpload(job.item,job.prefix,run,SECURE_DRIVE_EVIDENCE_PREFIXES.has(job.prefix) || isSuspendDetailPhoto(job));
+    if (isQueuedDetailPhoto(job.prefix)) globalThis.protectCameraPhotoUpload?.(run);
     run.catch(error => {
         if (!isCurrentDrivePhotoAttachment(job)) return;
         setDrivePhotoAttachmentStatus(job,'Save failed');
         showToast('Photo not saved',formatPhotoUploadErrorMessage(error),true);
     }).finally(() => { job.running = false; });
     return false;
+}
+
+function isSuspendDetailPhoto(job) {
+    return job.prefix === 'req-' && isDockSuspendDcRequestMirrorRow(job.item);
 }
 
 function getScopedDetailRowPhotoJobs(item, prefix) {
@@ -309,7 +358,7 @@ async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 
     const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
     const useNativeUpload = (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) || !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
     const nativeEvidenceUpload = (nativeAuthSessionActive && options.nativeMaster) || (useNativeUpload && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix));
-    const optimized = await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:false});
+    const optimized = options.preparedPhoto || await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:false});
     if (options.signal?.aborted || (options.isCurrent && !options.isCurrent())) throw Object.assign(new Error('Photo session changed.'), { code: 'REQUEST_ABORTED' });
     blob = optimized.blob || blob;
     contentType = optimized.contentType || contentType;
@@ -339,52 +388,3 @@ async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 
     }
     return payload;
 }
-
-
-function collectStrictItemDetailPhotos(targetRow = null, prefix = '') {
-    if (!targetRow) return [];
-    const state = getManagerAssignedColumnState();
-    const master = findLinkedMasterRow(targetRow) || masterInventoryById.get(String(targetRow.UNIQUE_ID || targetRow.unique_id || ''));
-    const masterUid = String(master?.UNIQUE_ID || master?.unique_id || targetRow.MASTER_ID || targetRow.master_id || targetRow.MASTER_UNIQUE_ID || targetRow.master_unique_id || '');
-    const rowUid = row => String(row?.MASTER_ID || row?.master_id || row?.MASTER_UNIQUE_ID || row?.master_unique_id || row?.UNIQUE_ID || row?.unique_id || '');
-    const matches = row => canonicalInventorySameLot(row,targetRow) && (!masterUid || rowUid(row) === masterUid);
-    const urls = new Set(), visited = new Set();
-    const add = input => {
-        if (!input) return;
-        if (Array.isArray(input)) { input.forEach(add); return; }
-        if (typeof input === 'object') {
-            if (visited.has(input)) return;
-            visited.add(input);
-            for (const key of ['url','publicUrl','photo_url','photo_urls','photos','request_photos','photo_link','saved_photo_link','req_photo_link','request_photo_link','dock_photo_link','flyer_photo_link']) {
-                add(input[key]); add(input[key.toUpperCase()]);
-            }
-            return;
-        }
-        getPhotoUrlList(input).forEach(url => { if (/^https?:\/\//i.test(url)) urls.add(url); });
-    };
-    add(targetRow);
-    const active = typeof activeItem !== 'undefined' && activeItem;
-    const activeMatches = active && (active === targetRow || matches(active));
-    const evalMatches = prefix === 'eval-' && String(evalWorkActiveOriginUid || '') === String(masterUid || rowUid(targetRow)) && !!getEvalWorkById(activeEvalWorkDetailId);
-    if (activeMatches || evalMatches) {
-        if (activeMatches) add(active);
-        if (evalMatches) add(evalWorkActivePhotos);
-        add(state.activeItemDetailPhotos); add(state.itemDetailDraft?.photos);
-        const detail = evalMatches ? document.querySelector('#request-content .eval-work-evidence') : document.getElementById('view-detail');
-        if (detail && !detail.classList.contains('hidden')) {
-            const strip = evalMatches ? detail : document.getElementById(prefix + 'photo-list-container') || detail;
-            strip.querySelectorAll('[data-photo-url], [data-eval-photo-url], .photo-card img, .saved-photo-tile img').forEach(node => {
-                const canonical = node.getAttribute('data-photo-url') || node.getAttribute('data-eval-photo-url') || node.closest('[data-photo-url]')?.getAttribute('data-photo-url');
-                add(canonical || node.getAttribute('data-src') || node.currentSrc || node.src);
-            });
-        }
-    }
-    const sources = [typeof fullInventory !== 'undefined' ? fullInventory : [],state.fullInventory];
-    if (state.noteScope === getSupabaseReadIdentityScope()) sources.push(state.locationSalesNotes);
-    for (const source of sources) {
-        const list = source instanceof Map ? [...source.values()].flat() : Array.isArray(source) ? source : Object.values(source || {}).flat();
-        list.filter(matches).forEach(add);
-    }
-    return [...urls];
-}
-

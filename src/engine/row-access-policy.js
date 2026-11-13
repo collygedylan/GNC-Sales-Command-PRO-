@@ -139,7 +139,7 @@ export function canPublishRowEvidenceCommand(item, options) {
     if (options?.receipt || options?.seasonSalesOffice) return true;
     if (options?.requestWork) return canCurrentUserWorkRequestItem(item,options.complete ? 'complete' : options.photoAttachmentUrl ? 'photo' : 'edit');
     if (!options || options.suspendCompletionScope) return canCurrentUserWorkRequestItem(item);
-    if (['ssn-','lsn-','na-','global-','req-'].includes(options.prefix)) return canEditEvidenceWorkflow(options.prefix,item);
+    if (['ssn-','lsn-','na-','global-','req-'].includes(options.prefix)) return canEditEvidenceWorkflow(options.prefix,item,options.sourceView);
     return true;
 }
 

@@ -35,6 +35,7 @@ and relevant source skill before changing behavior.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Do not spend the read-probe deadline on photo binaries or use editor navigation to cancel accepted photo jobs. Keep capture-order transfers, bounded transient retries, account-owned IndexedDB backup, and publication through exact-row receipts. Request archive must preserve the authority to finish accepted evidence.
 - Never evaluate whole-row JSON or resolve the interactive actor before an existing authenticated bulk-return guard. Audit DECLARE initializers as well as the function body; preserve the protected blank-overwrite and completion-sync definitions exactly. Validate exact/mismatched evaluation UIDs and real interactive evidence capture in the local PostgreSQL fixture.
 - Do not scan wide statement transition tables to discover an unchanged Drive
   evidence tuple. Guard the statement with an exact row-delta marker and retain

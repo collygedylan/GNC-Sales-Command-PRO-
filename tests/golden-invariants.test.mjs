@@ -6788,12 +6788,12 @@ test('Invariant 643: bounded compiled DRIVE progress preserves the same fully ty
 
 test('Invariant 644: the release gate accepts removal of planner maintenance and rejects changes to compiled DRIVE readiness witnesses', async () =>
   (await import('./helpers/erp-readiness-maintenance-contract.mjs')).assertIndependentDriveReadiness());
-
 test('Invariant 645: final certificate release rejects removal of input invalidation, stage locks, or either proof phase', async () =>
   (await import('./helpers/erp-certified-input-release.mjs')).assertCertifiedDriveRelease());
-
 test('Invariant 646: a prior DRIVE alias requires unique matching lineage and retains staged exact-row ownership', async () =>
   (await import('./helpers/erp-prior-drive-alias-release.mjs')).assertPriorDriveAliasRelease());
-
 test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
   (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
+
+test('Invariant 648: six field photos transfer in order with bounded retries and verified preview fallback', async () =>
+  (await import('./helpers/ordered-detail-photo-contract.mjs')).assertOrderedDetailPhotoUploads());

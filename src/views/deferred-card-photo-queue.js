@@ -154,6 +154,21 @@ function hydrateDeferredCardPhotoFallbackBatch(images, roots) {
     if (batch.some(img => img.dataset.photoHydrated === '1')) continuePendingDeferredCardPhotos(roots, delay);
 }
 
+function resolveDeferredPhotoSources(img) {
+    const source = String(img.dataset.src || '').trim();
+    if (!source) return {};
+    const src = normalizeStoragePublicUrl(source);
+    const detailPreview = img.dataset.localPreviewUrl;
+    const original = img.dataset.photoUrl || globalThis.AgDataStorageGuard?.original(source) || source;
+    const slot = /^https?:\/\//i.test(original) || detailPreview ? findPendingPhotoPreviewByUrl(original) : null;
+    const local = detailPreview || slot?.localPreviewUrl;
+    if (/^(?:blob:|data:image\/)/i.test(local || '')) {
+        if (slot?.publicPreviewReady && slot.publicUrl) return {src:normalizeStoragePublicUrl(slot.publicUrl),fallbackSrc:local};
+        return {src:local};
+    }
+    return {src,fallbackSrc:getDeferredCardPhotoFallbackSrc(src)};
+}
+
 export function getAvCardPhotoHydrationScope(root = document) {
     if (root?.querySelectorAll && root !== document) return root;
     return document.getElementById('av-content') || document;
@@ -167,4 +182,62 @@ export function isAvCardPhotoHydrationRelevant(root = document) {
     if (viewId && owner && owner.id !== `view-${viewId}`) return false;
     if (scope.id === 'av-content' && viewId === 'av') return true;
     return scope.matches?.('.app-av-catalog-card') || !!scope.querySelector?.('.app-av-catalog-card');
+}
+
+export function handleDeferredCardPhotoLoadFailure(img = null) {
+    if (!img) return;
+    // An img error has no HTTP status: back off, never permanently blacklist a transient outage.
+    window.AgDataStorageGuard?.noteFailure(img.src || img.dataset?.src, 0);
+    const fallbackSrc = String(img.dataset && img.dataset.photoFallbackSrc || getDeferredCardPhotoFallbackSrc(img.src || (img.dataset && img.dataset.src) || '')).trim();
+    if (fallbackSrc && !window.AgDataStorageGuard?.blocked(fallbackSrc) && img.dataset.photoFallbackAttempted !== '1' && String(img.src || '').trim() !== fallbackSrc) {
+        img.dataset.photoFallbackAttempted = '1';
+        img.hidden = false;
+        img.src = fallbackSrc;
+        return;
+    }
+    img.classList.add('app-photo-thumbnail-failed');
+    img.alt = '';
+    img.hidden = true;
+    invalidateCardPhotoMatchOnLoadFailure(img);
+    const host = img.parentElement;
+    if (!host || host.querySelector('.app-photo-unavailable')) return;
+    const placeholder = document.createElement('span');
+    placeholder.className = 'app-photo-unavailable';
+    placeholder.textContent = 'NO PHOTO';
+    host.appendChild(placeholder);
+}
+
+export function hydrateDeferredCardPhoto(img = null, expectedSrc = '') {
+    if (!img || img.dataset.photoHydrated === '1') return;
+    if (img.isConnected === false) {
+        delete img.dataset.photoObserved;
+        delete img.dataset.photoObservedSrc;
+        return;
+    }
+    if (expectedSrc && img.dataset.src !== expectedSrc) return;
+    const {src, fallbackSrc} = resolveDeferredPhotoSources(img);
+    if (!src) return;
+    delete img.dataset.photoObserved;
+    delete img.dataset.photoObservedSrc;
+    if (fallbackSrc) img.dataset.photoFallbackSrc = fallbackSrc;
+    if (img.dataset.photoRecoveryBound !== '1') {
+        img.dataset.photoRecoveryBound = '1';
+        img.addEventListener('load', () => {
+            delete img.dataset.photoLoadFailed;
+            img.classList.remove('app-photo-thumbnail-failed');
+            img.hidden = false;
+            const placeholder = img.parentElement && img.parentElement.querySelector('.app-photo-unavailable');
+            if (placeholder) placeholder.remove();
+        });
+    }
+    img.dataset.photoHydrated = '1';
+    img.dataset.photoHydratedSrc = src;
+    img.onerror = () => {
+        if (!img || !img.dataset) return;
+        if (img.dataset.photoHydratedSrc !== src) return;
+        img.dataset.photoLoadFailed = '1';
+        handleDeferredCardPhotoLoadFailure(img);
+    };
+    if (window.AgDataStorageGuard?.blocked(src)) handleDeferredCardPhotoLoadFailure(img);
+    else img.src = src;
 }

@@ -477,7 +477,7 @@ test('row verification does not bypass the approval action guard', async () => {
   assert.deepEqual(h.calls.map(call => call.name), ['rows']);
 });
 
-test('detail save keeps captured fields and waits for photos, with a recoverable verification timeout', detailSaveChecks);
+test('detail save keeps captured fields and proceeds while photos upload, with a recoverable verification timeout', detailSaveChecks);
 
 test('detail Mark Done returns to the request list only after the current detail save is confirmed', detailMarkDoneChecks);
 

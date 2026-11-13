@@ -30,7 +30,7 @@ function createEvaluationFixture(status) {
         showToast:(_title,message,error) => { if (error) errors.push(message); }, backupLocalItem() {}, escapeHtml:value => value,
         pendingPhotoUploads:new Map(), createPendingPhotoToken:() => 'scoped-token', getPendingPhotoUploadKey:item => item.UNIQUE_ID + '::saved',
         canEditRowDetails:() => true, isProtectedSectionCompleted:() => false, getRowSaveCoordinatorKey:() => 'drive::drive-row',
-        isAvDetailReadOnlyContext:() => false, uploadJobs:[],
+        isAvDetailReadOnlyContext:() => false, uploadJobs:[], SECURE_DRIVE_EVIDENCE_PREFIXES:new Set(['lsn-']),
         getDetailRowPhotoUploadPromises:() => context.uploadJobs,
         hasUnsettledDetailRowPhotos:() => previews.some(preview => preview.status !== 'Uploaded'),
         getRowSaveCoordinatorState:() => ({}), ROW_SAVE_COMPLETE_INTENT_MS:1000,
@@ -63,7 +63,7 @@ function createEvaluationFixture(status) {
 
 export async function assertDetachedDriveEvaluation() {
     for (const status of ['Uploading','Save failed']) {
-        const {context,row,sibling,owner,calls,errors,previews} = createEvaluationFixture(status);
+        const {context,row,sibling,owner,calls,errors} = createEvaluationFixture(status);
         let finishFirst, finishSecond;
         const first = new Promise(resolve => { finishFirst = resolve; });
         const second = new Promise(resolve => { finishSecond = resolve; });
@@ -74,37 +74,29 @@ export async function assertDetachedDriveEvaluation() {
         }
         const result = context.saveData(true,'lsn-');
         await new Promise(setImmediate);
-        assert.equal(calls.length,1,'first confirmed tap sends text before either photo settles: '+errors.join(', '));
-        assert.equal(calls[0].complete,false);
-        assert.equal(context.activeItem,row,'the editor stays on the exact row until every selected photo settles');
+        assert.equal(calls.length,1,'first confirmed tap sends one evaluation write: '+errors.join(', '));
+        assert.equal(calls[0].complete,true);
+        assert.equal(context.activeItem,null,'accepted evaluation returns before photo settlement');
         assert.equal(context.pendingPhotoUploads.size,status === 'Uploading' ? 2 : 0);
         assert.equal(row.SPEC,spec);
         assert.equal(row.AV_NOTE,note);
         assert.equal(row.LOC_PHOTO_MATCH,348);
-        assert.match(context.buildCompletedRowBadge(row),/ hidden>/);
         assert.match(context.buildCompletedRowBadge(sibling),/ hidden>/);
         assert.deepEqual(Array.from(context.resolveCanonicalPhotoUrls(row,'drive')),['blob:photo-1','blob:photo-2']);
         assert.equal(owner.locationSalesNotes.get(row.ITEMCODE)[0].LOTCODE,'28.F1');
         assert.equal(sibling.SPEC,undefined);
         assert.equal(sibling.AV_NOTE,undefined);
-        if (status === 'Save failed') {
-            assert.equal(await result,false);
-            assert.equal(context.activeItem,row);
-            assert.equal(calls.length,1);
-            continue;
-        }
-        previews.forEach(preview => { preview.status = 'Uploaded'; });
+        context.confirmEvaluation();
+        assert.equal(await result,true);
+        assert.equal(context.pendingPhotoUploads.size,status === 'Uploading' ? 2 : 0);
         finishFirst();
         finishSecond();
         await Promise.all([first,second]);
         await new Promise(setImmediate);
-        assert.equal(calls.length,2,errors.join(', '));
-        assert.equal(calls[1].complete,true);
+        assert.equal(calls.length,1,errors.join(', '));
         assert.equal(context.activeItem,null);
         assert.equal(context.getDisplayLocMatchQtyValue(row,'drive'),'348');
         assert.match(context.buildCompletedRowBadge(row),/>✅ COMPLETED/);
-        context.confirmEvaluation();
-        assert.equal(await result,true);
         assert.equal(context.pendingPhotoUploads.size,0);
     }
 }

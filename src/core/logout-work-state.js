@@ -1,5 +1,6 @@
 export function clearLogoutUpdateLocks() {
     expireAppUpdateRestore();
+    window.clearCameraPhotoUploads?.();
     if (window.GncCameraState) {
         Object.assign(window.GncCameraState, { cameraCaptureInFlight: false, startedAt: 0, returnUntil: 0 });
         window.persistCameraCaptureState?.();
