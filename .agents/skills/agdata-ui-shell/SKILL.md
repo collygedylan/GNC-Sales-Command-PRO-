@@ -40,6 +40,12 @@ and any required browser geometry. Source-only CSS checks do not prove layout.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- A release can opt into automatic updates through its version manifest.
+  Never activate from that flag alone. Require the verified target shell and
+  a current tab checkpoint, including the camera and write guards. Already
+  loaded banner-only releases still use their original update control
+  (Invariant 656).
+
 - Keep the root, active view, and shell dark before and after hydration. A
   saved light preference or Outdoor Mode must never give another route a
   light canvas or panel (Invariant 655).

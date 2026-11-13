@@ -32,3 +32,6 @@ test('Invariant 654: Pending Request all-user scope survives cold matrix reads a
 
 test('Invariant 655: every route keeps its dark appearance through device and account preference changes', async () =>
   (await import('../../tests/helpers/dark-emerald-theme-contract.mjs')).assertDarkEmeraldTheme());
+
+test('Invariant 656: an automatic mobile update waits for the camera, claims the completed shell, and restores the draft', async () =>
+  (await import('../../tests/helpers/pwa-shell-upgrade-contract.mjs')).browserWorkerUpgradeContract({automatic:true}));

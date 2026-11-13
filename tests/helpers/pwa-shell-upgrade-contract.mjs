@@ -184,7 +184,9 @@ function browserWorkerContent(state, url) {
         if (url.searchParams.has('_reload')) state.navigationAt = Date.now();
         return {body:browserShellDocument(state.published),type:'text/html'};
     }
-    if (url.pathname === '/version.json') return {body:JSON.stringify({version:state.published}),type:'application/json'};
+    if (url.pathname === '/version.json') return {body:JSON.stringify({
+        version:state.published,autoApply:state.automatic && state.published === state.target
+    }),type:'application/json'};
     return {body:browserWorkerScript(state,url),type:'application/javascript'};
 }
 
@@ -212,7 +214,8 @@ async function createBrowserWorkerFixture(options) {
     const prior = options.legacyVersion || target.replace(/\d+$/,patch => String(Number(patch)-1));
     assert.notEqual(prior,target,'the fixture needs distinct prior and target releases');
     const client = read('assets/live-app-update.js');
-    const state = {target,prior,published:prior,client,legacyClient:options.legacyClientSource || client,worker:read('sw.js'),delayInstall:options.delayInstall === true};
+    const state = {target,prior,published:prior,client,legacyClient:options.legacyClientSource || client,worker:read('sw.js'),
+        delayInstall:options.delayInstall === true,automatic:options.automatic === true};
     const server = createServer((request,response) => browserWorkerResponse(state,request,response));
     await new Promise(resolve => server.listen(0,'127.0.0.1',resolve));
     return {state,server,url:'http://127.0.0.1:'+server.address().port};
@@ -319,14 +322,44 @@ async function verifyBrowserWorkerWindows(windows, fixture) {
     assert.ok((await sibling.evaluate(() => caches.keys())).includes('agdata-v'+fixture.state.prior+'-network-first-r1'));
 }
 
+async function verifyAutomaticMobileUpdate(context, fixture) {
+    const {state,url} = fixture;
+    const page = await context.newPage();
+    await page.goto(url+'/index.html#view-item-detail');
+    await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+    const draft = page.getByRole('textbox',{name:'SPEC'});
+    await draft.fill('camera draft survives');
+    await page.evaluate(() => { window.GncCameraState = {cameraCaptureInFlight:true}; });
+    state.published = state.target;
+    await page.evaluate(() => GncLiveAppUpdate.check('fixture',{force:true}));
+    await page.waitForFunction(() => window.__swReg?.waiting?.state === 'installed');
+    await setBrowserWorkerCapture(page,true);
+    assert.equal(await page.evaluate(() => document.querySelector('meta').content),state.prior);
+    const landed = page.waitForURL(location => location.searchParams.get('v') === state.target);
+    await setBrowserWorkerCapture(page,false);
+    await page.evaluate(() => {
+        window.GncCameraState.cameraCaptureInFlight = false;
+        window.dispatchEvent(new Event('agdata:update-work-settled'));
+    });
+    await landed;
+    await page.waitForFunction(target => document.querySelector('meta').content === target
+        && new URL(navigator.serviceWorker.controller.scriptURL).searchParams.get('v') === target,state.target);
+    assert.equal(await draft.inputValue(),'camera draft survives');
+    assert.equal(await page.evaluate(() => sessionStorage.getItem('fixture-tap-at')),null);
+    assert.equal(new URL(page.url()).hash,'#view-item-detail');
+    return {prior:state.prior,target:state.target,automatic:true,cameraDraftPreserved:true};
+}
+
 export async function browserWorkerUpgradeContract(options = {}) {
     const {chromium} = await import('playwright');
     const fixture = await createBrowserWorkerFixture(options);
     let browser = options.browser, context;
     try {
         browser ||= await chromium.launch({headless:true,...options.launchOptions});
-        context = await browser.newContext({serviceWorkers:'allow'});
+        const mobile = options.automatic ? {isMobile:true,hasTouch:true,viewport:{width:390,height:844}} : {};
+        context = await browser.newContext({serviceWorkers:'allow',...mobile});
         context.setDefaultTimeout(5000);
+        if (options.automatic) return await verifyAutomaticMobileUpdate(context,fixture);
         const windows = await openBrowserWorkerWindows(context,fixture);
         if (options.delayInstall) await applyDelayedWorkerBanner(windows,fixture);
         else await applyBrowserWorkerBanner(windows,fixture);

@@ -177,7 +177,7 @@ function retireUnusedShellGenerations() {
 }
 
 function acceptsBannerCheckpoint(data) {
-  return data.trigger === 'update-banner' && data.protocol === 'agdata-update-restore-v1'
+  return ['update-banner', 'update-auto'].includes(data.trigger) && data.protocol === 'agdata-update-restore-v1'
     && typeof data.snapshotId === 'string' && data.snapshotId.trim().length > 0
     && data.targetBuild === APP_SHELL_BUILD;
 }
