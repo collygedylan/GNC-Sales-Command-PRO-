@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "0128ff2aa6be1db91c09ddbda03d9a92d7ece7e3",
+  "commit": "2757870b744b7044435c611e4bc361d5fed41497",
   "release": "AgData v3.0.84",
   "files": [
     {
@@ -1541,22 +1541,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "f9d6bc56b0b9d369ea5d82aa8fd9f58e1877b1123e3b8c5f5c26f0360c34ccde"
+      "sha256": "a6f5af4f1ad94905c626286e937e5993f1031d85fdfa03d18e64bb3b0c692fbe"
     },
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "f9d6bc56b0b9d369ea5d82aa8fd9f58e1877b1123e3b8c5f5c26f0360c34ccde"
-    },
-    {
-      "path": "deployments/0128ff2aa6be1db91c09ddbda03d9a92d7ece7e3.json",
-      "bytes": 187,
-      "sha256": "f9d6bc56b0b9d369ea5d82aa8fd9f58e1877b1123e3b8c5f5c26f0360c34ccde"
+      "sha256": "a6f5af4f1ad94905c626286e937e5993f1031d85fdfa03d18e64bb3b0c692fbe"
     },
     {
       "path": "deployments/131ba96c0cc55ba74f29616d0ed802f64ab40167.json",
       "bytes": 187,
       "sha256": "9f9c09fbb7517c3a73d6ebb84e4046e3c00d3a6f419a7c29ab05bc705625d37b"
+    },
+    {
+      "path": "deployments/2757870b744b7044435c611e4bc361d5fed41497.json",
+      "bytes": 187,
+      "sha256": "a6f5af4f1ad94905c626286e937e5993f1031d85fdfa03d18e64bb3b0c692fbe"
     },
     {
       "path": "deployments/6cd757527363e13e96e5f3c77889274341a59c85.json",
@@ -1586,7 +1586,7 @@
     {
       "path": "index.html",
       "bytes": 433774,
-      "sha256": "c965723916fecebfed8b8d36d2c83054b211563414849b8e1d40f9b9396e90b2"
+      "sha256": "aa5d4f607e864fcaa3f5cbb98c0fc24ba9dc99552acefb598e285b60364c52c6"
     },
     {
       "path": "manifest.json",
@@ -1641,7 +1641,7 @@
     {
       "path": "sw.js",
       "bytes": 41676,
-      "sha256": "9256d363e11812c39e99b16ad621fa165789f6e821c9abdc3e2eb5ecdc999664"
+      "sha256": "1223970c88491a3f22c4cd21d35cd192b1ae4095f9c2e3cc07fdeeb08c8f28d7"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -2041,7 +2041,7 @@
     {
       "path": "version.json",
       "bytes": 134,
-      "sha256": "33bcea5aa1db5e10f009ce852c7d1b10d6838fa08106163030e0aee16f5a71f3"
+      "sha256": "02b80e6dc5195dafd7639f22c68ea148a21656a7e96b338ef7739b4fef0a2250"
     }
   ]
 }
