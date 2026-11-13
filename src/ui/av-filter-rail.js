@@ -9,6 +9,7 @@ export function renderAvTopControls(items = []) {
     const markup = buildAvRailOptions(state, filterState);
     const didMountShell = ensureAvTopControlsShell(container);
     syncAvValidPhotosButton(container);
+    syncAvToolbarKioskButton(container.querySelector('#av-kiosk-toggle'));
     if (didMountShell) mountInventoryExcelFilters('av');
     ensureAvControlsVisible(container);
     const chips = document.getElementById('av-filter-chips');

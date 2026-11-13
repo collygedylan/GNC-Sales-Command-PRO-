@@ -60,21 +60,15 @@ async function verifyAvSearch(page) {
 }
 
 async function verifyAvKiosk(page) {
-    const result = await page.evaluate(() => {
-        const row = getCurrentAVBaseItems().items.find(item => item.LOCATIONCODE === 'E.07.000');
-        const previous = window.__agdataAvKioskState.active;
-        window.__agdataAvKioskState.active = true;
-        try {
-            const markup = document.createElement('template');
-            markup.innerHTML = generateCard(row, 'av');
-            const card = markup.content.querySelector('.app-av-catalog-card');
-            return { label:card.getAttribute('aria-label'), photo:!!card.querySelector('.app-av-photo-slide'),
-                controls:card.querySelectorAll('.app-av-catalog-meta, .card-checkbox, .app-av-primary-action, .app-av-catalog-hold-data').length };
-        } finally {
-            window.__agdataAvKioskState.active = previous;
-        }
-    });
-    assert.deepEqual(result, { label:'Open card photos', photo:true, controls:0 });
+    const card = page.locator('#av-content .app-av-catalog-card').filter({ hasText:'Dragon Baby' }).first();
+    const toggle = page.getByRole('button', { name:/kiosk mode/i });
+    await toggle.click({ timeout:3000 });
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+    await card.and(page.locator('[aria-label="Open card photos"]')).waitFor({ timeout:3000 });
+    assert.equal(await card.locator('.app-av-catalog-meta, .card-checkbox, .app-av-primary-action, .app-av-catalog-hold-data').count(), 0);
+    await toggle.click();
+    assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
+    await card.locator('.app-av-catalog-meta').waitFor({ state:'attached', timeout:3000 });
 }
 
 async function run() {

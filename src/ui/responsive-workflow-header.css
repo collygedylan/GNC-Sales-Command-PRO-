@@ -154,6 +154,22 @@ html body #app-wrapper #view-drive #drive-toolbar-rail > #drive-mobile-mode {
 }
 
 /* Que keeps the mounted Back/search first and three bounded commands second. */
+html body.current-view-request #app-wrapper :is(#view-request, #request-content) {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+html body.current-view-request #app-wrapper #request-content :is(#request-suspend-tag-results, [data-request-uid]) {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+html body.current-view-request #app-wrapper #request-content #request-suspend-tag-results {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
 html body.current-view-request #app-wrapper #global-header-search-row {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 76px !important;
@@ -167,7 +183,7 @@ html body.current-view-request #app-wrapper #global-header-search-row > #global-
   grid-area: 1 / 1 / 2 / -1;
   margin-left: 46px;
   width: calc(100% - 46px) !important;
-  max-width: none !important;
+  max-width: 100% !important;
 }
 html body.current-view-request #request-search-container {
   display: block !important;
@@ -182,12 +198,36 @@ html body.current-view-request #app-wrapper #global-header-search-row > #request
   gap: 6px !important;
   width: 100% !important;
   min-width: 0 !important;
-  max-width: none !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
   margin: 0 !important;
   padding: 0 !important;
   height: 38px !important;
   min-height: 38px !important;
-  overflow: visible !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+#view-av #av-kiosk-toggle {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding-inline: 10px;
+  border: 1px solid var(--border-subtle, #6ee7b7);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+#view-av #av-kiosk-toggle[aria-pressed="true"] {
+  background: #047857;
+  color: #ecfdf5;
+  border-color: #34d399;
+}
+html body.current-view-docks #app-wrapper #view-docks > .freeze-panel:has(> .docks-filter-disclosure) {
+  position: static !important;
+  inset: auto !important;
+}
+#view-docks .docks-filter-disclosure > summary {
+  cursor: pointer;
+  padding: 8px 4px;
 }
 html body:not(.current-view-request) #global-header-search-row > #request-filter-toolbar {
   display: none !important;
@@ -232,6 +272,14 @@ html body.current-view-request #app-wrapper #global-header-search-row > #global-
   min-width: 0 !important;
   padding-inline: 3px !important;
   font-size: 11px !important;
+  overflow: hidden;
+}
+html body.current-view-request #global-excel-export span {
+  font-size: 0 !important;
+}
+html body.current-view-request #global-excel-export span::after {
+  content: 'Export';
+  font-size: 11px;
 }
 html body.current-view-request :is(#footer-cart-btn, #request-crumb, #request-suspend-tag-filter-shell) {
   display: none !important;
@@ -245,15 +293,6 @@ html body.current-view-request #view-request > .freeze-panel {
 
 html body.current-view-request #request-filter-toolbar .request-category-options {
   display: none !important;
-}
-@media (max-width: 480px) {
-  html body.current-view-request #global-excel-export span {
-    font-size: 0 !important;
-  }
-  html body.current-view-request #global-excel-export span::after {
-    content: 'Export';
-    font-size: 11px;
-  }
 }
 
 html body.current-view-request #app-wrapper #request-filter-toolbar > #request-pending-owner-filter:not([hidden]),

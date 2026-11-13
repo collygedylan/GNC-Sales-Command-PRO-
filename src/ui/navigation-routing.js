@@ -178,6 +178,7 @@ function mountPrimaryNavigation(context) {
     if (targetView) {
         showOnlyPrimaryView(nextViewId);
         updateFooterNavState(nextViewId);
+        if (nextViewId === 'docks') mountDocksFilterDisclosure(targetView);
     }
     if (window.__gncOpsPilot && typeof window.__gncOpsPilot.setActiveView === 'function') {
         window.__gncOpsPilot.setActiveView(nextViewId);
@@ -202,6 +203,17 @@ function mountPrimaryNavigation(context) {
     lastViewSwitchAt = Date.now();
     if (nextViewId !== 'home') ensureNativeBackGuard();
     Object.assign(context, { targetView, nextState });
+}
+
+function mountDocksFilterDisclosure(view) {
+    const controls = view.querySelector('.freeze-panel #docks-filter-controls');
+    if (!controls || controls.parentElement.matches('.docks-filter-disclosure')) return;
+    const disclosure = document.createElement('details');
+    disclosure.className = 'docks-filter-disclosure';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Filters';
+    controls.before(disclosure);
+    disclosure.append(summary, controls);
 }
 
 function reusePrimaryNavigation(context) {
