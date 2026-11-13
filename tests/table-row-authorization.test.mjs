@@ -1,4 +1,5 @@
 import test from 'node:test';
-import {assertTableDrivenRowAuthorization} from './helpers/table-row-authorization-contract.mjs';
+import {assertTableDrivenRowAuthorization,assertRetainedRowEditorAuthority} from './helpers/table-row-authorization-contract.mjs';
 
-test('photo, evaluation, Request and Suspend authority follows verified tables rather than actor names',assertTableDrivenRowAuthorization);
+test('row authorization retains exact account, module, Request receipt and Dock mirror boundaries',assertTableDrivenRowAuthorization);
+test('eligible authenticated row editors do not wait for permission hydration',assertRetainedRowEditorAuthority);

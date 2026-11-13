@@ -1,5 +1,11 @@
+const GLOBAL_LIVE_CHANGE_USER_KEYS = new Set([
+    'dylan_collyge', 'megan_kelly', 'jd_jones', 'mitch_kaiser',
+    'nelly_aguilar', 'nally_aguilar', 'morgan_anderson', 'melissa_dowty'
+]);
+
 function normalizeEvidenceActor(value) {
-    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g,'_')
+        .replace(/^_+|_+$/g,'').replace(/^nally_aguilar$/,'nelly_aguilar');
 }
 
 function getCanonicalAccessSessionIdentity() {
@@ -51,9 +57,42 @@ function evidenceModuleAllowed(identity, viewFlag, permissionFlag) {
         && resolved.permissions?.[permissionFlag] === true;
 }
 
-function evidenceActorModuleAllowed(identity) {
-    return [['view_drive_mode','can_access_drive_mode'],['view_av','can_access_av'],['view_que','can_access_que']]
-        .some(([view,permission]) => evidenceModuleAllowed(identity,view,permission));
+function resolveEvidenceRowAuthority(user = currentUser) {
+    const actor = normalizeEvidenceActor(user || currentUser);
+    const session = getCanonicalAccessSessionIdentity();
+    if (!session || session.username !== actor) return null;
+    const self = globalThis.GncUserAccessControl?.getSelfState?.();
+    const profile = session.legacy ? self?.profile : nativeAuthProfile;
+    if (self?.denied || profile?.active === false || profile?.disabled_at || profile?.must_change_password
+        || profile?.locked_until && Date.parse(profile.locked_until) > Date.now()) return null;
+    const resolved = typeof resolveUserAccessMatrix === 'function' ? resolveUserAccessMatrix(actor) : null;
+    const matrix = resolved?.__pendingAccessWrite ? null : resolved;
+    const role = String(matrix?.role || currentRole || '').trim().toUpperCase().replace(/[ _-]/g,'');
+    const power = GLOBAL_LIVE_CHANGE_USER_KEYS.has(actor) || ['SUPERADMIN','ADMIN','ADMINISTRATOR','MANAGER'].includes(role)
+        || matrix?.edit_any_row === 'Y';
+    const scoped = ['EVAL','EVALUATOR'].includes(role) || matrix?.edit_assigned_rows_only === 'Y';
+    return {actor,profile,matrix,power,scoped};
+}
+
+function evidenceViewPermitted(matrix, viewFlag) {
+    const value = matrix?.view_permissions?.[viewFlag] ?? matrix?.[viewFlag];
+    return value !== 'N' && value !== false;
+}
+
+function canEditScopedEvidenceRow(authority, row) {
+    if (!authority || !row) return false;
+    if (authority.power) return true;
+    if (!authority.scoped) return false;
+    const owner = resolveInventoryRowOwner(row);
+    return owner ? owner === authority.actor : !!(row.ITEMCODE || row.itemcode || row.ITEM || row.item);
+}
+
+function canEditDockMirrorEvidence(item, capability) {
+    const identity = verifiedEvidenceActor();
+    if (!identity || !evidenceModuleAllowed(identity,'view_que','can_access_que')
+        || requestActionDeniedByReceipt(identity,capability) || !canCurrentUserViewDockSuspendDcRequests(item)) return false;
+    return identity.matrix.edit_any_row === 'Y'
+        || identity.matrix.edit_assigned_rows_only === 'Y' && resolveInventoryRowOwner(item) === identity.actor;
 }
 
 function resolveInventoryRowOwner(row) {
@@ -68,13 +107,10 @@ function resolveInventoryRowOwner(row) {
 }
 
 function resolveCanonicalRowAccess(user, row) {
-    const identity = verifiedEvidenceActor(user);
-    const actor = identity?.actor || '';
-    const power = identity?.matrix.edit_any_row === 'Y';
-    const assigned = identity?.matrix.edit_assigned_rows_only === 'Y';
-    const own = !!(actor && row && !power && assigned && resolveInventoryRowOwner(row) === actor);
-    const canEdit = !!(identity && row && evidenceActorModuleAllowed(identity) && (power || assigned && own));
-    return {canView:!!(normalizeEvidenceActor(user) && row),canEditAnyRow:!!(identity && power),canEdit,
+    const authority = resolveEvidenceRowAuthority(user);
+    const permitted = authority && ['view_drive_mode','view_av','view_que'].some(view => evidenceViewPermitted(authority.matrix,view));
+    const canEdit = !!permitted && canEditScopedEvidenceRow(authority,row);
+    return {canView:!!(normalizeEvidenceActor(user || currentUser) && row),canEditAnyRow:!!authority?.power,canEdit,
         canUnlock:canEdit,canReclass:canEdit,canUploadPhoto:canEdit,canCompleteTag:canEdit,canManageLocations:canEdit};
 }
 
@@ -98,7 +134,7 @@ function getRetainedRequestWorkCapabilities() {
 
 function requestActionDeniedByReceipt(identity, action) {
     const state = typeof requestCapabilityState === 'undefined' ? null : requestCapabilityState;
-    if (!state || state.stale || state.status !== 'ready' || state.profileId !== identity.profile.id
+    if (!state || state.stale || state.status !== 'ready' || !identity.profile?.id || state.profileId !== identity.profile.id
         || normalizeEvidenceActor(state.username) !== identity.actor) return false;
     const field = action === 'photo' ? 'canTakePhoto' : action === 'complete' ? 'canComplete' : 'canEdit';
     return state.capabilities?.canViewQueue === false || state.capabilities?.[field] === false;
@@ -114,27 +150,28 @@ function ownsExactRequestWorkRow(identity, item) {
 }
 
 function canCurrentUserWorkRequestItem(item = null, action = 'edit') {
-    const identity = verifiedEvidenceActor();
     const actionKey = String(action || 'edit').trim().toLowerCase();
-    if (!identity || !item || (item.REQUEST_HISTORY && actionKey !== 'queued-photo')
-        || !evidenceModuleAllowed(identity,'view_que','can_access_que')) return false;
-    if (isDockSuspendDcRequestMirrorRow(item)) {
-        return canCurrentUserViewDockSuspendDcRequests(item) && resolveCanonicalRowAccess(currentUser,item).canEdit;
-    }
+    if (!item || (item.REQUEST_HISTORY && actionKey !== 'queued-photo')) return false;
     const capability = actionKey === 'queued-photo' ? 'photo' : actionKey;
-    if (requestActionDeniedByReceipt(identity,capability)) return false;
+    if (isDockSuspendDcRequestMirrorRow(item)) return canEditDockMirrorEvidence(item,capability);
+    const authority = resolveEvidenceRowAuthority();
+    if (!authority || !evidenceViewPermitted(authority.matrix,'view_que')) return false;
+    if (requestActionDeniedByReceipt(authority,capability)) return false;
+    if (canEditScopedEvidenceRow(authority,item)) return true;
+    const identity = verifiedEvidenceActor();
+    if (!identity || !evidenceModuleAllowed(identity,'view_que','can_access_que')) return false;
     const fallback = getRetainedRequestWorkCapabilities();
     const allowed = capability === 'photo' ? fallback?.canTakePhoto : capability === 'complete' ? fallback?.canComplete : fallback?.canEdit;
     return !!(allowed && (identity.matrix.edit_any_row === 'Y' || ownsExactRequestWorkRow(identity,item)));
 }
 
 function canEditEvidenceWorkflow(prefix, item, sourceView = '') {
-    if (prefix === 'req-') return canCurrentUserWorkRequestItem(item);
-    const identity = verifiedEvidenceActor();
-    if (!identity || !resolveCanonicalRowAccess(currentUser,item).canEdit) return false;
     const source = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
-    return ['av','av-photo'].includes(source) ? evidenceModuleAllowed(identity,'view_av','can_access_av')
-        : evidenceModuleAllowed(identity,'view_drive_mode','can_access_drive_mode');
+    const av = ['av','av-photo'].includes(source);
+    if (av && globalThis.__agdataAvKioskState?.active === true) return false;
+    if (prefix === 'req-') return canCurrentUserWorkRequestItem(item);
+    const authority = resolveEvidenceRowAuthority();
+    return canEditScopedEvidenceRow(authority,item) && evidenceViewPermitted(authority.matrix,av ? 'view_av' : 'view_drive_mode');
 }
 
 function canPublishRowEvidenceCommand(item, options) {

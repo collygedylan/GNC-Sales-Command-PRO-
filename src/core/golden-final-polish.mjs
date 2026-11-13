@@ -23,3 +23,6 @@ test('Invariant 652: the Spec keypad replaces placeholders and requires digits b
   assert.deepEqual(resolveDetailKeypadInsertion('spec', { value:'8-10', start:0, end:0 }, "'"), { nextValue:'8-10', nextCursor:0 });
   assert.deepEqual(resolveDetailKeypadInsertion('spec', { value:'8-10', start:4, end:4 }, '"'), { nextValue:'8-10"', nextCursor:5 });
 });
+
+test('Invariant 653: signed-in power and scoped row editors survive cold permission reads while AV Kiosk stays read only', async () =>
+  (await import('../../tests/helpers/table-row-authorization-contract.mjs')).assertRetainedRowEditorAuthority());

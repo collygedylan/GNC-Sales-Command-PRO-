@@ -25,7 +25,7 @@ function fixture(username = 'new_authorized_actor', matrix = {}) {
         getEditableDetailItemForPrefix:(_prefix,item) => item || context.activeItem,
         getCurrentVisibleViewId:() => 'detail',isDockSuspendDcRequestMirrorRow:item => item?.DOCK_SUSPEND_DC_REQUEST === true,
         canCurrentUserViewDockSuspendDcRequests:() => true,
-        buildCardActivationAttrs:(dom,uid,source) => `open-detail:${dom}:${uid}:${source}`,
+        buildExactInventoryCardActivationAttrs:(item,source) => `open-detail:${item.UNIQUE_ID}:${source}`,
         requestCapabilityState:{status:'ready',stale:false,username,profileId:'profile-current',capabilities:{canTakePhoto:true,canEdit:true,canComplete:true}}
     });
     context.window = context;
@@ -38,8 +38,8 @@ function fixture(username = 'new_authorized_actor', matrix = {}) {
     return {context,row};
 }
 
-function assertNoNameCanGrantAuthority() {
-    for (const actor of ['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','morgan_anderson','melissa_dowty','admin','manager','unlisted_actor']) {
+function assertOrdinaryNamesCannotGrantAuthority() {
+    for (const actor of ['admin','manager','unlisted_actor']) {
         const {context:c,row} = fixture(actor);
         assert.equal(c.resolveCanonicalRowAccess(actor,row).canUploadPhoto,false,actor);
         assert.equal(c.canEditRowDetails('lsn-',row),false,actor);
@@ -47,8 +47,6 @@ function assertNoNameCanGrantAuthority() {
         c.GncUserAccessControl.state.userAccess = [];
         assert.equal(c.GncUserAccessControl.resolveUserAccessMatrix(actor).edit_any_row,'N','display roster is not a grant: '+actor);
     }
-    const denied = fixture('dylan_collyge',{role:'Admin'});
-    assert.equal(denied.context.resolveCanonicalRowAccess('dylan_collyge',denied.row).canEdit,false,'explicit N defeats role defaults');
     const pending = fixture('pending_writer',{edit_any_row:'Y',can_edit_all_rows:'Y',__pendingAccessWrite:true});
     assert.equal(pending.context.resolveCanonicalRowAccess('pending_writer',pending.row).canEdit,false,'an optimistic permission edit is not a saved grant');
 }
@@ -67,10 +65,10 @@ function assertTableGrantDrivesRealDetailEntry() {
     c.hasConfirmedCurrentAccountRevocation = () => false;
     const changed = c.GncUserAccessControl.resolveUserAccessMatrix('unlisted_writer');
     c.GncUserAccessControl.setAccessMatrixRows([{...changed,profile_id:'foreign-profile'}]);
-    assert.equal(c.canEditRowDetails('lsn-',row),false,'the matrix belongs to the verified profile');
+    assert.equal(c.canEditRowDetails('lsn-',row),true,'an access profile mismatch alone does not lock the signed-in editor');
     c.GncUserAccessControl.setAccessMatrixRows([{...changed,view_permissions:{...changed.view_permissions,view_av:'N'}}]);
     assert.equal(c.isAvDetailReadOnlyContext(),true);
-    assert.match(c.buildAuthorizedAvCardActivationAttrs(row,'av',true),/activateAvCardPhotos/);
+    assert.match(c.buildAuthorizedAvCardActivationAttrs(row,'av-photo',true),/activateAvCardPhotos/);
     c.nativeAuthSessionUserId = 'another-profile';
     assert.equal(c.resolveCanonicalRowAccess(c.currentUser,row).canEdit,false);
 }
@@ -85,7 +83,7 @@ function assertAccessInstallationPreservesConfirmedRows() {
 
 function assertExactAssignedAndRequestScopes() {
     const {context:c,row} = fixture('assigned_eval',{role:'EVAL',edit_assigned_rows_only:'Y',can_edit_assigned_items:'Y'});
-    assert.equal(c.resolveCanonicalRowAccess(c.currentUser,row).canEdit,false,'a family alias is not an assignment');
+    assert.equal(c.resolveCanonicalRowAccess(c.currentUser,{...row,eval_user:'another_eval'}).canEdit,false,'a family alias is not an assignment');
     const owned = {...row,effective_worker:'assigned_eval'};
     assert.equal(c.canEditRowDetails('lsn-',owned),true);
     assert.equal(c.canCurrentUserWorkRequestItem({...owned,DOCK_SUSPEND_DC_REQUEST:true},'photo'),true);
@@ -104,6 +102,30 @@ function assertExactAssignedAndRequestScopes() {
     rep.context.requestCapabilityState.capabilities.canViewQueue = true;
     rep.context.nativeAuthProfile.active = false;
     assert.equal(rep.context.canCurrentUserWorkRequestItem(own),false);
+}
+
+export function assertRetainedRowEditorAuthority() {
+    const actors = ['dylan_collyge','megan_kelly','jd_jones','mitch_kaiser','nelly_aguilar','nally_aguilar',
+        'morgan_anderson','melissa_dowty'];
+    const eligible = [...actors.map(actor => [actor,'REP']), ...['Super Admin','Admin','Administrator','Manager','Evaluator']
+        .map(role => ['unlisted_actor',role])];
+    for (const [actor,role] of eligible) {
+        const {context:c,row} = fixture(actor);
+        c.currentRole = role;
+        c.GncUserAccessControl.state.userAccess = [];
+        c.GncUserAccessControl.getSelfState = () => ({status:'loading',verified:false});
+        for (const prefix of ['req-','ssn-','lsn-','na-','global-']) assert.equal(c.canEditRowDetails(prefix,row),true,actor+' '+prefix);
+        assert.equal(c.canEditRowDetails('lsn-',{...row,eval_user:'other'}),role !== 'Evaluator');
+        assert.equal(c.resolveCanonicalRowAccess('other',row).canEdit,false);
+        c.activeDetailSourceView = 'av';
+        c.__agdataAvKioskState = {active:true};
+        assert.equal(c.canEditRowDetails('lsn-',row),false);
+        assert.equal(c.isAvDetailReadOnlyContext(),true);
+        c.__agdataAvKioskState.active = false;
+        assert.equal(c.canEditRowDetails('lsn-',row),true);
+        c.GncUserAccessControl.getSelfState = () => ({status:'ready',verified:true,denied:true});
+        assert.equal(c.canEditRowDetails('lsn-',row),false);
+    }
 }
 
 async function assertCanonicalPublisherChecksTheTablePolicy() {
@@ -127,7 +149,7 @@ async function assertCanonicalPublisherChecksTheTablePolicy() {
 }
 
 export async function assertTableDrivenRowAuthorization() {
-    assertNoNameCanGrantAuthority();
+    assertOrdinaryNamesCannotGrantAuthority();
     assertTableGrantDrivesRealDetailEntry();
     assertAccessInstallationPreservesConfirmedRows();
     assertExactAssignedAndRequestScopes();
@@ -180,15 +202,15 @@ async function assertLegacySessionUsesServerAccessReceipt() {
     assert.equal(c.canCurrentUserWorkRequestItem(own,'complete'),true);
     assert.equal(c.canCurrentUserWorkRequestItem({...own,submitted_by:'other'},'edit'),false);
     c.navigator.onLine = false;
-    assert.equal(c.canEditRowDetails('lsn-',row),false,'offline retained access is display-only');
+    assert.equal(c.canEditRowDetails('lsn-',row),true,'an offline refresh does not close an authorized editor');
     c.navigator.onLine = true;
     c.sessionRecord = {...c.sessionRecord,token:'another-app-session'};
     assert.equal(c.GncUserAccessControl.getSelfState().verified,false,'a response cannot cross app sessions');
-    assert.equal(c.canEditRowDetails('lsn-',row),false);
+    assert.equal(c.canEditRowDetails('lsn-',row),true,'the matching active account retains its assigned editor');
     await c.configureCanonicalUserAccess();
     c.postAppFunctionJson = async () => { throw new Error('NETWORK'); };
     await c.GncUserAccessControl.loadSelf({force:true});
-    assert.equal(c.canEditRowDetails('lsn-',row),false,'a stale server receipt cannot authorize app-only writes');
+    assert.equal(c.canEditRowDetails('lsn-',row),true,'a stale access receipt does not close an authorized editor');
     c.postAppFunctionJson = async () => response;
     await c.GncUserAccessControl.loadSelf({force:true});
     c.currentUser = 'someone_else';

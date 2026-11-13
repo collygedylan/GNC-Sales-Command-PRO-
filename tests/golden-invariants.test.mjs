@@ -6762,7 +6762,7 @@ test('Invariant 632: a cold alias sees full navigation only for its verified cur
 test('Invariant 633: a successful operational read from a previous account cannot settle the new session',verifyLateReadIsDiscarded);
 
 test('Invariant 634: exact-row drafts publish before photo completion and survive failed uploads and blank Request refreshes',assertDetailLiveDraftRetention);
-test('Invariant 635: photo, evaluation and completion entrypoints require verified table grants and exact ownership without named-user exceptions',assertTableDrivenRowAuthorization);
+test('Invariant 635: evidence commands retain same-account, module, exact ownership and confirmed Request denial boundaries',assertTableDrivenRowAuthorization);
 test('Invariant 636: a populated Que dropdown passes Watchdog and review reads preserve open incidents under the same native session',reviewedQueueWatchdogContract);
 test('Invariant 637: Season Y moves bind preview and receipt to the physical source sales year', async () => (await import('./helpers/reclass-season-y-receipt.mjs')).reclassSeasonYReceiptContract());
 import {assertErpPublicationRecovery} from './helpers/erp-publication-recovery-contract.mjs';
