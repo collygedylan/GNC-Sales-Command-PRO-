@@ -1,11 +1,11 @@
 /* Approved-user historical photo gallery. Full objects resolve only by explicit Open. */
-(() => {
+{
   'use strict';
   let storageKey = '', actorKey = '';
   const ROW = 356;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const date = value => String(value || '').slice(0, 10) || 'Unknown date';
-  let bridge, dialog, viewer, returnFocus, generation = 0, timer, poll, frame, requestBusy = false, openGeneration = 0, readOnly = false;
+  let bridge, dialog, viewer, returnFocus, generation = 0, timer, statusPoller, statusPending = null, frame, requestBusy = false, openGeneration = 0, readOnly = false;
   let photos = [], cursor = null, asOf = '', hasMore = true, loading = false, loadError = false, lastWindow = '', selection = new Map();
   let draft = { q: '', container: '', location: '', lot: '', from: '', to: '', recipientId: '', message: '', pending: null };
   const thumbCache = new Map();
@@ -211,13 +211,25 @@
     }
     finally{if(opened===openGeneration){requestBusy=false;renderSelection();lastWindow='';renderWindow();}}
   }
-  async function refreshStatus(){
-    if(!active())return;
+  function bindNoticeButton(button){button.onclick=()=>changeNotice(button);}
+  async function changeNotice(button){
+    button.disabled=true;
     try{
-      const result=await api('status');if(!active())return;
+      await api(button.dataset.retry?'retry':'dismiss',{id:button.dataset.retry||button.dataset.dismiss});
+      await refreshStatus();
+    }catch(error){tell(error.message);button.disabled=false;}
+  }
+  async function refreshStatus(){
+    if(!active() || document.hidden || navigator.onLine === false)return false;
+    if(statusPending)return statusPending;
+    statusPending=api('status');
+    try{
+      const result=await statusPending;if(!active())return;
       el('notices').innerHTML=result.shares.filter(s=>s.delivered||['failed','unknown'].includes(s.status)).map(s=>`<div class="phg-notice"><span>${s.delivered?'Email Sent':'Email Failed'} · ${s.photo_count} photos · ${esc(s.recipient_name)}${s.copied_usernames?.length?' · Dylan and JD included':''}</span>${!s.delivered?`<button data-retry="${esc(s.id)}">Retry</button>`:''}<button data-dismiss="${esc(s.id)}">Dismiss</button></div>`).join('');
-      el('notices').querySelectorAll('button').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await api(b.dataset.retry?'retry':'dismiss',{id:b.dataset.retry||b.dataset.dismiss});await refreshStatus();}catch(error){tell(error.message);b.disabled=false;}});
-    }catch(_){/* Silent bounded polling; sends and explicit retries surface their own errors. */}
+      el('notices').querySelectorAll('button').forEach(bindNoticeButton);
+      return true;
+    }catch{return false;}
+    finally{statusPending=null;}
   }
   async function openPhoto(p){
     if(viewer?.open)return;
@@ -243,12 +255,13 @@
     if(dialog.open)return false;
     requestBusy=false;
     returnFocus=document.activeElement;dialog.showModal();const opened=++openGeneration;
-    renderSelection();resetSearch();clearInterval(poll);poll=null;
+    renderSelection();resetSearch();statusPoller?.stop();
     if(!readOnly){try{const result=await api('recipients');if(opened!==openGeneration||!active())return false;el('recipientId').innerHTML='<option value="">Choose a sales rep</option>'+result.recipients.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');el('recipientId').value=draft.recipientId;}catch(error){if(active())tell(error.message);}
-      refreshStatus();poll=setInterval(()=>{if(!bridge.allowed())clear();else if(document.visibilityState==='visible')refreshStatus();},15000);}
+      statusPoller ||= window.GncQuotaPolling.create({enabled:()=>active()&&!readOnly,run:refreshStatus});
+      statusPoller.start(true);}
     return false;
   }
-  function close(){persist();generation++;openGeneration++;clearTimeout(timer);clearInterval(poll);if(viewer?.open){viewer.close();viewer.remove();}dialog?.close();returnFocus?.focus?.({preventScroll:true});}
+  function close(){persist();generation++;openGeneration++;clearTimeout(timer);statusPoller?.stop();if(viewer?.open){viewer.close();viewer.remove();}dialog?.close();returnFocus?.focus?.({preventScroll:true});}
   function clear(){close();selection.clear();draft={q:'',container:'',location:'',lot:'',from:'',to:'',recipientId:'',message:'',pending:null};photos=[];thumbCache.clear();try{if(storageKey)localStorage.removeItem(storageKey);}catch(_){}if(dialog){dialog.remove();dialog=null;}actorKey='';storageKey='';requestBusy=false;}
   window.GncPhotoHistory={open,close,clear};
-})();
+}

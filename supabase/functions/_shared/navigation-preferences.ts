@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
+import { cacheablePreferenceRead } from "./poll-response.ts";
 
 /** Module visibility never grants a protected action or broadens row ownership. */
 export type NavigationActor = Record<string, unknown> & { id?: unknown };
@@ -26,5 +27,5 @@ export async function handleNavigationPreferences(db: RpcClient, actor: Navigati
     ...(typeof input.expectedRevision === "number" ? { p_expected_revision: input.expectedRevision } : {}),
   });
   if (error) throw error;
-  return data;
+  return !input.operation || input.operation === "get" ? cacheablePreferenceRead(data) : data;
 }

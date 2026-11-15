@@ -1,3 +1,4 @@
+import { createJsonResponder, readOnlyPollResponse } from '../_shared/poll-response.ts';
 import { datasetReadFilterParts, datasetReadOrLiteral, datasetReadOrCondition, applyReserveRepQuery, isRequestRemovalTimestamp, validateDatasetReadParams } from "./dataset-read-query.ts";
 import { executeReclassInquiryAction } from "./reclass-inquiry-handler.ts";
 import { queueRequestOutboxReconciliation, readPendingRequestDeliveryStatus } from "./request-queue-delivery.ts";
@@ -10,8 +11,8 @@ import { executeManagerTableManagement } from "../../../src/core/erp-action-disc
 import { handleScopedPhotoUpload } from "../../../src/services/photo-upload-handler.ts";
 import { authorizePhotoUpload, type PhotoAuthorizationDependencies } from "../../../src/services/photo-upload-authorization.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.84";
-const APP_RUNTIME_RELEASE = "AgData v3.0.84";
+const APP_RUNTIME_VERSION = "3.0.86";
+const APP_RUNTIME_RELEASE = "AgData v3.0.86";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_EDITABLE_FIELDS_POLICY } from "../../../services/reclassEditableFields.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
@@ -470,16 +471,7 @@ function isSupersededAppVersion(value: unknown, current: string = APP_RUNTIME_VE
   return false;
 }
 
-function jsonResponse(body: unknown, status = 200) {
-  const appVersion = APP_RUNTIME_VERSION;
-  const versionedBody = body && typeof body === "object" && !Array.isArray(body)
-    ? { ...(body as Record<string, unknown>), app_version: appVersion }
-    : body;
-  return new Response(JSON.stringify(versionedBody, escapedDisplayTextJsonReplacer), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "private, no-store" },
-  });
-}
+const jsonResponse = createJsonResponder(corsHeaders, APP_RUNTIME_VERSION, escapedDisplayTextJsonReplacer);
 
 function errorResponse(message: string, status = 400, extra: Record<string, unknown> = {}) {
   return jsonResponse({ error: message, ...extra }, status);
@@ -2283,6 +2275,24 @@ function driveReclassErrorResponse(message: string) {
   return jsonResponse({ ok: false, retryable: true, code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE", message: "Reclass is reconciling the same idempotent inquiry." });
 }
 
+async function photoHistoryReadResponse(result: Record<string, unknown>, operation: string, input: Record<string, unknown>) {
+  if (operation === 'search') {
+    const photos = Array.isArray(result.photos) ? result.photos.map((value) => publicHistoryPhoto(SUPABASE_URL, jsonObject(value))) : [];
+    return jsonResponse({ ...result, photos });
+  }
+  if (operation === 'asset') {
+    const asset = jsonObject(result.asset);
+    if (input.open === true) {
+      const url = asset.storage_available ? historyPhotoUrl(SUPABASE_URL, asset, true)
+        : `https://drive.google.com/file/d/${encodeURIComponent(String(asset.drive_file_id || ''))}/view`;
+      return jsonResponse({ ok: true, url, archived: !asset.storage_available });
+    }
+    if (asset.storage_available) return jsonResponse({ ok: true, thumbnail: historyPhotoUrl(SUPABASE_URL, asset) });
+    return jsonResponse(await readArchivedHistoryThumbnail(asset));
+  }
+  return null;
+}
+
 async function handlePhotoHistoryAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -2307,21 +2317,9 @@ async function handlePhotoHistoryAction(
     if (error) throw new Error(error.message);
     if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("PHOTO_HISTORY_RESPONSE_INVALID");
     const result = jsonObject(data);
-    if (operation === 'search') {
-      const photos = Array.isArray(result.photos) ? result.photos.map((value) => publicHistoryPhoto(SUPABASE_URL, jsonObject(value))) : [];
-      return jsonResponse({ ...result, photos });
-    }
-    if (operation === 'asset') {
-      const asset = jsonObject(result.asset);
-      if (input.open === true) {
-        const url = asset.storage_available ? historyPhotoUrl(SUPABASE_URL, asset, true)
-          : `https://drive.google.com/file/d/${encodeURIComponent(String(asset.drive_file_id || ''))}/view`;
-        return jsonResponse({ ok: true, url, archived: !asset.storage_available });
-      }
-      if (asset.storage_available) return jsonResponse({ ok: true, thumbnail: historyPhotoUrl(SUPABASE_URL, asset) });
-      return jsonResponse(await readArchivedHistoryThumbnail(asset));
-    }
-    return jsonResponse(result);
+    const readResponse = await photoHistoryReadResponse(result, operation, input);
+    if (readResponse) return readResponse;
+    return readOnlyPollResponse(jsonResponse(result), payload);
   } catch (error) {
     const raw = String(error instanceof Error ? error.message : '');
     const codes: Record<string, string> = {
@@ -2507,9 +2505,8 @@ async function handleDatasetRevisionsAction(
   const actor = await resolveActiveSessionProfile(session).catch(() => null);
   if (!actor) return transientOkResponse("DATASET_PROFILE_PENDING", "Dataset revisions are waiting for the active profile.", { sources: [] });
   try {
-    const rpc = supabase.rpc.bind(supabase) as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message?: string } | null }>;
     const [{ data, error }, metadata] = await Promise.all([
-      rpc("dataset_revisions_for_actor_v1", { p_actor_id: actor.id, p_dataset_keys: keys }),
+      supabase.rpc("dataset_revisions_for_actor_v1" as never, { p_actor_id: actor.id, p_dataset_keys: keys } as never),
       supabase.from("app_dataset_revisions").select("key,source_file_name,source_imported_at").in("key", keys),
     ]);
     if (error) throw new Error(error.message || "DATASET_REVISIONS_UNAVAILABLE");
@@ -2525,8 +2522,8 @@ async function handleDatasetRevisionsAction(
         sourceImportedAt: row.source_imported_at || null,
       };
     });
-    return jsonResponse({ ok: true, data: { ...payload, sources } });
-  } catch (_error) {
+    return readOnlyPollResponse(jsonResponse({ ok: true, data: { ...payload, sources } }), { action: "dataset_revisions" });
+  } catch {
     return transientOkResponse("DATASET_REVISIONS_UNAVAILABLE", "Dataset revisions are temporarily unavailable.", { sources: [] });
   }
 }

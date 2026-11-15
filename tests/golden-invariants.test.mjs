@@ -5845,21 +5845,16 @@ test('Invariant 625: a completed manual check advances Home using the exact serv
 import {assertPublicationDeadline} from './helpers/erp-publication-deadline-contract.mjs';
 test('Invariant 626: staged ERP publication yields within its RPC deadline and reaches 100 only on a durable receipt',assertPublicationDeadline);
 test('Invariant 627: normalized exact Assigned Items owners precede stale projections and base-prefix aliases',assertQueHeaderContract);
-
 import {assertWatchdogRpcRecovery,assertWatchdogReadContinuity} from './helpers/watchdog-recovery-contract.mjs';
 test('Invariant 628: RPC lock and server failures recover through bounded identical-command retries without unsafe replay',assertWatchdogRpcRecovery);
 test('Invariant 629: Request refresh retains same-account rows, Home defers Suspend boot reads and chat rejects empty filters',assertWatchdogReadContinuity);
-
 import {assertWatchdogTransportRecovery} from './helpers/watchdog-transport-contract.mjs';
 test('Invariant 630: native AV retry retains its batch identity and app-api reads recover HTTP 500 without terminal telemetry',assertWatchdogTransportRecovery);
-
 import {bannerUpdateContract} from './helpers/banner-update-contract.mjs';
 test('Invariant 631: only a real update banner tap with a current idle checkpoint can navigate an editing tab',bannerUpdateContract);
-
 import {verifyColdProfileIsolation,verifyLateReadIsDiscarded} from './helpers/cold-access-retry-contract.mjs';
 test('Invariant 632: a cold alias sees full navigation only for its verified current profile',verifyColdProfileIsolation);
 test('Invariant 633: a successful operational read from a previous account cannot settle the new session',verifyLateReadIsDiscarded);
-
 test('Invariant 634: exact-row drafts publish before photo completion and survive failed uploads and blank Request refreshes',assertDetailLiveDraftRetention);
 test('Invariant 635: evidence commands retain same-account, module, exact ownership and confirmed Request denial boundaries',assertTableDrivenRowAuthorization);
 test('Invariant 636: a populated Que dropdown passes Watchdog and review reads preserve open incidents under the same native session',reviewedQueueWatchdogContract);
@@ -5885,3 +5880,6 @@ test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current 
   (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
 await import('../src/core/golden-final-polish.mjs');
 await import('./helpers/golden-release-fixture-ratchet.mjs');
+
+test('Invariant 666: passive status loops pause hidden and offline work with single-flight exponential backoff', async () =>
+  (await import('./helpers/quota-poll-contract.mjs')).assertQuotaPollingContract());
