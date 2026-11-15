@@ -107,3 +107,11 @@ function installAgDataPrebootRecovery(version, env = globalThis) {
   });
   state.timer = env.setTimeout(() => checkPreboot(state), 2200);
 }
+
+function guardRememberedSessionBeforePaint() {
+
+  if (window.hasAgDataRememberedSession()) {
+    window.__agdataDisarmBootGuards();
+    document.documentElement.classList.add('agdata-retained-prepaint', 'agdata-authenticated-boot');
+  }
+}

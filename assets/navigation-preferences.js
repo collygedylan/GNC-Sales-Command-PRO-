@@ -8,7 +8,7 @@
     const ICONS = { aura: 'ph-microphone', drive: 'ph-car', tasks: 'ph-clipboard-text', docks: 'ph-truck', request: 'ph-list-checks', bloom: 'ph-handbag', sales: 'ph-handshake', 'sales-office': 'ph-desktop', 'historical-requests': 'ph-clock-counter-clockwise', 'request-history': 'ph-clock-counter-clockwise', 'sales-credit': 'ph-receipt', 'credit-request': 'ph-check-square', 'sales-inventory': 'ph-storefront', production: 'ph-plant', managers: 'ph-users-three', reports: 'ph-chart-bar', av: 'ph-notebook', 'hl-order': 'ph-truck', 'bunch-note': 'ph-notepad', eval_reports_2: 'ph-chart-line-up', 'manager-eval-reports': 'ph-chart-bar', 'inventory-suggestion': 'ph-lightbulb', 'inv-consolidation': 'ph-arrows-in-line-horizontal', 'request-sales-impact': 'ph-currency-dollar', 'archive-requests': 'ph-clock-counter-clockwise', 'archive-orders': 'ph-package', 'archive-reserves': 'ph-bookmark', 'archive-drive': 'ph-car', 'queue-pending': 'ph-list-checks', 'queue-suspend': 'ph-pause-circle', 'queue-moves': 'ph-map-pin', 'queue-recount': 'ph-counter-clockwise', 'queue-eval-work': 'ph-clipboard-text', 'queue-shear-list': 'ph-scissors', 'queue-bunch-notes': 'ph-notepad', 'queue-bunch-count-review': 'ph-check-circle' };
     const FOOTER_IDS = { aura: 'footer-aura-btn', menu: 'footer-menu-btn', home: 'footer-home-btn', communication: 'footer-communication-btn', drive: 'footer-drive-btn', tasks: 'footer-tasks-btn', managers: 'footer-managers-btn', docks: 'footer-docks-btn', request: 'footer-request-btn', bloom: 'footer-cart-btn' };
     const LABELS = { av:'AV', 'hl-order':'HL Order', 'sales-office':'Sales Office', 'sales-inventory':'Inventory', production:'Production', 'take-back':'Take Back', 'weather-hold':'Weather Hold', 'shear-list':'Shear List', qc:'QC', office:'Office', aura: 'AURA', drive: 'Drive', tasks: 'Tasks', docks: 'Docks', request: 'Que', managers: 'Manager', bloom: 'Bloom', home: 'Home', menu: 'Menu', communication: 'Comm', eval_reports_2: 'Eval Reports #2', 'manager-eval-reports': 'Eval Reports', 'inventory-suggestion': 'Inventory Suggestion', 'inv-consolidation': 'Inv Consolidation', 'request-sales-impact': 'Request Sales Impact ($)', 'archive-requests': 'Historical Requests', 'archive-orders': 'Historical SOC Open Orders', 'archive-reserves': 'Historical SOC Reserves', 'archive-drive': 'Historical Drive Around', 'queue-pending': 'Que · Request', 'queue-suspend': 'Que · Suspend', 'queue-moves': 'Que · Location Moves', 'queue-recount': 'Que · Recount', 'queue-eval-work': 'Que · Eval Work', 'queue-shear-list': 'Que · Shear List', 'queue-bunch-notes': 'Que · Bunch Notes', 'queue-bunch-count-review': 'Que · Bunch Count Review' };
-    let hooks = {}, state = null, inflight = null, timer = null, generation = 0, bound = false;
+    let hooks = {}, state = null, inflight = null, generation = 0;
     let footerObserver = null, lastFooter = null;
     let confirmedFooter = null;
     let refreshFailures = 0, retryNotBefore = 0;
@@ -86,12 +86,6 @@
     }
     function reset() {
         generation++; state = null; inflight = null; confirmedFooter = null; refreshFailures = 0; retryNotBefore = 0;
-        if (timer) root.clearInterval(timer);
-        timer = null;
-    }
-    function refreshVisibleNavigationPreferences() {
-        if (root.document.hidden || !username() || inflight || Date.now() < retryNotBefore) return;
-        void refresh().catch(() => {});
     }
     function restoreConfirmedFooter() {
         if (!username() || confirmedFooter?.user === username()) return;
@@ -102,18 +96,10 @@
             if (Array.isArray(legacy)) confirmedFooter = {user: username(), shortcuts: legacy};
         } catch {}
     }
-    function bindNavigationPreferenceLifecycle() {
-        if (bound || !root.document) return;
-        bound = true;
-        root.document.addEventListener('visibilitychange', refreshVisibleNavigationPreferences);
-        root.addEventListener('online', refreshVisibleNavigationPreferences);
-    }
     function configure(options = {}) {
         const oldUser = username(); hooks = { ...hooks, ...options };
         if (oldUser !== username()) reset();
         restoreConfirmedFooter();
-        if (!timer && root.document && root.setInterval) timer = root.setInterval(refreshVisibleNavigationPreferences, 30000);
-        bindNavigationPreferenceLifecycle();
         return api;
     }
     function message(error) {

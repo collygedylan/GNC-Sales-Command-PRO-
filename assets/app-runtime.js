@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.85';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.86';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -2449,7 +2449,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
         let notOnInventoryApprovalTaskRefreshLastAtByKey = new Map();
         let notOnInventoryApprovalPendingLocalRemovalIds = new Map();
         const NCR_APPROVAL_TASK_REFRESH_THROTTLE_MS = 12000;
-        const MANAGER_APPROVAL_LIVE_REFRESH_MS = 5000;
+        const MANAGER_APPROVAL_LIVE_REFRESH_MS = 300000;
         let managerApprovalLiveRefreshTimer = null;
         let taskHotStateCache = new Map();
         let taskFilteredItemsCache = new Map();
@@ -24703,7 +24703,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.85';
+        const APP_VERSION = '3.0.86';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -41354,34 +41354,7 @@ let avTopControlsRenderToken = 0;
             return false;
         }
 
-        function clearReclassDeliveryPollTimer() {
-            if (reclassDeliveryPollTimer == null) return;
-            clearTimeout(reclassDeliveryPollTimer);
-            reclassDeliveryPollTimer = null;
-        }
-
-        function scheduleReclassDeliveryPolling() {
-            clearReclassDeliveryPollTimer();
-            if (!isQuotaBackgroundPollingAllowed()) return;
-            reclassDeliveryPollTimer = window.setTimeout(() => {
-                reclassDeliveryPollTimer = null;
-                if (!isQuotaBackgroundPollingAllowed()) return;
-                Promise.resolve(pollReclassDeliveryJobs()).catch(() => {}).finally(() => {
-                    if (!document.hidden) scheduleReclassDeliveryPolling();
-                });
-            }, 5000);
-        }
-        function startReclassDeliveryPolling() {
-            queueArgosReclassMoveRecovery();
-            renderReclassDeliveryStatusTray();
-            if (!isQuotaBackgroundPollingAllowed()) { clearReclassDeliveryPollTimer(); return; }
-            void pollReclassDeliveryJobs().catch(() => {});
-            scheduleReclassDeliveryPolling();
-        }
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) clearReclassDeliveryPollTimer();
-            else startReclassDeliveryPolling();
-        }, { passive: true });
+/* @runtime-fragment assets/idle-status-polling.js */
         let inventoryStatusSync = null;
         const inventoryStatusRenderedCards = new Map();
         const inventoryStatusPendingSaves = new Map();
@@ -108628,44 +108601,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
-        function isManagerApprovalLiveContextActive(tab = activeHomeTab) {
-            const safeTab = String(tab || activeHomeTab || '').trim().toLowerCase();
-            return isViewVisible('managers')
-                && isManagerApprovalTab(safeTab)
-                && canUseManagerApprovalTab(safeTab)
-                && navigator.onLine !== false
-                && document.hidden !== true;
-        }
 
-        function runManagerApprovalLiveRefresh(tab = activeHomeTab) {
-            const safeTab = String(tab || activeHomeTab || '').trim().toLowerCase();
-            if (managerApprovalLiveRefreshTimer) {
-                clearTimeout(managerApprovalLiveRefreshTimer);
-                managerApprovalLiveRefreshTimer = null;
-            }
-            if (!isManagerApprovalLiveContextActive(safeTab)) return false;
-            if (isInventoryChecksApprovalTaskView(safeTab) || isShearApprovalTaskView(safeTab)) {
-                ensureInventoryEditRequestsLoadedForShearListCatchup(true).then(() => {
-                    if (isManagerApprovalLiveContextActive(safeTab)) scheduleManagersRender(true);
-                }).catch((error) => console.warn('Inventory checks live refresh failed', error));
-            }
-            if (useManagerReportPages('approval')) getManagerReportPageController().refresh('approval');
-            else {
-                if (isNcrApprovalTaskView(safeTab)) scheduleNcrApprovalTaskRowsRefresh(safeTab, { bypassThrottle: true, quiet: true });
-                if (isNotOnInventoryApprovalTaskView(safeTab)) scheduleNotOnInventoryApprovalTaskRowsRefresh(safeTab, { bypassThrottle: true, quiet: true });
-            }
-            managerApprovalLiveRefreshTimer = setTimeout(() => runManagerApprovalLiveRefresh(activeHomeTab), MANAGER_APPROVAL_LIVE_REFRESH_MS);
-            return false;
-        }
-
-        function scheduleManagerApprovalLiveRefresh(delay = MANAGER_APPROVAL_LIVE_REFRESH_MS) {
-            if (canUseProductionLiveSync()) return;
-            if (managerApprovalLiveRefreshTimer) clearTimeout(managerApprovalLiveRefreshTimer);
-            managerApprovalLiveRefreshTimer = null;
-            if (!isManagerApprovalLiveContextActive(activeHomeTab)) return false;
-            managerApprovalLiveRefreshTimer = setTimeout(() => runManagerApprovalLiveRefresh(activeHomeTab), Math.max(250, Number(delay) || MANAGER_APPROVAL_LIVE_REFRESH_MS));
-            return false;
-        }
 
         function getInventoryEditManagerApprovalRecords(options = {}) {
             const opts = options && typeof options === 'object' ? options : {};
