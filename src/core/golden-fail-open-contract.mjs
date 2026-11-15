@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
+import {createJsonResponder} from '../../supabase/functions/_shared/poll-response.ts';
 
 export async function assertAuthenticatedTransientGateway(runFunctions) {
   const context = runFunctions('supabase/functions/app-api/index.ts', [
     'escapedDisplayTextFieldKey', 'normalizeEscapedDisplayText', 'escapedDisplayTextJsonReplacer',
-    'jsonResponse', 'transientOkResponse', 'failOpenInventoryConflict'
+    'transientOkResponse', 'failOpenInventoryConflict'
   ], {
     Response, corsHeaders: {}, JSON, ESCAPED_DISPLAY_TEXT_FIELDS:new Set(['commonname']),
   });
+  context.jsonResponse=createJsonResponder({},'fixture',context.escapedDisplayTextJsonReplacer);
   const roles = ['admin', 'sales_rep', 'supervisor', 'evaluator', 'kier', 'dock_office', 'qc_supervisor', 'shipping', 'data_entry', 'foreman', 'take_backs'];
   const actions = ['user_access', 'native_session_bridge', 'season_sales_office', 'dataset_read', 'av_read', 'customer-rep-map', 'aura_inventory_v2', 'report_read_v2', 'inventory_read', 'drive_reclass_inquiry', 'inventory_reclass_move'];
   const forbidden = new Set([401, 403, 409, 423]);

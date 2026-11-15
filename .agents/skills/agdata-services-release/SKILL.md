@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Golden gateway fixtures must call the canonical extracted response factory instead of assuming its old inline declaration. Preserve every authenticated transient-read assertion and prove ordinary denials and untagged mutations remain uncacheable (Invariant 667).
+
 - Empty INSERT statements and stale folder reconciliation must never wake the delivery worker recursively. Require real due inserted rows through a transition table, ignore unchanged requeues and preserve explicit manual retries; validate both negative and real-work counterexamples in local PostgreSQL. Passive UI status reads use visible/online, single-flight five-minute polling with failure backoff, while explicit saves and durable worker wakes retain their owners (Invariant 666).
 
 - Never combine DRIVE lineage DDL with publication of staged inventory. Install the schema in its own transaction, then materialize the changed canonical candidates before the master write so untouched rows do not enter conflict arbitration. Keep the final conflict predicate and indexed pending acknowledgment lookup (Invariant 658).

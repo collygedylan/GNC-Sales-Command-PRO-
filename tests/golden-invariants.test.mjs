@@ -513,9 +513,7 @@ test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () 
   for (const marker of ['requestBadgeCount !== 6', 'badPairExcluded', 'CARRY OVER -> CARRY OVER',
     'CURRENT CROP -> CURRENT CROP', 'auraGlossaryTerms']) assert.match(verifier, new RegExp(marker));
 });
-
 test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Direct Quick Access)', () => requestPhotoNavigationContract(read,runFunctions,functionSource));
-
 test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
   const migration = read('supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql');
   const appsScript = read('Code.gs');
@@ -543,7 +541,6 @@ test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
   assert.match(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /action: 'erp_sync'[^]*operation: 'start'[^]*maxAttemptsPerStage: 1/);
   assert.doesNotMatch(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /postGoogleScriptJsonPayload|manual_run|manual_continue/);
 });
-
 test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => {
   const migrationName = '20261026140000_agdata_v2369_emergency_recovery.sql';
   const migration = read(`supabase/migrations/${migrationName}`);
@@ -5880,6 +5877,7 @@ test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current 
   (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
 await import('../src/core/golden-final-polish.mjs');
 await import('./helpers/golden-release-fixture-ratchet.mjs');
-
 test('Invariant 666: passive status loops pause hidden and offline work with single-flight exponential backoff', async () =>
   (await import('./helpers/quota-poll-contract.mjs')).assertQuotaPollingContract());
+test('Invariant 667: canonical poll responses cache only server-tagged successful reads and preserve denial statuses', async () =>
+  (await import('../src/core/golden-poll-response-contract.mjs')).assertCanonicalPollResponse());
