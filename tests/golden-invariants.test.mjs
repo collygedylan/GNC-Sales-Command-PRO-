@@ -589,7 +589,6 @@ test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => 
   assert.match(runner, /agdataV2369EmergencyRecoveryMigrationName[^]*registeredReleaseDatabaseMigrations/);
   assert.ok(runner.includes(migrationName));
 });
-
 test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', async () => {
   const calls = [];
   const context = runFunctions('assets/app-runtime.js', ['fetchRequestCustomerMapRowsForRepName'], {
@@ -624,9 +623,7 @@ test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', async () => {
   assert.ok(ensureSource.indexOf('await loadRequestModalCustomerOptionsForRep') < ensureSource.indexOf('const id = getRequestSelectedSalesrepId'));
   assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never block Customer\/Consignee selection on a full mapping download/);
 });
-
 test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', invariant33);
-
 test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', async () => {
   const calls = [];
   const bridge = databaseBridge(async (...args) => {
@@ -5881,3 +5878,5 @@ test('Invariant 666: passive status loops pause hidden and offline work with sin
   (await import('./helpers/quota-poll-contract.mjs')).assertQuotaPollingContract());
 test('Invariant 667: canonical poll responses cache only server-tagged successful reads and preserve denial statuses', async () =>
   (await import('../src/core/golden-poll-response-contract.mjs')).assertCanonicalPollResponse());
+test('Invariant 668: folder preparation reuses canonical membership and newline hashes with actor, lease and dependency guards', async () =>
+  (await import('../src/core/golden-completion-preparation-contract.mjs')).assertCanonicalCompletionPreparation());

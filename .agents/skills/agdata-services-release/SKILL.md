@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Completion preparation and enqueue must read the same canonical folder membership. Completed history can retain a pending status; its durable completion event remains authoritative. Encode membership separators with chr(10), retain actor/lease/member/dependency guards, and verify old rejection plus safe/negative cases in local Postgres (Invariant 668).
+
 - Golden gateway fixtures must call the canonical extracted response factory instead of assuming its old inline declaration. Preserve every authenticated transient-read assertion and prove ordinary denials and untagged mutations remain uncacheable (Invariant 667).
 
 - Empty INSERT statements and stale folder reconciliation must never wake the delivery worker recursively. Require real due inserted rows through a transition table, ignore unchanged requeues and preserve explicit manual retries; validate both negative and real-work counterexamples in local PostgreSQL. Passive UI status reads use visible/online, single-flight five-minute polling with failure backoff, while explicit saves and durable worker wakes retain their owners (Invariant 666).

@@ -1,4 +1,5 @@
 import {deliveryWakeTransitionsMigration,deliveryWakeTransitionsContract} from './delivery-wake-contract.mjs';
+import {completionPreparationMigration,completionPreparationContract} from './completion-preparation-contract.mjs';
 export const erpPublicationSingleFlightMigration = '20261112021631_agdata3078_publication_single_flight.sql';
 export const requestDeliveryCronSingleFlightMigration = '20261112022023_agdata3078_delivery_cron_single_flight.sql';
 export const erpPublicationIdleCleanupMigration = '20261112022300_agdata3078_publication_idle_cleanup.sql';
@@ -45,6 +46,7 @@ export function erpPublicationIdleCleanupContract() {
 }
 
 export const erpPublicationSingleFlightContracts = [
+  [completionPreparationMigration, completionPreparationContract],
   [deliveryWakeTransitionsMigration, deliveryWakeTransitionsContract],
   [erpPublicationSingleFlightMigration, erpPublicationSingleFlightContract],
   [requestDeliveryCronSingleFlightMigration, requestDeliveryCronSingleFlightContract],
