@@ -97,3 +97,33 @@ export async function assertOwnedWatchdogBatch(runFunctions) {
   await assert.rejects(context.resolveReviewedWatchdogEvents([]),/WATCHDOG_REVIEW_DENIED/);
   assert.equal(writes,before);
 }
+
+export function assertRequestWatchdogRecovery(read,functionSource,expectedAppApiVersion) {
+  const migrationName = '20261026160000_agdata_v2370_watchdog_and_request_recovery.sql';
+  const migration = read(`supabase/migrations/${migrationName}`);
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const watchdog = read('assets/runtime-watchdog.js');
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(migration, /add column if not exists pick text/);
+  assert.match(migration, /add column if not exists submitted_by text/);
+  assert.match(migration, /pick_note=coalesce/);
+  assert.match(migration, /lock_timeout to '15s'/);
+  assert.match(migration, /statement_timeout to '30s'/);
+  assert.match(migration, /inventory_consolidation_suggestions_v2370/);
+  assert.match(migration, /historical_requests_read_v2370/);
+  assert.match(migration, /set status = 'resolved'/);
+  assert.match(runtime, /function naturalCompare\(a, b\)/);
+  assert.match(runtime, /window\.naturalCompare = naturalCompare/);
+  assert.match(runtime, /globalThis\.naturalCompare = naturalCompare/);
+  const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
+  assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
+  assert.ok(appApi.includes('const APP_RUNTIME_RELEASE = "AgData v' + expectedAppApiVersion() + '"'));
+  assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
+  assert.match(appApi, /historical_requests_read_v2370/);
+  assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
+  assert.match(watchdog, /REQUEST_ABORTED\|DATASET_READ_SCOPE_CHANGED/);
+  assert.ok(runner.includes(migrationName));
+  assert.match(read('.codex/skills/agdata-runtime-watchdog/SKILL.md'), /Never record navigation\/scope cancellation codes/);
+}

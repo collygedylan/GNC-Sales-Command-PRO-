@@ -5,6 +5,7 @@ export type Shape = {
         Row: {
           changed_at: string
           key: string
+          last_checked_at: string | null
           revision: number
           source_content_hash: string | null
           source_file_id: string | null
@@ -17,6 +18,7 @@ export type Shape = {
         Insert: {
           changed_at?: string
           key: string
+          last_checked_at?: string | null
           revision?: number
           source_content_hash?: string | null
           source_file_id?: string | null
@@ -29,6 +31,7 @@ export type Shape = {
         Update: {
           changed_at?: string
           key?: string
+          last_checked_at?: string | null
           revision?: number
           source_content_hash?: string | null
           source_file_id?: string | null
@@ -55,6 +58,48 @@ export type Shape = {
           id?: boolean
           status?: Json
           updated_at?: string
+        }
+        Relationships: []
+      }
+      app_row_actions: {
+        Row: {
+          absorbed_by_erp: boolean
+          app_update_action: Json
+          app_update_row: Json
+          baseline_erp_row: Json | null
+          canonical_unique_id: string
+          changed_fields: string[]
+          created_at: string
+          id: number
+          reconciliation_status: string
+          rule_scope: Json
+          sync_run_id: string | null
+        }
+        Insert: {
+          absorbed_by_erp?: boolean
+          app_update_action: Json
+          app_update_row: Json
+          baseline_erp_row?: Json | null
+          canonical_unique_id: string
+          changed_fields: string[]
+          created_at?: string
+          id?: never
+          reconciliation_status?: string
+          rule_scope: Json
+          sync_run_id?: string | null
+        }
+        Update: {
+          absorbed_by_erp?: boolean
+          app_update_action?: Json
+          app_update_row?: Json
+          baseline_erp_row?: Json | null
+          canonical_unique_id?: string
+          changed_fields?: string[]
+          created_at?: string
+          id?: never
+          reconciliation_status?: string
+          rule_scope?: Json
+          sync_run_id?: string | null
         }
         Relationships: []
       }
@@ -261,85 +306,6 @@ export type Shape = {
           recipient_username?: string
           sent_at?: string | null
           status?: string
-        }
-        Relationships: []
-      }
-      hr_events: {
-        Row: {
-          created_at: string
-          created_by_profile_id: string
-          details: Json
-          effective_at: string
-          emp_number: string
-          event_type: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          created_by_profile_id: string
-          details?: Json
-          effective_at?: string
-          emp_number: string
-          event_type: string
-          id?: string
-        }
-        Update: {
-          created_at?: string
-          created_by_profile_id?: string
-          details?: Json
-          effective_at?: string
-          emp_number?: string
-          event_type?: string
-          id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "hr_events_created_by_profile_id_fkey"
-            columns: ["created_by_profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hr_events_emp_number_fkey"
-            columns: ["emp_number"]
-            isOneToOne: false
-            referencedRelation: "core_employees"
-            referencedColumns: ["emp_number"]
-          },
-          {
-            foreignKeyName: "hr_events_emp_number_fkey"
-            columns: ["emp_number"]
-            isOneToOne: false
-            referencedRelation: "ph_hr_employees"
-            referencedColumns: ["emp_number"]
-          },
-        ]
-      }
-      hr_job_codes: {
-        Row: {
-          created_at: string
-          department: string | null
-          description: string
-          enabled: boolean
-          job_code: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          department?: string | null
-          description?: string
-          enabled?: boolean
-          job_code: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          department?: string | null
-          description?: string
-          enabled?: boolean
-          job_code?: string
-          updated_at?: string
         }
         Relationships: []
       }}

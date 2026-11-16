@@ -1,3 +1,5 @@
+import {assertRequestWatchdogRecovery} from '../src/core/golden-watchdog-owner-contract.mjs';
+import {assertFocusedAvStartup} from '../src/core/golden-generated-schema-contract.mjs';
 import {assertFourCallerRecovery,assertSelectedRepHydration,assertTypedSuspendBoundary,assertSingleMasterHydration,assertBoundedMasterHydration,assertExactAvHydration} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
 import {assertCropTierGlossary,assertSetBasedErpIngestion} from '../src/core/golden-sql-lint-compiled-contract.mjs';
 import {assertHistoricalConsolidation} from '../src/core/golden-bunch-blueprint-catalog-contract.mjs';
@@ -271,12 +273,7 @@ test('Invariant 36 (Master Hydration Avoids Exact Count Timeouts)', () => assert
 
 test('Invariant 37 (Exact AV Search Does Not Wait For Full Hydration)', () => assertExactAvHydration(read,functionSource));
 
-test('Invariant 38 (Visible Focused AV Search Survives Startup Reset)', () => {
-  const resetSource = functionSource('assets/app-runtime.js', 'resetAVView');
-  assert.match(resetSource, /preserveFocusedSearch = isViewVisible\('av'\) && document\.activeElement === searchInput/);
-  assert.match(resetSource, /if \(!preserveFocusedSearch && searchInput\) searchInput\.value=""/);
-  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never let a delayed AV view reset erase a focused search/);
-});
+test('Invariant 38 (Visible Focused AV Search Survives Startup Reset)', () => assertFocusedAvStartup(read,functionSource));
 
 test('Invariant 39 (Delivery Recovery Keeps Private Worker Boundary)', () => {
   const migrationName = '20261026150000_agdata_v2369_private_delivery_boundary.sql';
@@ -308,35 +305,7 @@ test('Invariant 39 (Delivery Recovery Keeps Private Worker Boundary)', () => {
   assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never restore a delivery worker by granting browser roles access/);
 });
 
-test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', () => {
-  const migrationName = '20261026160000_agdata_v2370_watchdog_and_request_recovery.sql';
-  const migration = read(`supabase/migrations/${migrationName}`);
-  const runtime = read('assets/app-runtime.js');
-  const appApi = read('supabase/functions/app-api/index.ts');
-  const watchdog = read('assets/runtime-watchdog.js');
-  const runner = read('scripts/apply-item-low-stock-migration.mjs');
-  assert.match(migration, /add column if not exists pick text/);
-  assert.match(migration, /add column if not exists submitted_by text/);
-  assert.match(migration, /pick_note=coalesce/);
-  assert.match(migration, /lock_timeout to '15s'/);
-  assert.match(migration, /statement_timeout to '30s'/);
-  assert.match(migration, /inventory_consolidation_suggestions_v2370/);
-  assert.match(migration, /historical_requests_read_v2370/);
-  assert.match(migration, /set status = 'resolved'/);
-  assert.match(runtime, /function naturalCompare\(a, b\)/);
-  assert.match(runtime, /window\.naturalCompare = naturalCompare/);
-  assert.match(runtime, /globalThis\.naturalCompare = naturalCompare/);
-  const assignedRep = functionSource('assets/app-runtime.js', 'getRequestAssignedRep');
-  assert.ok(assignedRep.indexOf('REQUEST_SELECTED_REP_DISPLAY') < assignedRep.indexOf('REQUESTED_BY'));
-  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'finalizeLogin'), /scheduleInventoryConsolidationWarmup/);
-  assert.ok(appApi.includes('const APP_RUNTIME_RELEASE = "AgData v' + expectedAppApiVersion() + '"'));
-  assert.match(appApi, /retainedReadResponse\("INVENTORY_READ_FAILED"\)/);
-  assert.match(appApi, /historical_requests_read_v2370/);
-  assert.match(appApi, /inventory_consolidation_suggestions_v2370/);
-  assert.match(watchdog, /REQUEST_ABORTED\|DATASET_READ_SCOPE_CHANGED/);
-  assert.ok(runner.includes(migrationName));
-  assert.match(read('.codex/skills/agdata-runtime-watchdog/SKILL.md'), /Never record navigation\/scope cancellation codes/);
-});
+test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', () => assertRequestWatchdogRecovery(read,functionSource,expectedAppApiVersion));
 
 test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () => invariant41({read, expectedAppApiVersion}));
 
@@ -5546,3 +5515,10 @@ test('Invariant 690: every synthetic Reclass ERP import carries explicit file pr
 
 test('Invariant 691: an owner-reviewed stale-client cohort requires every requested native receipt and retains authorization failures', async () =>
   (await import('../src/core/golden-watchdog-owner-contract.mjs')).assertOwnedWatchdogBatch(runFunctions));
+
+
+test('Invariant 692: generated action-ledger and discrepancy types preserve native structure and reject missing-ledger drift', async () =>
+  (await import('../src/core/golden-generated-schema-contract.mjs')).assertGeneratedActionSchema());
+
+test('Invariant 693: generated contract parts recompose the exact schema and reject absent symbols or oversized output before writes', async () =>
+  (await import('../src/core/golden-generated-schema-contract.mjs')).assertLosslessCurrentSchemaParts());

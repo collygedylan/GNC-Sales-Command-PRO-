@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export type Database = /* db-shape */ (import("./database-types/part-0112.ts").Shape)
+export type Database = /* db-shape */ (import("./database-types/part-0113.ts").Shape)
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 

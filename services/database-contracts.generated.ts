@@ -6,54 +6,13 @@ import { socMasterRowContract } from './soc-master-row-contract.generated.ts';
 import { socMasterInsertContract } from './soc-master-insert-contract.generated.ts';
 import { socMasterUpdateContract } from './soc-master-update-contract.generated.ts';
 import { erpStageArgs, erpStageReturns } from './erp-stage-contracts.generated.ts';
+import { currentSchemaTables } from './current-schema-table-contracts.generated.ts';
+import { currentSchemaArgs, currentSchemaReturns } from './current-schema-rpc-contracts.generated.ts';
 export const contracts: RuntimeContracts<Database> = {
   "tables": {
+    ...currentSchemaTables,
     ...inventoryProjectContracts,
     "ph_soc_master": { row: socMasterRowContract, insert: socMasterInsertContract, update: socMasterUpdateContract },
-    "app_dataset_revisions": {
-      "row": {
-        "object": {
-          "changed_at": {"schema":"string"},
-          "key": {"schema":"string"},
-          "revision": {"schema":"number"},
-          "source_content_hash": {"schema":{"oneOf":["string","null"]}},
-          "source_file_id": {"schema":{"oneOf":["string","null"]}},
-          "source_file_name": {"schema":{"oneOf":["string","null"]}},
-          "source_import_run_id": {"schema":{"oneOf":["string","null"]}},
-          "source_imported_at": {"schema":{"oneOf":["string","null"]}},
-          "source_modified_at": {"schema":{"oneOf":["string","null"]}},
-          "state": {"schema":"string"}
-        }
-      },
-      "insert": {
-        "object": {
-          "changed_at": {"schema":"string","optional":true},
-          "key": {"schema":"string"},
-          "revision": {"schema":"number","optional":true},
-          "source_content_hash": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_file_id": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_file_name": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_import_run_id": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_imported_at": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_modified_at": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "state": {"schema":"string","optional":true}
-        }
-      },
-      "update": {
-        "object": {
-          "changed_at": {"schema":"string","optional":true},
-          "key": {"schema":"string","optional":true},
-          "revision": {"schema":"number","optional":true},
-          "source_content_hash": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_file_id": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_file_name": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_import_run_id": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_imported_at": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "source_modified_at": {"schema":{"oneOf":["string","null"]},"optional":true},
-          "state": {"schema":"string","optional":true}
-        }
-      }
-    },
     "app_manual_sync_status": {
       "row": {"object":{"id":{"schema":"boolean"},"status":{"schema":"json"},"updated_at":{"schema":"string"}}},
       "insert": {
@@ -20028,6 +19987,7 @@ export const contracts: RuntimeContracts<Database> = {
           "suspend_eval_owner": {"schema":{"oneOf":["string","null"]}},
           "suspend_order_quantity": {"schema":{"oneOf":["string","null"]}},
           "suspend_origin_uid": {"schema":{"oneOf":["string","null"]}},
+          "suspend_owner_zone_override": {"schema":{"oneOf":["boolean","null"]}},
           "suspend_to": {"schema":{"oneOf":["string","null"]}},
           "suspendto": {"schema":{"oneOf":["string","null"]}},
           "tagcode": {"schema":{"oneOf":["string","null"]}},
@@ -22553,6 +22513,7 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functions": {
+    ...currentSchemaArgs,
     ...erpStageArgs,
     "acknowledge_request_folder_completion_v2": {"oneOf":[{"object":{"p_event_id":{"schema":{"oneOf":["string","null"]}}}}]},
     "activate_eval_item_low_stock_import_v1": {"oneOf":[{"object":{"p_run_id":{"schema":{"oneOf":["string","null"]}}}}]},
@@ -25413,6 +25374,7 @@ export const contracts: RuntimeContracts<Database> = {
     }
   },
   "functionReturns": {
+    ...currentSchemaReturns,
     ...erpStageReturns,
     "acknowledge_request_folder_completion_v2": {"oneOf":["null"]},
     "activate_eval_item_low_stock_import_v1": {"oneOf":["json"]},

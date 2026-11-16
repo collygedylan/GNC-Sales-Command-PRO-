@@ -4,6 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { repoRoot } from './tooling-process.mjs';
 import { generatedDatabaseTypesPath, readGeneratedDatabaseTypes } from './database-type-parts.mjs';
+import {writeCurrentSchemaContractParts} from '../src/services/current-schema-contract-parts.mjs';
 
 // Runtime validators and TypeScript use the same introspected schema. Unsupported
 // generator syntax fails closed rather than silently creating an unknown schema.
@@ -189,11 +190,16 @@ export function generateContracts({ root = repoRoot, check = false } = {}) {
     const partImport = `import { ${part.name} } from './${path.posix.basename(part.output)}';\n`;
     const soc = sandbox ? { imports: '', fields: '' } : writeSocContractParts(root, contracts, imports, check);
     const erp = sandbox ? '' : writeErpStageContractPart(root, contracts, imports, check);
+    const current=sandbox?{imports:'',tables:'',functions:'',functionReturns:''}:
+      writeCurrentSchemaContractParts({root,contracts,imports,check,header:generatedHeader,format:formatContract,write:writeOrCheck});
     const serialized = formatContract(contracts);
     let merged = serialized.replace('"tables": {\n', `"tables": {\n    ...${part.name},\n${soc.fields}`);
     if (erp) merged = merged.replace('"functions": {\n', '"functions": {\n    ...erpStageArgs,\n')
       .replace('"functionReturns": {\n', '"functionReturns": {\n    ...erpStageReturns,\n');
-    writeOrCheck(root, output, generatedHeader + imports + partImport + soc.imports + erp
+    merged=merged.replace('"tables": {\n','"tables": {\n'+current.tables)
+      .replace('"functions": {\n','"functions": {\n'+current.functions)
+      .replace('"functionReturns": {\n','"functionReturns": {\n'+current.functionReturns);
+    writeOrCheck(root, output, generatedHeader + imports + partImport + soc.imports + erp +current.imports
       + `export const contracts: RuntimeContracts<Database> = ${merged};\n`, check);
   }
 }
