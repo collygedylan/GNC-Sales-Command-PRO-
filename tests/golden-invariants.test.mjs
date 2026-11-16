@@ -1,4 +1,4 @@
-import {assertFourCallerRecovery} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
+import {assertFourCallerRecovery,assertSelectedRepHydration} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
 import {assertCropTierGlossary,assertSetBasedErpIngestion} from '../src/core/golden-sql-lint-compiled-contract.mjs';
 import {assertHistoricalConsolidation} from '../src/core/golden-bunch-blueprint-catalog-contract.mjs';
 import {assertQueueResolution} from '../src/core/golden-master-staging-fixture-contract.mjs';
@@ -261,40 +261,7 @@ test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Dire
 test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => assertSetBasedErpIngestion(read,functionSource));
 
 test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => assertFourCallerRecovery(read,functionSource));
-test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', async () => {
-  const calls = [];
-  const context = runFunctions('assets/app-runtime.js', ['fetchRequestCustomerMapRowsForRepName'], {
-    resolveCanonicalRequestRepName: value => value,
-    normalizeRepDisplayOrder: value => String(value || '').trim(),
-    normalizeRepMatchToken: value => String(value || '').trim().toLowerCase(),
-    fetchAllSupabaseRows: async (table, query, options) => {
-      calls.push({ table, query, options });
-      if (calls.length === 1) throw Object.assign(new Error('direct read cancelled'), { code: 'REQUEST_ABORTED' });
-      return [
-        { unique_id: 'one', salesrepid: 'S27', salesrepname: 'Josh Ringleb' },
-        { unique_id: 'two', salesrepid: 'S27', salesrepname: 'Josh Ringleb' },
-      ];
-    },
-    isActiveRequestCustomerMapping: () => true,
-    getCustomerRepMapRepValue: row => row.salesrepname,
-    matchSalesRepIdentity: (left, right) => String(left || '').toLowerCase() === String(right || '').toLowerCase(),
-    window: { setTimeout },
-  });
-  const result = await context.fetchRequestCustomerMapRowsForRepName('Josh Ringleb');
-  assert.equal(result.salesrepId, 'S27');
-  assert.equal(result.rows.length, 2);
-  assert.equal(calls.length, 2);
-  assert.equal(calls[1].table, 'ph_customer_consignee_sales_reps');
-  assert.match(calls[1].query, /salesrepname=eq\.Josh%20Ringleb/);
-  assert.match(calls[1].query, /customerstatus=eq\.A&consigneestatus=eq\.A/);
-  assert.equal(calls[1].options.requireComplete, true);
-  assert.equal(calls[1].options.skipCustomerMapShortcut, true);
-  assert.equal(calls[1].options.forceFresh, true);
-  const ensureSource = functionSource('assets/app-runtime.js', 'ensureRequestModalCustomerOptionsReady');
-  assert.match(ensureSource, /if \(!rep\) await prefetchRequestModalCustomerOptions\(force\)/);
-  assert.ok(ensureSource.indexOf('await loadRequestModalCustomerOptionsForRep') < ensureSource.indexOf('const id = getRequestSelectedSalesrepId'));
-  assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never block Customer\/Consignee selection on a full mapping download/);
-});
+test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', () => assertSelectedRepHydration(read,runFunctions,functionSource));
 test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', invariant33);
 test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', async () => {
   const calls = [];
@@ -5609,3 +5576,7 @@ test('Invariant 685: current SQL lint discovers temporary-table readers and reje
 
 test('Invariant 686: current canonical fixtures preserve historical sources and assertions while enforcing exact actors, rows and receipts', async () =>
   (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertCanonicalRuntimeFixtures(read));
+
+
+test('Invariant 687: committed fixture roots remain absolute and isolated under Windows and Linux path conventions', async () =>
+  (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertPortableCommittedFixtureRoots());

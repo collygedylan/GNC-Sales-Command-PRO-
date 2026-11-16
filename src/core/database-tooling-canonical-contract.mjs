@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import os from 'node:os';
 import {existsSync} from 'node:fs';
 
 function committedCommand({args,root,readFileSync,events,production,sandbox,failCommitted}) {
@@ -20,8 +21,9 @@ function committedCommand({args,root,readFileSync,events,production,sandbox,fail
 
 function runCommittedCase(context,{mode='all',files,failCommitted=false}={}) {
   const {root,runDatabaseCheck,readFileSync,committed}=context,events=[];
-  const production={root:'C:/tmp/gnc-committed-production',migrationCount:4,dispose(){events.push('dispose-production');}};
-  const sandbox={root:'C:/tmp/gnc-committed-sandbox',migrationCount:1,testCount:1,lintSchemas:['public'],dispose(){}};
+  const roots=committedFixtureRoots(os.tmpdir());
+  const production={root:roots.production,migrationCount:4,dispose(){events.push('dispose-production');}};
+  const sandbox={root:roots.sandbox,migrationCount:1,testCount:1,lintSchemas:['public'],dispose(){}};
   const options={root,mode,environment:{},execute:()=> 'supabase/tests/canonical_schema_contract_test.sql\0',
     preflight:()=>{},resolveCli:()=> 'supabase-fixture',discoverCanonicalHttpTests:()=>['supabase/ci/mock-http.mjs'],
     runHttpTests:()=>events.push('http'),createProductionWorkspace:()=>production,createSandboxWorkspace:()=>sandbox,
@@ -42,6 +44,11 @@ function runCommittedCase(context,{mode='all',files,failCommitted=false}={}) {
     ?path.resolve(production.root,'canonical-fixtures','master_snapshot_chunked_staging_v1_test.sql'):path.resolve(root,file);
   assert.deepEqual(relevant,['http',...(files||committed).flatMap(file=>
     [`committed:${target(file)}`,'db reset --local --no-seed']),'test db']);
+}
+
+export function committedFixtureRoots(temporaryDirectory,paths=path) {
+  return {production:paths.join(temporaryDirectory,'gnc-committed-production'),
+    sandbox:paths.join(temporaryDirectory,'gnc-committed-sandbox')};
 }
 
 export function assertCommittedCanonicalOrder(context) {

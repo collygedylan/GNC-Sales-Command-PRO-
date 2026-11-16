@@ -1,7 +1,21 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import {committedFixtureRoots} from './database-tooling-canonical-contract.mjs';
 import {compileCanonicalRuntimeFixture} from '../services/canonical-runtime-fixtures.mjs';
 import {grantCanonicalFixtureAuthority} from '../services/canonical-fixture-authority.mjs';
 import {replaceFixtureText} from '../services/canonical-fixture-contracts.mjs';
+
+export function assertPortableCommittedFixtureRoots() {
+  for(const [temporary,paths] of [['C:\\fixture tmp',path.win32],['/tmp/fixture',path.posix]]) {
+    const roots=committedFixtureRoots(temporary,paths);
+    assert.equal(paths.isAbsolute(roots.production),true);
+    assert.equal(paths.isAbsolute(roots.sandbox),true);
+    assert.equal(paths.dirname(roots.production),temporary);
+    assert.equal(paths.dirname(roots.sandbox),temporary);
+    assert.notEqual(roots.production,roots.sandbox);
+    assert.equal(paths.isAbsolute(paths.join(roots.production,'canonical-fixtures','fixture.sql')),true);
+  }
+}
 
 export function assertCanonicalRuntimeFixtures(read) {
   const names=['application_conflict_http_status','bulk_master_snapshot_v1','indexed_photo_evidence_lookup',
@@ -84,4 +98,39 @@ export function assertFourCallerRecovery(read,functionSource) {
   const runner = read('scripts/apply-item-low-stock-migration.mjs');
   assert.match(runner, /agdataV2369EmergencyRecoveryMigrationName[^]*registeredReleaseDatabaseMigrations/);
   assert.ok(runner.includes(migrationName));
+}
+
+export async function assertSelectedRepHydration(read,runFunctions,functionSource) {
+  const calls = [];
+  const context = runFunctions('assets/app-runtime.js', ['fetchRequestCustomerMapRowsForRepName'], {
+    resolveCanonicalRequestRepName: value => value,
+    normalizeRepDisplayOrder: value => String(value || '').trim(),
+    normalizeRepMatchToken: value => String(value || '').trim().toLowerCase(),
+    fetchAllSupabaseRows: async (table, query, options) => {
+      calls.push({ table, query, options });
+      if (calls.length === 1) throw Object.assign(new Error('direct read cancelled'), { code: 'REQUEST_ABORTED' });
+      return [
+        { unique_id: 'one', salesrepid: 'S27', salesrepname: 'Josh Ringleb' },
+        { unique_id: 'two', salesrepid: 'S27', salesrepname: 'Josh Ringleb' },
+      ];
+    },
+    isActiveRequestCustomerMapping: () => true,
+    getCustomerRepMapRepValue: row => row.salesrepname,
+    matchSalesRepIdentity: (left, right) => String(left || '').toLowerCase() === String(right || '').toLowerCase(),
+    window: { setTimeout },
+  });
+  const result = await context.fetchRequestCustomerMapRowsForRepName('Josh Ringleb');
+  assert.equal(result.salesrepId, 'S27');
+  assert.equal(result.rows.length, 2);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].table, 'ph_customer_consignee_sales_reps');
+  assert.match(calls[1].query, /salesrepname=eq\.Josh%20Ringleb/);
+  assert.match(calls[1].query, /customerstatus=eq\.A&consigneestatus=eq\.A/);
+  assert.equal(calls[1].options.requireComplete, true);
+  assert.equal(calls[1].options.skipCustomerMapShortcut, true);
+  assert.equal(calls[1].options.forceFresh, true);
+  const ensureSource = functionSource('assets/app-runtime.js', 'ensureRequestModalCustomerOptionsReady');
+  assert.match(ensureSource, /if \(!rep\) await prefetchRequestModalCustomerOptions\(force\)/);
+  assert.ok(ensureSource.indexOf('await loadRequestModalCustomerOptionsForRep') < ensureSource.indexOf('const id = getRequestSelectedSalesrepId'));
+  assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never block Customer\/Consignee selection on a full mapping download/);
 }

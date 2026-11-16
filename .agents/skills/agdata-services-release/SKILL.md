@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Invariant 687: A Windows drive literal in a disposable-workspace mock becomes a relative path on Linux. Derive mock roots from the host temporary directory and verify absolute, separate roots plus the committed-fixture target using both Windows and POSIX path implementations.
+
 - Invariant 686: Replaying historical pgTAP sources against current production contracts without explicit fixture authority, exact physical photo references, completed-history event provenance, or the current scoped recipient owner produces false failures and can conceal authorization regressions. Preserve historical source bytes, plans and assertion counts; compile only pinned fixtures inside the guarded disposable schema, admit only each fixture's explicit actors, retain evaluator assignment boundaries and strict denial codes, and verify canonical retirement instead of reviving crop projection. Keep positive and negative PostgreSQL checks rolled back locally and require the full hosted replay before publication.
 
 - A clean replay cannot infer a missing historically installed RPC. Restore its reviewed definition and synthetic prerequisites before the exact consuming migration, verify the original three-reviewer guard, then remove only those fixture actors. Never stub or widen the reviewer predicate (Invariant 671).
