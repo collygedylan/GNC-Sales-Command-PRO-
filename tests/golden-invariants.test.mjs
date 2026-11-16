@@ -1,3 +1,4 @@
+import {assertMultiRowLocationUpload} from '../src/core/golden-bulk-trigger-contract.mjs';
 import {assertStackedEvalSorting} from '../src/core/golden-parser-proof-contract.mjs';
 import {assertReclassInquiryTable} from '../src/core/golden-delivery-cron-replay-contract.mjs';
 import {assertCrossLayerSeam} from '../src/core/golden-reclass-replay-contract.mjs';
@@ -71,30 +72,7 @@ import { invariant556, invariant557, invariant558, invariant559, invariant560, i
 test('Invariant 1 (PC & Mobile Login Bootstrap)', () => loginBootstrapContract(runFunctions));
 test('Invariant 2 (Zero 401/403/409/423 in app-api)', () => assertAuthenticatedTransientGateway(runFunctions));
 test('Invariant 3 (Exact Two-Trigger Season Evidence Lifecycle)', () => assertEvidenceLifecycle({ runFunctions, read }));
-test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
-  let uploadOptions = null;
-  const storage = { from: () => ({
-    upload: async (_path, _blob, options) => { uploadOptions = options; return { error: null }; },
-    getPublicUrl: filePath => ({ data: { publicUrl: `https://photos.invalid/${filePath}` } }),
-  }) };
-  const context = runFunctions('assets/app-runtime.js', ['uploadOptimizedBlobToStorage'], {
-    PHOTO_BUCKETS: { REQUEST: 'request_photos' }, HIGH_VOLUME_PLANT_PHOTO_BUCKETS: new Set(),
-    optimizePhotoBlobForUpload: async () => ({ blob: new Blob(['photo'], { type: 'image/jpeg' }), fileName: 'photo.jpg', contentType: 'image/jpeg', hash: 'sha' }),
-    getSupabaseStorageClient: () => storage, withTimeout: promise => promise, SUPABASE_UPLOAD_TIMEOUT_MS: 30000,
-    Blob, Object, String, Math,
-  });
-  const result = await context.uploadOptimizedBlobToStorage('request_photos', '007779.021.1/C.12.019/27.F1/photo.jpg', new Blob(['raw'], { type: 'image/jpeg' }));
-  assert.equal(uploadOptions.upsert, true);
-  assert.match(result.publicUrl, /photo\.jpg$/);
-  const identity = runFunctions('assets/app-runtime.js', ['normalizeDriveEvidenceLocationPart', 'isSameDriveEvidenceLocation'], {
-    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '',
-  });
-  assert.equal(identity.isSameDriveEvidenceLocation(
-    { ITEMCODE: '007779.021.1', LOCATIONCODE: 'C.12.019', LOTCODE: '27.F1' },
-    { ITEMCODE: '007779.021.1', LOCATIONCODE: 'C.12.019', LOTCODE: '27.F1', DESIGITEM: 'DESIGITEM #' },
-  ), true);
-  assert.match(read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql'), /where upper\(btrim\(m\.itemcode\)\)=stable_item and upper\(btrim\(m\.locationcode\)\)=stable_location[^]*limit 1/);
-});
+test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', () => assertMultiRowLocationUpload(runFunctions,read));
 test('Invariant 5 (Drive Mode Card Thumbnail Parity With AV & Lightbox)', () => photoParityContract(runFunctions, functionSource, plain));
 test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncation)', () =>
   assertStackedEvalSorting(locationContext,functionSource,runFunctions,plain));
@@ -5851,3 +5829,7 @@ test('Invariant 673: disposable delivery cron identity and verified cleanup encl
 
 test('Invariant 674: batched parser discovery retains stable transitive and cyclic fingerprints and rejects added, changed or missing dependency files', async () =>
   (await import('../src/core/golden-parser-proof-contract.mjs')).assertParserProofCoverage());
+
+
+test('Invariant 675: the HTTP master benchmark requires all 53 enabled triggers including both canonical evidence-delta markers', async () =>
+  (await import('../src/core/golden-bulk-trigger-contract.mjs')).assertBulkTriggerContract());

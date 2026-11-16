@@ -126,3 +126,5 @@ retirement sequence is in docs/gemini-clean-gems-blueprint.md.
 - Never expect a manually installed production cron ID to exist in a clean schema replay. Restore only that exact identity inside the original guarded migration transaction, verify the new command, and unschedule the synthetic job before commit so no disposable wake can run (Invariant 673).
 
 - Never serialize independent parser package scans in the two-second gate. Batch dependency frontiers and deduplicate canonical roots deterministically while retaining every transitive file byte, execution input, Git binding and HMAC check. Never substitute size/mtime caches or omit cyclic dependencies (Invariant 674).
+
+- Keep the HTTP master benchmark's exact trigger roster current with registered migrations and live readback. The v3.0.48 evidence reset/row markers raised the count from51 to53; require both exact names/function identities and all53 enabled triggers, never loosen the count or disable triggers for a benchmark (Invariant 675).
