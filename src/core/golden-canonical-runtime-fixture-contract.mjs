@@ -1,0 +1,87 @@
+import assert from 'node:assert/strict';
+import {compileCanonicalRuntimeFixture} from '../services/canonical-runtime-fixtures.mjs';
+import {grantCanonicalFixtureAuthority} from '../services/canonical-fixture-authority.mjs';
+import {replaceFixtureText} from '../services/canonical-fixture-contracts.mjs';
+
+export function assertCanonicalRuntimeFixtures(read) {
+  const names=['application_conflict_http_status','bulk_master_snapshot_v1','indexed_photo_evidence_lookup',
+    'inventory_reclass_move_delivery_v1','inventory_reclass_moves_v1','prompt25_editable_fields_v7',
+    'reclass_server_revision','reclass_sheared_action_v5','request_queue_remove_v1','sales_rep_inventory_operations',
+    'smart_priority_hold_shield_v6','suspend_tag_close_contract','v2315_reclass_email_delivery','v2315_reclass_email_runtime'];
+  const compiled=new Map();
+  for(const name of names) {
+    const file='supabase/tests/'+name+'_test.sql',original=read(file);
+    const current=compileCanonicalRuntimeFixture(file,original,read);
+    assert.notEqual(current,original,file);
+    assert.match(current,/CANONICAL_RUNTIME_FIXTURE_REQUIRES_DISPOSABLE_SCHEMA/);
+    assert.throws(()=>compileCanonicalRuntimeFixture(file,original+'\n',read),/canonical fixture source changed/);
+    compiled.set(name,current);
+  }
+  const ordinary='begin; select 1; rollback;';
+  assert.equal(compileCanonicalRuntimeFixture('supabase/tests/unregistered_test.sql',ordinary,read),ordinary);
+  const template=read('src/services/canonical-runtime-fixtures/actor-matrix.sql');
+  const denied="insert into private.app_access_user_overrides(policy_id,profile_id,permission_key,allowed,access_scope) select null,id,'drive.reclass.submit',false,'global' from actors;";
+  assert.throws(()=>grantCanonicalFixtureAuthority(denied,template,'reclass'),/ANCHOR_MISSING/);
+  assert.throws(()=>grantCanonicalFixtureAuthority(denied.replace("false,'global'","true,'assigned'"),template,'reclass'),/ANCHOR_MISSING/);
+  assert.match(compiled.get('inventory_reclass_moves_v1'),/RETURNING profile_id[\s\S]*JOIN fixture_admitted admitted ON admitted.profile_id=p.id/);
+  assert.match(template,/CASE WHEN upper\(p.role\) LIKE '%EVAL%' THEN 'N' ELSE 'Y' END/);
+  assert.match(compiled.get('sales_rep_inventory_operations'),/"can_access_manager_tab":false/);
+  assert.match(compiled.get('reclass_server_revision'),/'42501','DRIVE_RECLASS_FORBIDDEN','missing global watermark/);
+  assert.match(compiled.get('request_queue_remove_v1'),/customer_consignee_label,last_event\)/);
+  assert.match(compiled.get('indexed_photo_evidence_lookup'),/CI-PHOTO-INDEX-1/);
+  assert.doesNotMatch(compiled.get('indexed_photo_evidence_lookup'),/'missing','\[\]'/);
+  assert.match(compiled.get('inventory_reclass_move_delivery_v1'),/run_scoped_reclass_inquiry_v3076/);
+  assert.match(compiled.get('suspend_tag_close_contract'),/close_branch !~\*/);
+  assert.match(compiled.get('bulk_master_snapshot_v1'),/exactly three crop hooks disabled/);
+  assert.throws(()=>replaceFixtureText('duplicate duplicate','duplicate','safe'),/ANCHOR_CHANGED/);
+  assert.throws(()=>replaceFixtureText('missing','duplicate','safe'),/ANCHOR_CHANGED/);
+}
+
+export function assertFourCallerRecovery(read,functionSource) {
+  const migrationName = '20261026140000_agdata_v2369_emergency_recovery.sql';
+  const migration = read(`supabase/migrations/${migrationName}`);
+  const runtime = read('assets/app-runtime.js');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const appsScript = read('Code.gs');
+  for (const relation of ['ph_master_inventory', 'ph_cav_import', 'ph_reserves', 'ph_soc_master',
+    'ph_customer_consignee_sales_reps', 'ph_request_delivery_outbox', 'ph_request_delivery_worker_state',
+    'ph_request_email_threads', 'ph_requests_pending', 'ph_requests_completed_history']) {
+    assert.ok(migration.includes(relation), relation);
+  }
+  for (const marker of ['grant select on table public.%I to anon,authenticated',
+    'agdata_v2369_operational_read', 'security_invoker=true', 'claim_request_delivery_events(integer,text)',
+    'safe_parse_timestamptz', "status='pending',attempt_count=0", "event_type<>'delivery_canary'",
+    'old.photo_url is distinct from new.photo_url', 'old.ptronhand is distinct from new.ptronhand',
+    'when (old is distinct from new)']) assert.ok(migration.includes(marker), marker);
+  assert.doesNotMatch(migration, /\b(?:drop\s+table|truncate)\b/i);
+  assert.match(migration, /revoke all on table public\.ph_app_users from anon[^]*revoke all on table public\.user_access_control from anon/);
+  for (const marker of ['DIRECT_POSTGREST_READ_TABLES', 'fetchDirectPostgrestReadPage',
+    'fetchDirectMasterInventoryPage', 'skipCustomerMapShortcut', "scheduleRequestDeliveryWake('request_created')",
+    "scheduleRequestDeliveryWake('request_completed')"]) assert.ok(runtime.includes(marker), marker);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'getLoginWarmupPlan'), /avNotes|requestHistory|reserves|soc|cav/);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'getLoginReadyDatasetTargets'), /avNotes|requestHistory|reserves|soc|cav/);
+  for (const name of ['filterEvalWorkAvNotes', 'filterPaperNcrSalesNotes', 'filterAvNotes']) {
+    assert.doesNotMatch(functionSource('assets/app-runtime.js', name), /ensureDatasetLoaded\('avNotes'/);
+  }
+  for (const marker of ['delivery_wake', 'wake_delivery_worker', 'dispatchAuthenticatedDeliveryWake',
+    'dispatchRequestDeliveryWorkerNow', 'eval_work_', 'shear_location_', 'location_work_']) assert.ok(appApi.includes(marker), marker);
+  assert.match(appsScript, /payload\.type === 'wake_delivery_worker'[^]*processRequestDeliveryOutbox_/);
+  const manifest = JSON.parse(read('package.json'));
+  for (const name of ['verifyAppsScriptActionEnvelope_', 'doPost']) assert.ok(manifest.appsScriptPatchFunctions.includes(name), name);
+  assert.match(read('scripts/apps-script-function-patch.mjs'), /mergeRequestDeliveryWakeDispatch[^]*DELIVERY_WAKE_REMOTE_ANCHOR/);
+  const impactHeading = 'Mandatory 4-Caller & All-11-Gems Impact Contract';
+  assert.ok(read('AGENTS.md').includes(impactHeading));
+  for (const skill of ['agdata-app-shell-and-navigation', 'agdata-aura-assistant',
+    'agdata-bloom-and-request-specialist', 'agdata-docks-and-orders-specialist',
+    'agdata-drive-and-av-specialist', 'agdata-field-ops-and-qc',
+    'agdata-queue-and-reclass-specialist', 'agdata-release-governor',
+    'agdata-runtime-watchdog', 'agdata-skill-learner',
+    'agdata-sync-and-supabase-architect', 'agdata-zero-lockout-guard']) {
+    const body = read(`.codex/skills/${skill}/SKILL.md`);
+    assert.ok(body.includes(impactHeading), skill);
+    assert.ok(body.includes("Never approve a cross-layer change from one caller's tests alone"), skill);
+  }
+  const runner = read('scripts/apply-item-low-stock-migration.mjs');
+  assert.match(runner, /agdataV2369EmergencyRecoveryMigrationName[^]*registeredReleaseDatabaseMigrations/);
+  assert.ok(runner.includes(migrationName));
+}

@@ -6,6 +6,7 @@ import { augmentPublicBaseline, sqlStatements } from './database-catalog.mjs';
 import { splitCanonicalNurseryReplaySeed } from '../src/services/canonical-nursery-replay.mjs';
 import { disposableDatabaseConfig } from '../src/services/disposable-database-config.mjs';
 import { replayCanonicalDeliveryCron } from '../src/services/canonical-delivery-cron-replay.mjs';
+import {compileCanonicalRuntimeFixture} from '../src/services/canonical-runtime-fixtures.mjs';
 
 export const DATABASE_LINT_SCHEMAS = [
   'public', 'app_sync_private', 'aura_private', 'bloomscapes_private', 'bunch_note_private', 'extensions',
@@ -320,7 +321,10 @@ function writeCanonicalTests({ root, supabaseDir, testGroup, discoverTests }) {
   for (const relativePath of discoverTests({ root, group: testGroup })) {
     const resolved = path.resolve(root, relativePath);
     if (!resolved.startsWith(`${path.resolve(root)}${path.sep}`)) throw new Error('DATABASE_TEST_PATH_OUTSIDE_REPOSITORY');
-    writeFileSync(path.join(testsDir, path.basename(relativePath)), readFileSync(resolved, 'utf8').replaceAll('\r\n', '\n'));
+    const source=readFileSync(resolved,'utf8').replaceAll('\r\n','\n');
+    const read=file=>readFileSync(path.join(root,file),'utf8');
+    const compiled=testGroup==='sql-canonical'?compileCanonicalRuntimeFixture(relativePath,source,read):source;
+    writeFileSync(path.join(testsDir,path.basename(relativePath)),compiled);
   }
 }
 
