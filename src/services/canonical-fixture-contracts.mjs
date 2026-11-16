@@ -51,3 +51,35 @@ export function currentReclassDenials(source,file) {
     "'42501','DRIVE_RECLASS_FORBIDDEN','Locked actor cannot submit operations'");
   return result;
 }
+
+export function currentReclassLedgerContract(source) {
+  const start=source.indexOf("  if exists(select 1 from jsonb_array_elements(result_value->'rows') e(value)");
+  const end=source.indexOf("  if (select count(*) from public.ph_inventory_transactions",start);
+  if(start<0||end<=start) throw new Error('CANONICAL_RECLASS_LEDGER_CROP_BOUNDARY_CHANGED');
+  const check="  if exists(select 1 from jsonb_array_elements(result_value->'rows') e(value)\n"+
+    "    left join public.ph_master_inventory master on master.unique_id=e.value#>>'{row,unique_id}'\n"+
+    "    where master.unique_id is null or e.value->'row' is distinct from to_jsonb(master))\n"+
+    "    or exists(select 1 from public.ph_crop_roll_drive_rows crop\n"+
+    "      join jsonb_array_elements(result_value->'rows') e(value) on crop.master_unique_id=e.value#>>'{row,unique_id}')\n"+
+    "    or not (select count(*)=3 and bool_and(tgenabled='D') from pg_trigger\n"+
+    "      where tgrelid='public.ph_master_inventory'::regclass and tgname=any(array[\n"+
+    "        'trg_v2_master_inventory_crop_roll_drive_rows','trg_v2_master_inventory_crop_roll_drive_rows_insert',\n"+
+    "        'trg_v2_master_inventory_crop_roll_drive_rows_delete'])) then\n"+
+    "    raise exception 'canonical movement receipt differs or retired crop publication was revived';\n  end if;\n";
+  return source.slice(0,start)+check+source.slice(end);
+}
+
+export function currentSmartPublicContract(source) {
+  const start=source.indexOf('create function pg_temp.v6_public_rpc_payload(');
+  const end=source.indexOf('-- Eval Work uses the same V6 live transaction',start);
+  if(start<0||end<=start) throw new Error('CANONICAL_SMART_PUBLIC_PAYLOAD_BOUNDARY_CHANGED');
+  const legacy='reclass-action-workflow-v6-smart-shield-20261009';
+  const current='reclass-action-workflow-v7-editable-fields-20261009';
+  const tail=source.slice(start,end);
+  if(!tail.includes('public.enqueue_drive_reclass_inquiry_v6(')) throw new Error('CANONICAL_SMART_PUBLIC_ROUTE_CHANGED');
+  const call="pg_temp.v6_public_rpc_payload('smart-shield-v6-eval-token-0001','7','8')";
+  const evalWork=replaceFixtureText(source.slice(end),call,
+    `jsonb_set(${call},'{workflowPolicyVersion}','"${legacy}"'::jsonb)`);
+  return source.slice(0,start)+tail.replaceAll('public.enqueue_drive_reclass_inquiry_v6(',
+    'public.enqueue_drive_reclass_inquiry_v7(').replaceAll(legacy,current)+evalWork;
+}

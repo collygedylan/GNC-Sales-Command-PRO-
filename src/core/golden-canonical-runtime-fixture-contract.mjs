@@ -3,7 +3,27 @@ import path from 'node:path';
 import {committedFixtureRoots} from './database-tooling-canonical-contract.mjs';
 import {compileCanonicalRuntimeFixture} from '../services/canonical-runtime-fixtures.mjs';
 import {grantCanonicalFixtureAuthority} from '../services/canonical-fixture-authority.mjs';
-import {replaceFixtureText} from '../services/canonical-fixture-contracts.mjs';
+import {replaceFixtureText,currentSmartPublicContract,currentReclassLedgerContract} from '../services/canonical-fixture-contracts.mjs';
+
+export function assertCurrentReclassCohorts(read) {
+  const smart=read('supabase/tests/smart_priority_hold_shield_v6_test.sql').replaceAll('\r\n','\n');
+  const current=currentSmartPublicContract(smart);
+  const start=smart.indexOf('create function pg_temp.v6_public_rpc_payload(');
+  assert.equal(current.slice(0,start),smart.slice(0,start),'pure legacy V6 validators retain their exact inputs');
+  const end=current.indexOf('-- Eval Work uses the same V6 live transaction',start);
+  assert.match(current.slice(start,end),/public\.enqueue_drive_reclass_inquiry_v7\(/);
+  assert.doesNotMatch(current.slice(start,end),/public\.enqueue_drive_reclass_inquiry_v6\(/);
+  assert.match(current.slice(end),/jsonb_set\(pg_temp\.v6_public_rpc_payload/);
+  assert.match(current.slice(end),/'reclass-action-workflow-v6-smart-shield-20261009','Eval Work final state preserves/);
+  assert.throws(()=>currentSmartPublicContract(smart.replace('-- Eval Work uses the same V6 live transaction','changed')),/BOUNDARY_CHANGED/);
+  const ledger=currentReclassLedgerContract(read('supabase/tests/inventory_reclass_moves_v1_test.sql').replaceAll('\r\n','\n'));
+  assert.match(ledger,/e\.value->'row' is distinct from to_jsonb\(master\)/);
+  assert.match(ledger,/master\.unique_id is null/);
+  assert.match(ledger,/or exists\(select 1 from public\.ph_crop_roll_drive_rows crop/);
+  assert.match(ledger,/count\(\*\)=3 and bool_and\(tgenabled='D'\)/);
+  assert.doesNotMatch(ledger,/set-based crop-roll projection differs from full authoritative mapper output/);
+  assert.throws(()=>currentReclassLedgerContract('unregistered ledger'),/BOUNDARY_CHANGED/);
+}
 
 export function assertPortableCommittedFixtureRoots() {
   for(const [temporary,paths] of [['C:\\fixture tmp',path.win32],['/tmp/fixture',path.posix]]) {
@@ -133,4 +153,19 @@ export async function assertSelectedRepHydration(read,runFunctions,functionSourc
   assert.match(ensureSource, /if \(!rep\) await prefetchRequestModalCustomerOptions\(force\)/);
   assert.ok(ensureSource.indexOf('await loadRequestModalCustomerOptionsForRep') < ensureSource.indexOf('const id = getRequestSelectedSalesrepId'));
   assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never block Customer\/Consignee selection on a full mapping download/);
+}
+
+export async function assertTypedSuspendBoundary(read,databaseBridge) {
+  const calls = [];
+  const bridge = databaseBridge(async (...args) => {
+    calls.push(args);
+    return new Response('[]');
+  });
+  await bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
+    'select=unique_id,commonname,locationcode&order=unique_id.asc&limit=1', { method: 'GET' }, 1000, 'suspend queue');
+  assert.equal(new URL(calls[0][0]).pathname, '/rest/v1/ph_active_suspend');
+  await assert.rejects(bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
+    'select=unknown_suspend_field', { method: 'GET' }, 1000, 'suspend queue'), /Unknown.*column/);
+  assert.equal(calls.length, 1);
+  assert.match(read('.codex/skills/agdata-queue-and-reclass-specialist/SKILL.md'), /Never add a direct operational view to the runtime allowlist without a finite typed browser alias/);
 }

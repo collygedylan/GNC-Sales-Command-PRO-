@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Invariant 688: Updating a top-level fixture while leaving a nested crop-mapper canary or calling guarded V5/V6 transports as public mutation owners keeps canonical replay stale. Compare every returned physical row with the persisted canonical row, reject revived crop projection with exactly three disabled hooks, use the scoped V7 public owner for current inquiries, and retain pure V6 validators plus stored V6 Eval Work drafts under their existing owner. Install guarded subordinate transports in local proofs so a partial older catalog cannot hide a caller mismatch.
+
 - Invariant 687: A Windows drive literal in a disposable-workspace mock becomes a relative path on Linux. Derive mock roots from the host temporary directory and verify absolute, separate roots plus the committed-fixture target using both Windows and POSIX path implementations.
 
 - Invariant 686: Replaying historical pgTAP sources against current production contracts without explicit fixture authority, exact physical photo references, completed-history event provenance, or the current scoped recipient owner produces false failures and can conceal authorization regressions. Preserve historical source bytes, plans and assertion counts; compile only pinned fixtures inside the guarded disposable schema, admit only each fixture's explicit actors, retain evaluator assignment boundaries and strict denial codes, and verify canonical retirement instead of reviving crop projection. Keep positive and negative PostgreSQL checks rolled back locally and require the full hosted replay before publication.

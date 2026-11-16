@@ -1,4 +1,4 @@
-import {assertFourCallerRecovery,assertSelectedRepHydration} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
+import {assertFourCallerRecovery,assertSelectedRepHydration,assertTypedSuspendBoundary} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
 import {assertCropTierGlossary,assertSetBasedErpIngestion} from '../src/core/golden-sql-lint-compiled-contract.mjs';
 import {assertHistoricalConsolidation} from '../src/core/golden-bunch-blueprint-catalog-contract.mjs';
 import {assertQueueResolution} from '../src/core/golden-master-staging-fixture-contract.mjs';
@@ -263,20 +263,7 @@ test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => as
 test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => assertFourCallerRecovery(read,functionSource));
 test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', () => assertSelectedRepHydration(read,runFunctions,functionSource));
 test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', invariant33);
-test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', async () => {
-  const calls = [];
-  const bridge = databaseBridge(async (...args) => {
-    calls.push(args);
-    return new Response('[]');
-  });
-  await bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
-    'select=unique_id,commonname,locationcode&order=unique_id.asc&limit=1', { method: 'GET' }, 1000, 'suspend queue');
-  assert.equal(new URL(calls[0][0]).pathname, '/rest/v1/ph_active_suspend');
-  await assert.rejects(bridge.fetchTable('https://fixture.invalid', 'ph_active_suspend',
-    'select=unknown_suspend_field', { method: 'GET' }, 1000, 'suspend queue'), /Unknown.*column/);
-  assert.equal(calls.length, 1);
-  assert.match(read('.codex/skills/agdata-queue-and-reclass-specialist/SKILL.md'), /Never add a direct operational view to the runtime allowlist without a finite typed browser alias/);
-});
+test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', () => assertTypedSuspendBoundary(read,databaseBridge));
 
 test('Invariant 35 (AV Uses One Canonical Master Hydration)', () => {
   const context = runFunctions('assets/app-runtime.js', ['canonicalizeProductionCoreLiveKeys'], { Array, Set });
@@ -5580,3 +5567,7 @@ test('Invariant 686: current canonical fixtures preserve historical sources and 
 
 test('Invariant 687: committed fixture roots remain absolute and isolated under Windows and Linux path conventions', async () =>
   (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertPortableCommittedFixtureRoots());
+
+
+test('Invariant 688: current Reclass fixture cohorts preserve exact receipts, retired projection and scoped V7 public ownership', async () =>
+  (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertCurrentReclassCohorts(read));
