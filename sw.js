@@ -1,7 +1,7 @@
 /* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
-// AgData source commit: ef63671d2457e716d33d0a4f629d7f3bcb07fd01
+// AgData source commit: cf185a8315864e09145050e63f642888325402d5
 const APP_SHELL_BUILD = 'AgData v3.0.86';
 const APP_SHELL_RUNTIME_REVISION = 'cloud-relay-cache-r2';
 const APP_ASSET_VERSION = '3.0.86';

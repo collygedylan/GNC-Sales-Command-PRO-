@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "ef63671d2457e716d33d0a4f629d7f3bcb07fd01",
+  "commit": "cf185a8315864e09145050e63f642888325402d5",
   "release": "AgData v3.0.86",
   "files": [
     {
@@ -1551,12 +1551,12 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "9b20e870af58dce33c2fe18fa5ce1683a4e35bdc7e31751da61c2634ac459d40"
+      "sha256": "05173e87f7f13edeb77041ac5733bea81ee957fa03af8a55e2145dbac68d80cf"
     },
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "9b20e870af58dce33c2fe18fa5ce1683a4e35bdc7e31751da61c2634ac459d40"
+      "sha256": "05173e87f7f13edeb77041ac5733bea81ee957fa03af8a55e2145dbac68d80cf"
     },
     {
       "path": "deployments/131ba96c0cc55ba74f29616d0ed802f64ab40167.json",
@@ -1614,6 +1614,11 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
+      "path": "deployments/cf185a8315864e09145050e63f642888325402d5.json",
+      "bytes": 187,
+      "sha256": "05173e87f7f13edeb77041ac5733bea81ee957fa03af8a55e2145dbac68d80cf"
+    },
+    {
       "path": "deployments/e7a62f1d4e21f22a4f51071e86c449da5b880c1f.json",
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1626,7 +1631,7 @@
     {
       "path": "index.html",
       "bytes": 433603,
-      "sha256": "07c5ac57509b9bdb1559b7d6bb87011c36b7b98a0e0a1c4412494d1468312ba5"
+      "sha256": "7a1f8ee4482a729a98337ddf9599b0b30428e4e0c22cd1edfc4ab7103c2c4228"
     },
     {
       "path": "manifest.json",
@@ -1681,7 +1686,7 @@
     {
       "path": "sw.js",
       "bytes": 41715,
-      "sha256": "4ba8a6ee14c54e88fb440cb06ac68e1108800ca1c06957b46f19ffb2f9c25241"
+      "sha256": "7f50ca2a0fff8613749f0ef83524940d27e03ec5497133caf6207bd7df1576de"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -2146,7 +2151,7 @@
     {
       "path": "version.json",
       "bytes": 134,
-      "sha256": "1e443dd9b4238cccc5f2460f7a1063c62e108505d5909dbc7ce24120f923a33f"
+      "sha256": "bb4ff9a7142256ef1b4fe9b271b7eb76be4faccb4e4175f835508c45e028e21a"
     }
   ]
 }
