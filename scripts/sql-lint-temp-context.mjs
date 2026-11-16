@@ -83,7 +83,10 @@ where l.lanname = 'plpgsql'
   and n.nspname in ('public', 'private', 'aura_private', 'bunch_note_private', 'hl_order_private', 'app_sync_private')
   and (p.prosrc ~* 'create[[:space:]]+(local[[:space:]]+|global[[:space:]]+)?(temp|temporary)[[:space:]]+table'
     or n.nspname||'.'||p.proname in (${Object.entries(SUPPORTED)
-      .filter(([, spec]) => spec.contextTables?.length && !spec.stagedView).map(([name]) => quoteLiteral(name)).join(', ')}));
+      .filter(([, spec]) => spec.contextTables?.length && !spec.stagedView && !spec.readerOnly).map(([name]) => quoteLiteral(name)).join(', ')})
+    or (exists(select 1 from pg_proc anchor join pg_namespace scope on scope.oid=anchor.pronamespace
+      where scope.nspname='private' and anchor.proname='build_compiled_drive_order_delta_v3078' and anchor.pronargs=0)
+      and p.prosrc ~* 'pg_temp[.]'));
 `.trim();
 
 function isWord(char) { return Boolean(char && /[A-Za-z0-9_$]/.test(char)); }

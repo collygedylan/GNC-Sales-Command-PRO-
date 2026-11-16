@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {getSupportedFunctions,extractTempStatements,probeSql} from '../../scripts/sql-lint-temp-context.mjs';
+import {getSupportedFunctions,extractTempStatements,probeSql,validateShapes,functionInventorySql} from '../../scripts/sql-lint-temp-context.mjs';
 
 export function assertCropTierGlossary(read,runFunctions) {
   const migration = read('supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql');
@@ -77,4 +77,47 @@ export function assertCompiledLintContracts(read) {
   assert.throws(()=>extractTempStatements(empty,'legacy'),/UNEXPECTED_NO_DATA/);
   assert.equal(extractTempStatements(empty,'reviewed',{allowNoData:true})[0].statement,empty);
   assertCurrentAuthorityEpoch();
+}
+
+export function assertSetBasedErpIngestion(read,functionSource) {
+  const migration = read('supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql');
+  const appsScript = read('Code.gs');
+  const appApi = read('supabase/functions/app-api/index.ts');
+  const fastSync = read('scripts/fast-live-erp-sync.mjs');
+  for (const rpc of ['check_erp_file_sync_needed_v1', 'fast_ingest_drive_around_v1',
+    'fast_ingest_soc_orders_v1', 'fast_ingest_soc_reserves_v1', 'fast_ingest_cav_v1',
+    'fast_ingest_warehouse_assigned_v1']) assert.ok(migration.includes(rpc), rpc);
+  for (const marker of ["set statement_timeout='200ms'", "'target_ms',50", "'target_ms',2000",
+    'jsonb_populate_record(null::%s,source_row.value)', 'bulk_import_master_snapshot_v1',
+    'reconcile_inventory_location_evidence_v1', 'refresh_soc_order_history_v2366',
+    'refresh_reserve_history_v2366', 'row_state_hash', 'source_content_hash', 'source_modified_at']) {
+    assert.ok(migration.includes(marker), marker);
+  }
+  assert.doesNotMatch(migration, /\b(?:drop\s+table|truncate)\b/i);
+  assert.doesNotMatch(migration, /(?:insert|update|delete)\s+(?:into\s+|from\s+)?public\.ph_(?:active_request|requests_pending|reclass_recount|bunch_note)/i);
+  assert.match(migration, /revoke all on function public\.fast_ingest_drive_around_v1\(jsonb,jsonb\) from public,anon,authenticated/);
+  assert.match(migration, /current_setting\('agdata\.fast_erp_defer_history',true\)='on'/);
+  for (const marker of ['processFastLiveFile_', 'check_erp_file_sync_needed_v1',
+    'FAST_ERP_COMPLETE_SNAPSHOT_REQUIRED', 'runWarehouseAssignedOnly']) assert.ok(appsScript.includes(marker), marker);
+  assert.match(appApi, /action === "fast_erp_ingest"[^]*FULL_ACCESS_USER_KEYS[^]*check_erp_file_sync_needed_v1[^]*rpcByDataset/);
+  for (const marker of ['objectRows', 'latestSources', 'check_erp_file_sync_needed_v1',
+    'FAST_LIVE_BATCH_SIZE', 'shouldIncludeSocLiveRow', 'disable trigger user', "'--linked'", 'supabase.js']) assert.ok(fastSync.includes(marker), marker);
+  assert.doesNotMatch(fastSync, /FAST_LIVE_ERP_DATABASE_URL|GNC_SUPABASE_DB_URL|new Pool|from 'pg'/);
+  assert.match(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /action: 'erp_sync'[^]*operation: 'start'[^]*maxAttemptsPerStage: 1/);
+  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /postGoogleScriptJsonPayload|manual_run|manual_continue/);
+}
+
+export function assertTemporaryReaderContracts() {
+  const body='BEGIN RETURN EXISTS(SELECT 1 FROM pg_temp.ph_master_bulk_context_v3046 c WHERE c.run_id=p_run AND c.request_id=p_request); END;';
+  const fixture={schema:'private',name:'has_master_bulk_context_v3046',arguments:'uuid, uuid',
+    argumentNames:['p_run','p_request'],body,definition:'CREATE FUNCTION private.has_master_bulk_context_v3046() RETURNS boolean LANGUAGE plpgsql AS $$'+body+'$$;'};
+  const [reader]=getSupportedFunctions([fixture],{allowMissing:true});
+  assert.equal(reader.statements.length,0,'reader coverage does not require constructing a temporary relation');
+  assert.deepEqual(reader.specification.contextTables,['ph_master_bulk_context_v3046']);
+  assert.throws(()=>validateShapes([reader],[]),/SHAPE_COUNT_MISMATCH/);
+  const [valid]=validateShapes([reader],[{name:'ph_master_bulk_context_v3046',columns:[{name:'run_id',type:'uuid'},{name:'request_id',type:'uuid'}]}]);
+  assert.match(valid.pragmas[0],/run_id uuid, request_id uuid/);
+  assert.throws(()=>getSupportedFunctions([{...fixture,name:'unregistered_reader'}],{allowMissing:true}),/FUNCTION_UNSUPPORTED/);
+  assert.throws(()=>getSupportedFunctions([{...fixture,arguments:'uuid'}],{allowMissing:true}),/FUNCTION_SIGNATURE_CHANGED/);
+  assert.match(functionInventorySql,/anchor\.proname='build_compiled_drive_order_delta_v3078'[\s\S]*p\.prosrc ~\* 'pg_temp\[\.\]'/);
 }

@@ -56,8 +56,11 @@ function compiledSetup(item,extract) {
     pick('open_master_bulk_temp_context_v3046','ph_master_bulk_context_keys_v3046'),
     contextView(inventory),
     pick('build_drive_ordinal_edges_v3082','ph_master_ordinal_edges'),
+    pick('plan_drive_row_assignments_v3047','drive_row_assignments_v3047'),
+    pick('prepare_drive_pending_ack_v3084','pending_ack_uids_v3084'),
+    pick('prepare_drive_pending_ack_v3084','drive_conflict_source_hash_v3084'),
   ];
-  return `DO $lint_compiled_setup$ DECLARE p_rows jsonb; p_stage uuid; p_stage_id uuid; compact jsonb; digest text;
+  return `DO $lint_compiled_setup$ DECLARE p_rows jsonb; p_stage uuid; p_stage_id uuid; p_source_revision bigint; compact jsonb; digest text;
     BEGIN\n${steps.join('\n')}\nEND $lint_compiled_setup$;`;
 }
 

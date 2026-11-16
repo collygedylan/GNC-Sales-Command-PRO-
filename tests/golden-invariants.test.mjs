@@ -1,4 +1,4 @@
-import {assertCropTierGlossary} from '../src/core/golden-sql-lint-compiled-contract.mjs';
+import {assertCropTierGlossary,assertSetBasedErpIngestion} from '../src/core/golden-sql-lint-compiled-contract.mjs';
 import {assertHistoricalConsolidation} from '../src/core/golden-bunch-blueprint-catalog-contract.mjs';
 import {assertQueueResolution} from '../src/core/golden-master-staging-fixture-contract.mjs';
 import {assertIndexedArchive} from '../src/core/golden-bulk-case-order-contract.mjs';
@@ -257,33 +257,8 @@ test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolid
 test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () => assertCropTierGlossary(read,runFunctions));
 
 test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Direct Quick Access)', () => requestPhotoNavigationContract(read,runFunctions,functionSource));
-test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
-  const migration = read('supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql');
-  const appsScript = read('Code.gs');
-  const appApi = read('supabase/functions/app-api/index.ts');
-  const fastSync = read('scripts/fast-live-erp-sync.mjs');
-  for (const rpc of ['check_erp_file_sync_needed_v1', 'fast_ingest_drive_around_v1',
-    'fast_ingest_soc_orders_v1', 'fast_ingest_soc_reserves_v1', 'fast_ingest_cav_v1',
-    'fast_ingest_warehouse_assigned_v1']) assert.ok(migration.includes(rpc), rpc);
-  for (const marker of ["set statement_timeout='200ms'", "'target_ms',50", "'target_ms',2000",
-    'jsonb_populate_record(null::%s,source_row.value)', 'bulk_import_master_snapshot_v1',
-    'reconcile_inventory_location_evidence_v1', 'refresh_soc_order_history_v2366',
-    'refresh_reserve_history_v2366', 'row_state_hash', 'source_content_hash', 'source_modified_at']) {
-    assert.ok(migration.includes(marker), marker);
-  }
-  assert.doesNotMatch(migration, /\b(?:drop\s+table|truncate)\b/i);
-  assert.doesNotMatch(migration, /(?:insert|update|delete)\s+(?:into\s+|from\s+)?public\.ph_(?:active_request|requests_pending|reclass_recount|bunch_note)/i);
-  assert.match(migration, /revoke all on function public\.fast_ingest_drive_around_v1\(jsonb,jsonb\) from public,anon,authenticated/);
-  assert.match(migration, /current_setting\('agdata\.fast_erp_defer_history',true\)='on'/);
-  for (const marker of ['processFastLiveFile_', 'check_erp_file_sync_needed_v1',
-    'FAST_ERP_COMPLETE_SNAPSHOT_REQUIRED', 'runWarehouseAssignedOnly']) assert.ok(appsScript.includes(marker), marker);
-  assert.match(appApi, /action === "fast_erp_ingest"[^]*FULL_ACCESS_USER_KEYS[^]*check_erp_file_sync_needed_v1[^]*rpcByDataset/);
-  for (const marker of ['objectRows', 'latestSources', 'check_erp_file_sync_needed_v1',
-    'FAST_LIVE_BATCH_SIZE', 'shouldIncludeSocLiveRow', 'disable trigger user', "'--linked'", 'supabase.js']) assert.ok(fastSync.includes(marker), marker);
-  assert.doesNotMatch(fastSync, /FAST_LIVE_ERP_DATABASE_URL|GNC_SUPABASE_DB_URL|new Pool|from 'pg'/);
-  assert.match(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /action: 'erp_sync'[^]*operation: 'start'[^]*maxAttemptsPerStage: 1/);
-  assert.doesNotMatch(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /postGoogleScriptJsonPayload|manual_run|manual_continue/);
-});
+test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => assertSetBasedErpIngestion(read,functionSource));
+
 test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => {
   const migrationName = '20261026140000_agdata_v2369_emergency_recovery.sql';
   const migration = read(`supabase/migrations/${migrationName}`);
@@ -5673,3 +5648,6 @@ test('Invariant 683: canonical context receipt rejects a foreign result block, P
 
 test('Invariant 684: compiled SQL lint keeps strict function, variable, variant-count and authority-epoch boundaries', async () =>
   (await import('../src/core/golden-sql-lint-compiled-contract.mjs')).assertCompiledLintContracts(read));
+
+test('Invariant 685: current SQL lint discovers temporary-table readers and rejects missing schemas or unknown consumers', async () =>
+  (await import('../src/core/golden-sql-lint-compiled-contract.mjs')).assertTemporaryReaderContracts());
