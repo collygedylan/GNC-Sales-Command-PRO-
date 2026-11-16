@@ -127,6 +127,8 @@ retirement sequence is in docs/gemini-clean-gems-blueprint.md.
 
 - Never serialize independent parser package scans in the two-second gate. Batch dependency frontiers and deduplicate canonical roots deterministically while retaining every transitive file byte, execution input, Git binding and HMAC check. Never substitute size/mtime caches or omit cyclic dependencies (Invariant 674).
 
-- Keep the HTTP master benchmark's exact trigger roster current with registered migrations and live readback. The v3.0.48 evidence reset/row markers raised the count from51 to53; require both exact names/function identities and all53 enabled triggers, never loosen the count or disable triggers for a benchmark (Invariant 675).
+- Keep the HTTP master benchmark's exact trigger roster current with registered migrations and live readback. The v3.0.48 evidence reset/row markers raised the count from51 to53; require both exact names/function identities and all53 installed triggers. Keep the full-activation boundary checks and validate the exact registered retirement state separately; never loosen the total count or toggle production triggers for a benchmark (Invariants 675,677).
 
 - Owner-verified historical client timeouts with no incomplete mutation are never a reason to replay a Request. Resolve only the exact incident through the existing authenticated reviewer RPC, validate its confirmed IDs and preserve occurrence history. Retain the exact owner note in the resolution receipt when the installed event schema has no note column (Invariant 676; incident12762).
+
+- A clean canonical replay intentionally retires exactly three v2 crop-roll projection hooks. Preserve their disabled state: accept50active of53only with that complete named set and the original upsert function, while every other trigger remains active. Never re-enable retired paths or accept an arbitrary active-count threshold to satisfy a benchmark (Invariant 677).

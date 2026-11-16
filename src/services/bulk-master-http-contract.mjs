@@ -6,12 +6,23 @@ import { legacyBulkSource, sourceRowsFromProductionShape } from './bulk-master-h
 export const HANDOVER_TRANSITION_KEY = 'kayla_knepp_to_nelly_aguilar_20261002';
 const HANDOVER_SUCCESSOR_ID = '961b0a0f-11a6-4db5-b066-582f772ab8e7';
 export const EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT = 53;
+const retiredMasterTriggers=[
+  'trg_v2_master_inventory_crop_roll_drive_rows',
+  'trg_v2_master_inventory_crop_roll_drive_rows_delete',
+  'trg_v2_master_inventory_crop_roll_drive_rows_insert',
+];
 
 export function assertBulkMasterTriggerState(triggerState) {
   assert.equal(triggerState.total,EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
     'the HTTP benchmark contains every expected production master trigger');
-  assert.equal(triggerState.enabled,EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
-    'all production master triggers are enabled during the HTTP benchmark');
+  const disabled=triggerState.disabled_names || [];
+  assert.ok(Array.isArray(disabled),'disabled trigger identities must be explicit');
+  assert.deepEqual([...disabled].sort(),disabled.length ? retiredMasterTriggers : [],
+    'only the exact retired crop-roll projection triggers may be disabled');
+  assert.equal(triggerState.enabled,EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT-disabled.length,
+    'every non-retired production master trigger is enabled during the HTTP benchmark');
+  assert.equal(triggerState.retired_projection_disabled || 0,disabled.length,
+    'disabled crop-roll names retain their registered trigger function');
   assert.equal(triggerState.handover,1,'the scheduled assignment handover trigger is installed');
   assert.equal(triggerState.handover_enabled,1,'the scheduled assignment handover trigger is enabled');
   assert.equal(triggerState.evidence_delta,2,'both v3.0.48 evidence delta triggers are installed');
@@ -36,7 +47,12 @@ export async function readBulkMasterSchema(ctx) {
       count(*) filter (where tgname in ('a000_drive_soc_evidence_mark_v3048','a000_drive_soc_evidence_reset_v3048')
         and tgfoid='private.mark_drive_soc_evidence_delta_v3048()'::regprocedure)::int as evidence_delta,
       count(*) filter (where tgname in ('a000_drive_soc_evidence_mark_v3048','a000_drive_soc_evidence_reset_v3048')
-        and tgfoid='private.mark_drive_soc_evidence_delta_v3048()'::regprocedure and tgenabled <> 'D')::int as evidence_delta_enabled
+        and tgfoid='private.mark_drive_soc_evidence_delta_v3048()'::regprocedure and tgenabled <> 'D')::int as evidence_delta_enabled,
+      coalesce(array_agg(tgname::text order by tgname) filter (where tgenabled='D'),array[]::text[]) as disabled_names,
+      count(*) filter (where tgenabled='D'
+        and tgname in ('trg_v2_master_inventory_crop_roll_drive_rows','trg_v2_master_inventory_crop_roll_drive_rows_delete',
+          'trg_v2_master_inventory_crop_roll_drive_rows_insert')
+        and tgfoid='public.upsert_v2_crop_roll_drive_row_from_master()'::regprocedure)::int as retired_projection_disabled
     from pg_trigger where tgrelid='public.ph_master_inventory'::regclass and not tgisinternal`);
   assertBulkMasterTriggerState(triggerState);
   state.masterProductionTriggerCount = triggerState.total;

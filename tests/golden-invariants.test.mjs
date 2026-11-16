@@ -1,3 +1,4 @@
+import {assertRequestQuantityRecovery} from '../src/core/golden-bulk-retirement-contract.mjs';
 import {assertRecountGrouping} from '../src/core/golden-watchdog-owner-contract.mjs';
 import {assertMultiRowLocationUpload} from '../src/core/golden-bulk-trigger-contract.mjs';
 import {assertStackedEvalSorting} from '../src/core/golden-parser-proof-contract.mjs';
@@ -123,18 +124,7 @@ test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => 
 });
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', invariant17);
 test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => badgeConnectionContract(runFunctions,functionSource,read));
-test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => {
-  const migration = read('supabase/migrations/20261023234500_request_quantity_recovery_v3.sql');
-  const runner = read('scripts/apply-item-low-stock-migration.mjs');
-  for (const uniqueId of ['REQ-mvlgbfl7p8r8zxrj97j', 'REQ-mvlg4t85vlzf7053pv', 'REQ-mvlfib5eqwa3typzcqq',
-    'REQ-mvlfib5evawvlvvx09', 'REQ-mvlex5bay7ngnehzi7', 'REQ-mvlbp5hkkk58akaubms', 'REQ-mvk1xgv2ty9fttuqj2']) assert.match(migration, new RegExp(uniqueId));
-  assert.equal((migration.match(/,'1'::text\)/g) || []).length >= 10, true);
-  assert.match(migration, /'REQ-mvlbp5hkkk58akaubms','003139\.250\.1','A\.08\.000','10'::text/);
-  assert.match(migration, /'REQ-mvk1xgv2ty9fttuqj2','008280\.150\.1','C\.05\.000','4'::text/);
-  assert.match(migration, /app_dataset_revision_updated/);
-  assert.doesNotMatch(migration, /update\s+public\.ph_request_delivery_outbox/i);
-  assert.match(runner, /requestQuantityRecoveryMigrationName[^]*20261023234500_request_quantity_recovery_v3\.sql/);
-});
+test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => assertRequestQuantityRecovery(read));
 test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', async () => {
   const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
   const rows = [
@@ -5802,3 +5792,7 @@ test('Invariant 675: the HTTP master benchmark requires all 53 enabled triggers 
 
 test('Invariant 676: owner-reviewed Watchdog closure requires the native session and requested incident receipt without replaying a Request mutation', async () =>
   (await import('../src/core/golden-watchdog-owner-contract.mjs')).assertOwnedWatchdogReview(runFunctions));
+
+
+test('Invariant 677: the HTTP benchmark accepts only the exact registered crop-roll retirement set while every other master trigger stays active', async () =>
+  (await import('../src/core/golden-bulk-retirement-contract.mjs')).assertExactRetiredTriggerContract());
