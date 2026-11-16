@@ -1,3 +1,4 @@
+import {assertRecountGrouping} from '../src/core/golden-watchdog-owner-contract.mjs';
 import {assertMultiRowLocationUpload} from '../src/core/golden-bulk-trigger-contract.mjs';
 import {assertStackedEvalSorting} from '../src/core/golden-parser-proof-contract.mjs';
 import {assertReclassInquiryTable} from '../src/core/golden-delivery-cron-replay-contract.mjs';
@@ -80,44 +81,8 @@ test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () =>
   assertEvalBlockLocationDrill(locationContext));
 
 test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => requestLifecycleContract(runFunctions,locationContext,functionSource,read));
-test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () => {
-  const context = runFunctions('assets/app-runtime.js', ['buildReclassRecountLocationGroups'], {
-    Array, Number, String, requestsInventory: [],
-    fullInventory: [{ ITEMCODE: '000745.250.9', COMMONNAME: 'Taylor Juniper', CONTSIZE: '#25' }]
-  });
-  const groups = plain(context.buildReclassRecountLocationGroups([{
-    id: 'job-1', itemcode: '006737.070.1', commonname: 'Unknown', locationcode: 'A.05.000', requested_by_username: 'requester',
-    lines: [{ source_unique_id: 's1', lotcode: '27.S1', season: 'S1', on_hand: 5, available: 4, review: 1 }],
-  }, {
-    id: 'job-2', itemcode: '006737.070.1', commonname: 'Test Plant', locationcode: 'A.05.000', requested_by_username: 'requester',
-    lines: [
-      { source_unique_id: 's1', lotcode: '27.S1', season: 'S1', on_hand: 5, available: 4, review: 1 },
-      { source_unique_id: 'u1', lotcode: '27.U1', season: 'U1', on_hand: 5, available: 3, review: 2 },
-    ],
-  }, {
-    id: 'job-3', itemcode: '000745.250.1', commonname: 'Unknown', locationcode: 'B.05.000', requested_by_username: 'requester',
-    lines: [{ source_unique_id: 't1', lotcode: '27.F1', season: 'F1', on_hand: 8, available: 6, review: 2 }],
-  }]));
-  assert.equal(groups.length, 2);
-  assert.equal(groups[0].job_ids.length, 2);
-  assert.equal(groups[0].commonname, 'Test Plant');
-  assert.equal(groups[0].contsize, '#7');
-  assert.equal(groups[0].locationcode, 'A.05.000');
-  assert.equal(groups[0].system_on_hand, 10);
-  assert.deepEqual(groups[0].lines.map(line => [line.lotcode, line.on_hand, line.available, line.review]), [['27.S1', 5, 4, 1], ['27.U1', 5, 3, 2]]);
-  assert.equal(groups[1].commonname, 'Taylor Juniper');
-  assert.equal(groups[1].contsize, '#25');
-  assert.equal(new Set(groups.map(group => `${group.itemcode.toUpperCase()}|${group.locationcode.toUpperCase()}`)).size, groups.length);
-  assert.match(functionSource('Code.gs', 'handleSignedReclassRecountCompletion_'), /On Hand[^]*Available[^]*Review[^]*countedTotal/);
-  const surgicalMigration = read('supabase/migrations/20261025003000_agdata_v2361_surgical_restore.sql');
-  const canonicalMigration = read('supabase/migrations/20261025013000_agdata_v2362_canonical_requests.sql');
-  const uniformMigration = read('supabase/migrations/20261025023000_agdata_v2363_uniform_active_history_architecture.sql');
-  assert.match(surgicalMigration, /ph_reclass_recount_jobs_pending_item_location_v2361_idx/);
-  assert.match(surgicalMigration, /RECOUNT_NAME_UNRESOLVED/);
-  assert.match(uniformMigration, /ph_active_recount[^]*ph_historical_inventory_dimensions[^]*regexp_replace[^]*identity_rank = 1/);
-  assert.match(read('supabase/functions/app-api/index.ts'), /ph_active_recount\?select=id,itemcode,commonname/);
-  assert.doesNotMatch(canonicalMigration, /drop table[^;]*ph_reclass_recount_jobs/i);
-});
+test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () =>
+  assertRecountGrouping(runFunctions,plain,functionSource,read));
 test('Invariant 10 (Reclass Move Up / Move Down Season-Wide Open Stock & Loc Photo Match Math)', () => reclassSeasonContract(runFunctions,read));
 test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () => assertReclassInquiryTable(runFunctions,plain));
 test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', invariant12);
@@ -5833,3 +5798,7 @@ test('Invariant 674: batched parser discovery retains stable transitive and cycl
 
 test('Invariant 675: the HTTP master benchmark requires all 53 enabled triggers including both canonical evidence-delta markers', async () =>
   (await import('../src/core/golden-bulk-trigger-contract.mjs')).assertBulkTriggerContract());
+
+
+test('Invariant 676: owner-reviewed Watchdog closure requires the native session and requested incident receipt without replaying a Request mutation', async () =>
+  (await import('../src/core/golden-watchdog-owner-contract.mjs')).assertOwnedWatchdogReview(runFunctions));
