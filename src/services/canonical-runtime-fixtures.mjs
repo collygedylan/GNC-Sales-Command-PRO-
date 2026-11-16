@@ -41,7 +41,7 @@ export function compileCanonicalRuntimeFixture(file,original,read) {
   const source=original.replaceAll('\r\n','\n');
   assert.equal(createHash('sha256').update(source).digest('hex'),entry[0],'canonical fixture source changed: '+file);
   let result=currentReclassDenials(adaptFixture(source,entry[1],read),file);
-  if(name==='inventory_reclass_moves_v1') result=currentReclassLedgerContract(result);
+  if(name==='inventory_reclass_moves_v1') result=currentReclassLedgerContract(result,read);
   if(name==='smart_priority_hold_shield_v6') result=currentSmartPublicContract(result);
   assert.deepEqual(result.match(/select\s+(?:plan\(\d+\)|no_plan\(\))/gi),source.match(/select\s+(?:plan\(\d+\)|no_plan\(\))/gi));
   assert.equal((result.match(/select\s+(?:ok|is|isnt|throws_ok|lives_ok|cmp_ok|has_function|has_table)\s*\(/gi)||[]).length,

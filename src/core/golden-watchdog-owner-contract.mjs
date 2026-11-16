@@ -70,3 +70,30 @@ export async function assertOwnedWatchdogReview(runFunctions) {
   await assert.rejects(context.resolveReviewedWatchdogEvents([12762]),/WATCHDOG_REVIEW_DENIED/);
   assert.equal(writes,before);
 }
+
+export async function assertOwnedWatchdogBatch(runFunctions) {
+  const ids=[13141,13149];
+  let receipt={ok:true,resolved:2,confirmed_ids:[...ids]},status=200,writes=0;
+  const context=runFunctions('assets/row-workflow-functions.js',['resolveReviewedWatchdogEvents'],{
+    currentUser:'dylan_collyge',APP_VERSION:'3.0.86',SUPABASE_URL:'https://fixture',
+    getSupabaseReadIdentityScope:()=> 'same-account',
+    getNativeAuthRequestHeaders:async()=>({Authorization:'Bearer native-fixture'}),
+    fetchWithTimeout:async(url,options)=>{
+      writes++;
+      assert.equal(url,'https://fixture/rest/v1/rpc/resolve_runtime_watchdog_events_v23158');
+      assert.deepEqual(JSON.parse(options.body),{p_ids:ids});
+      return {ok:status===200,status,json:async()=>receipt};
+    },
+  });
+  assert.equal((await context.resolveReviewedWatchdogEvents(ids)).resolved,2);
+  receipt={ok:true,resolved:1,confirmed_ids:[13141]};
+  await assert.rejects(context.resolveReviewedWatchdogEvents(ids),/WATCHDOG_REVIEW_RECEIPT_INVALID/);
+  receipt={ok:true,resolved:3,confirmed_ids:[...ids]};
+  await assert.rejects(context.resolveReviewedWatchdogEvents(ids),/WATCHDOG_REVIEW_RECEIPT_INVALID/);
+  status=403;
+  await assert.rejects(context.resolveReviewedWatchdogEvents(ids),/WATCHDOG_REVIEW_HTTP_403/);
+  const before=writes;
+  await assert.rejects(context.resolveReviewedWatchdogEvents([13141,'13149']),/WATCHDOG_REVIEW_DENIED/);
+  await assert.rejects(context.resolveReviewedWatchdogEvents([]),/WATCHDOG_REVIEW_DENIED/);
+  assert.equal(writes,before);
+}

@@ -1,4 +1,4 @@
-import {assertFourCallerRecovery,assertSelectedRepHydration,assertTypedSuspendBoundary,assertSingleMasterHydration} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
+import {assertFourCallerRecovery,assertSelectedRepHydration,assertTypedSuspendBoundary,assertSingleMasterHydration,assertBoundedMasterHydration,assertExactAvHydration} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
 import {assertCropTierGlossary,assertSetBasedErpIngestion} from '../src/core/golden-sql-lint-compiled-contract.mjs';
 import {assertHistoricalConsolidation} from '../src/core/golden-bunch-blueprint-catalog-contract.mjs';
 import {assertQueueResolution} from '../src/core/golden-master-staging-fixture-contract.mjs';
@@ -267,39 +267,9 @@ test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', () => 
 
 test('Invariant 35 (AV Uses One Canonical Master Hydration)', () => assertSingleMasterHydration(read,runFunctions,functionSource));
 
-test('Invariant 36 (Master Hydration Avoids Exact Count Timeouts)', () => {
-  const directSource = functionSource('assets/app-runtime.js', 'fetchDirectMasterInventoryPage');
-  const pagingSource = functionSource('assets/app-runtime.js', 'fetchAllInventoryReadRows');
-  const adapterSource = functionSource('assets/app-runtime.js', 'createProductionCoreLiveAdapter');
-  assert.match(directSource, /count:\s*false/);
-  assert.doesNotMatch(directSource, /count:\s*true/);
-  assert.match(directSource, /unique_id=gt\.\$\{encodeURIComponent\(afterUniqueId\)\}/);
-  assert.match(pagingSource, /afterUniqueId \? \{ \.\.\.options, afterUniqueId \} : options/);
-  assert.match(pagingSource, /nextUniqueId = String\(page\.rows\.at\(-1\)\?\.unique_id/);
-  assert.match(adapterSource, /Math\.min\(2, Math\.max\(1, Math\.floor\(Number\(stageOptions\.pageConcurrency\) \|\| 1\)\)\)/);
-  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never request `count=exact` or use deep offsets on wide `ph_master_inventory` pages/);
-});
+test('Invariant 36 (Master Hydration Avoids Exact Count Timeouts)', () => assertBoundedMasterHydration(read,functionSource));
 
-test('Invariant 37 (Exact AV Search Does Not Wait For Full Hydration)', () => {
-  const directSource = functionSource('assets/app-runtime.js', 'fetchDirectMasterInventoryItemRows');
-  const scheduleSource = functionSource('assets/app-runtime.js', 'scheduleExactAvSearchHydration');
-  const searchSource = functionSource('assets/app-runtime.js', 'handleAVSearch');
-  assert.match(directSource, /fetchDirectMasterInventoryPage\(\{ projection: 'full', itemCode: safeItemCode \}, 100/);
-  assert.match(directSource, /new Set\(ids\)\.size !== ids\.length/);
-  assert.match(scheduleSource, /invalidateResolvedViewStateCaches\(\{ preserveAvPreparation: true \}\)/);
-  assert.match(scheduleSource, /owner === getSupabaseReadIdentityScope\(\)/);
-  assert.match(scheduleSource, /installExactAvSearchHydrationRows\(rows, owner, permissionVersion, itemCode\)/);
-  assert.match(scheduleSource, /isViewVisible\('av'\) && remainsCurrent\(\)\) renderAV\(\)/);
-  assert.match(scheduleSource, /preferAnon: true/);
-  assert.doesNotMatch(scheduleSource, /setTimeout\(async/);
-  assert.match(searchSource, /scheduleExactAvSearchHydration\(term\)/);
-  assert.match(functionSource('assets/app-runtime.js', 'fetchDirectPostgrestReadPage'), /opts\.preferAnon === true \? null : await getNativeAuthRequestHeaders/);
-  assert.match(functionSource('assets/app-runtime.js', 'canUseDatasetForImmediateRender'), /hasCurrentExactAvSearchHydration\(\)/);
-  assert.match(functionSource('assets/app-runtime.js', 'previewProductionSnapshots'), /mergeExactAvSearchRowsIntoPreview\(payload\.data, context\)/);
-  assert.match(functionSource('assets/app-runtime.js', 'getCurrentExactAvSearchHydrationRows'), /context\.readIdentity/);
-  assert.match(functionSource('assets/app-runtime.js', 'buildResolvedAVBaseState'), /getAvSalesRowsForBucket\(activeAvSalesBucket, exactSearchRows\)/);
-  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never make an exact AV itemcode search wait for a near-tail full-cohort page/);
-});
+test('Invariant 37 (Exact AV Search Does Not Wait For Full Hydration)', () => assertExactAvHydration(read,functionSource));
 
 test('Invariant 38 (Visible Focused AV Search Survives Startup Reset)', () => {
   const resetSource = functionSource('assets/app-runtime.js', 'resetAVView');
@@ -5568,3 +5538,11 @@ test('Invariant 688: current Reclass fixture cohorts preserve exact receipts, re
 
 test('Invariant 689: a Reclass destination that becomes a source has explicit ERP open stock without a quantity fallback', async () =>
   (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertExplicitReclassFixtureStock(read));
+
+
+test('Invariant 690: every synthetic Reclass ERP import carries explicit file provenance without replacing known metadata', async () =>
+  (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertReclassImportProvenance(read));
+
+
+test('Invariant 691: an owner-reviewed stale-client cohort requires every requested native receipt and retains authorization failures', async () =>
+  (await import('../src/core/golden-watchdog-owner-contract.mjs')).assertOwnedWatchdogBatch(runFunctions));

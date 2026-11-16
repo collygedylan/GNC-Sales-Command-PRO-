@@ -52,13 +52,14 @@ export function currentReclassDenials(source,file) {
   return result;
 }
 
-export function currentReclassLedgerContract(source) {
+export function currentReclassLedgerContract(source,read) {
   const marker="  if exists(select 1 from jsonb_array_elements(result_value->'rows') e(value)";
   if(!source.includes(marker)) throw new Error('CANONICAL_RECLASS_LEDGER_CROP_BOUNDARY_CHANGED');
   source=replaceFixtureText(source,
     "locationcode,lotcode,ptronhand,ptravailable,source,season,saleyear)\nselect 'reclass-existing-u1-'",
     "locationcode,lotcode,ptronhand,ptravailable,s_lts,source,season,saleyear)\nselect 'reclass-existing-u1-'");
   source=replaceFixtureText(source,"  '10','8','PH','U1','27';","  '10','8','8','PH','U1','27';");
+  source=currentReclassImportEnvelope(source,read);
   const start=source.indexOf(marker);
   const end=source.indexOf("  if (select count(*) from public.ph_inventory_transactions",start);
   if(start<0||end<=start) throw new Error('CANONICAL_RECLASS_LEDGER_CROP_BOUNDARY_CHANGED');
@@ -73,6 +74,15 @@ export function currentReclassLedgerContract(source) {
     "        'trg_v2_master_inventory_crop_roll_drive_rows_delete'])) then\n"+
     "    raise exception 'canonical movement receipt differs or retired crop publication was revived';\n  end if;\n";
   return source.slice(0,start)+check+source.slice(end);
+}
+
+function currentReclassImportEnvelope(source,read) {
+  const pattern=/(public\.bulk_import_master_snapshot_v1\(run_id,'b4000000-0000-4000-8000-00000000000[1-9]',)(imported_rows|pre_rows|intermediate_rows)(,repeat\('[a-f]',64\)\))/g;
+  const matches=[...source.matchAll(pattern)];
+  if(matches.length!==9) throw new Error('CANONICAL_RECLASS_IMPORT_ENVELOPE_COUNT_CHANGED');
+  const helper=read('src/services/canonical-runtime-fixtures/import-envelope.sql');
+  const result=source.replace(pattern,(_,before,rows,after)=>before+'pg_temp.reclass_erp_file_rows_v1('+rows+')'+after);
+  return replaceFixtureText(result,'select plan(60);','select plan(60);\n'+helper);
 }
 
 export function currentSmartPublicContract(source) {

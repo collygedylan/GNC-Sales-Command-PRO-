@@ -5,9 +5,24 @@ import {compileCanonicalRuntimeFixture} from '../services/canonical-runtime-fixt
 import {grantCanonicalFixtureAuthority} from '../services/canonical-fixture-authority.mjs';
 import {replaceFixtureText,currentSmartPublicContract,currentReclassLedgerContract} from '../services/canonical-fixture-contracts.mjs';
 
+export function assertReclassImportProvenance(read) {
+  const file='supabase/tests/inventory_reclass_moves_v1_test.sql';
+  const source=read(file).replaceAll('\r\n','\n');
+  const current=compileCanonicalRuntimeFixture(file,source,read);
+  const calls=[...current.matchAll(/public\.bulk_import_master_snapshot_v1\(run_id,'b4000000-0000-4000-8000-00000000000[1-9]',pg_temp\.reclass_erp_file_rows_v1\((?:imported_rows|pre_rows|intermediate_rows)\)/g)];
+  assert.equal(calls.length,9,'all real canonical RPC calls receive the complete synthetic ERP envelope');
+  assert.equal((current.match(/CREATE FUNCTION pg_temp\.reclass_erp_file_rows_v1/g)||[]).length,1);
+  const helper=read('src/services/canonical-runtime-fixtures/import-envelope.sql');
+  assert.match(helper,/IMMUTABLE STRICT/);
+  assert.match(helper,/CASE WHEN nullif\(btrim\(entry\.value#>>'\{values,filename\}'\),''\) IS NULL/);
+  assert.match(helper,/ELSE entry\.value END ORDER BY entry\.ordinality/);
+  assert.match(helper,/'canonical-reclass-ledger.xlsx'/);
+  assert.throws(()=>currentReclassLedgerContract(source.replace(",imported_rows,repeat('a',64)",",unregistered_rows,repeat('a',64)"),read),/ENVELOPE_COUNT_CHANGED/);
+}
+
 export function assertExplicitReclassFixtureStock(read) {
   const source=read('supabase/tests/inventory_reclass_moves_v1_test.sql').replaceAll('\r\n','\n');
-  const current=currentReclassLedgerContract(source);
+  const current=currentReclassLedgerContract(source,read);
   const start=current.indexOf("select 'reclass-existing-u1-'");
   assert.ok(start>0);
   assert.match(current.slice(start-120,start),/ptronhand,ptravailable,s_lts,source,season,saleyear/);
@@ -28,7 +43,7 @@ export function assertCurrentReclassCohorts(read) {
   assert.match(current.slice(end),/jsonb_set\(pg_temp\.v6_public_rpc_payload/);
   assert.match(current.slice(end),/'reclass-action-workflow-v6-smart-shield-20261009','Eval Work final state preserves/);
   assert.throws(()=>currentSmartPublicContract(smart.replace('-- Eval Work uses the same V6 live transaction','changed')),/BOUNDARY_CHANGED/);
-  const ledger=currentReclassLedgerContract(read('supabase/tests/inventory_reclass_moves_v1_test.sql').replaceAll('\r\n','\n'));
+  const ledger=currentReclassLedgerContract(read('supabase/tests/inventory_reclass_moves_v1_test.sql').replaceAll('\r\n','\n'),read);
   assert.match(ledger,/e\.value->'row' is distinct from to_jsonb\(master\)/);
   assert.match(ledger,/master\.unique_id is null/);
   assert.match(ledger,/or exists\(select 1 from public\.ph_crop_roll_drive_rows crop/);
@@ -189,4 +204,38 @@ export function assertSingleMasterHydration(read,runFunctions,functionSource) {
   const liveContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
   assert.match(liveContext, /canonicalizeProductionCoreLiveKeys\(registry\.getCoreKeys\(targetView, targetContext\)\)/);
   assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never let `avOpen` and `master` create duplicate live-sync adapters/);
+}
+
+export function assertBoundedMasterHydration(read,functionSource) {
+  const directSource = functionSource('assets/app-runtime.js', 'fetchDirectMasterInventoryPage');
+  const pagingSource = functionSource('assets/app-runtime.js', 'fetchAllInventoryReadRows');
+  const adapterSource = functionSource('assets/app-runtime.js', 'createProductionCoreLiveAdapter');
+  assert.match(directSource, /count:\s*false/);
+  assert.doesNotMatch(directSource, /count:\s*true/);
+  assert.match(directSource, /unique_id=gt\.\$\{encodeURIComponent\(afterUniqueId\)\}/);
+  assert.match(pagingSource, /afterUniqueId \? \{ \.\.\.options, afterUniqueId \} : options/);
+  assert.match(pagingSource, /nextUniqueId = String\(page\.rows\.at\(-1\)\?\.unique_id/);
+  assert.match(adapterSource, /Math\.min\(2, Math\.max\(1, Math\.floor\(Number\(stageOptions\.pageConcurrency\) \|\| 1\)\)\)/);
+  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never request `count=exact` or use deep offsets on wide `ph_master_inventory` pages/);
+}
+
+export function assertExactAvHydration(read,functionSource) {
+  const directSource = functionSource('assets/app-runtime.js', 'fetchDirectMasterInventoryItemRows');
+  const scheduleSource = functionSource('assets/app-runtime.js', 'scheduleExactAvSearchHydration');
+  const searchSource = functionSource('assets/app-runtime.js', 'handleAVSearch');
+  assert.match(directSource, /fetchDirectMasterInventoryPage\(\{ projection: 'full', itemCode: safeItemCode \}, 100/);
+  assert.match(directSource, /new Set\(ids\)\.size !== ids\.length/);
+  assert.match(scheduleSource, /invalidateResolvedViewStateCaches\(\{ preserveAvPreparation: true \}\)/);
+  assert.match(scheduleSource, /owner === getSupabaseReadIdentityScope\(\)/);
+  assert.match(scheduleSource, /installExactAvSearchHydrationRows\(rows, owner, permissionVersion, itemCode\)/);
+  assert.match(scheduleSource, /isViewVisible\('av'\) && remainsCurrent\(\)\) renderAV\(\)/);
+  assert.match(scheduleSource, /preferAnon: true/);
+  assert.doesNotMatch(scheduleSource, /setTimeout\(async/);
+  assert.match(searchSource, /scheduleExactAvSearchHydration\(term\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'fetchDirectPostgrestReadPage'), /opts\.preferAnon === true \? null : await getNativeAuthRequestHeaders/);
+  assert.match(functionSource('assets/app-runtime.js', 'canUseDatasetForImmediateRender'), /hasCurrentExactAvSearchHydration\(\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'previewProductionSnapshots'), /mergeExactAvSearchRowsIntoPreview\(payload\.data, context\)/);
+  assert.match(functionSource('assets/app-runtime.js', 'getCurrentExactAvSearchHydrationRows'), /context\.readIdentity/);
+  assert.match(functionSource('assets/app-runtime.js', 'buildResolvedAVBaseState'), /getAvSalesRowsForBucket\(activeAvSalesBucket, exactSearchRows\)/);
+  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never make an exact AV itemcode search wait for a near-tail full-cohort page/);
 }
