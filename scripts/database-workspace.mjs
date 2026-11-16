@@ -5,6 +5,7 @@ import { repoRoot } from './tooling-process.mjs';
 import { augmentPublicBaseline, sqlStatements } from './database-catalog.mjs';
 import { splitCanonicalNurseryReplaySeed } from '../src/services/canonical-nursery-replay.mjs';
 import { disposableDatabaseConfig } from '../src/services/disposable-database-config.mjs';
+import { replayCanonicalDeliveryCron } from '../src/services/canonical-delivery-cron-replay.mjs';
 
 export const DATABASE_LINT_SCHEMAS = [
   'public', 'app_sync_private', 'aura_private', 'bloomscapes_private', 'bunch_note_private', 'extensions',
@@ -301,7 +302,7 @@ function writeCanonicalMigrations({ root, workspace, migrationsDir, migrationSou
     // Later migrations match exact LF function bodies through pg_get_functiondef.
     const original = readFileSync(path.join(migrationSource, name), 'utf8').replaceAll('\r\n', '\n');
     const replay = repairCanonicalReplayTerminator(isolateCanonicalCronJob(original, name), name);
-    const compatible = replaySuspendMembership(replay, name);
+    const compatible = replayCanonicalDeliveryCron(replaySuspendMembership(replay, name), name, root);
     const source = removeReplaySelfRegistration(splitCanonicalNurseryReplaySeed(compatible, name), name);
     if (name === baselineName) {
       platformPrivilegeSqlPath = writeCanonicalBaseline({ root, workspace, migrationsDir, baselineName, source });

@@ -1,3 +1,4 @@
+import {assertReclassInquiryTable} from '../src/core/golden-delivery-cron-replay-contract.mjs';
 import {assertCrossLayerSeam} from '../src/core/golden-reclass-replay-contract.mjs';
 import {assertManualSyncContract} from '../src/core/golden-watchdog-replay-contract.mjs';
 import {assertEvalBlockLocationDrill} from '../src/core/golden-photo-replay-contract.mjs';
@@ -157,14 +158,7 @@ test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () =>
   assert.doesNotMatch(canonicalMigration, /drop table[^;]*ph_reclass_recount_jobs/i);
 });
 test('Invariant 10 (Reclass Move Up / Move Down Season-Wide Open Stock & Loc Photo Match Math)', () => reclassSeasonContract(runFunctions,read));
-test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () => {
-  const context = runFunctions('Code.gs', ['buildReclassInlineOhText_', 'buildReclassItemInquiryTable_'], { sortReclassInquiryCompactRows_: rows => rows });
-  const table = plain(context.buildReclassItemInquiryTable_({ identity: { commonname: 'Green Velvet Boxwood' }, rows: [{ unique_id: 'source', values: { lotcode: '27.S1', locationcode: 'A.03.000', source: 'BR', ptronhand: '275' }, actionValues: {}, changedFields: [] }], completedMoveSummary: [{ direction: 'move_up', quantity: 55, source: { unique_id: 'source' }, destination: { season: 'F1' } }] }));
-  assert.deepEqual(table.columns.map(column => column[1]), ['Lotcode', 'Location', 'SOURCE', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note']);
-  assert.equal(table.rows[0][4].text, '330 - 55 --> F1');
-  assert.deepEqual(table.rows[0][4].proposals, []);
-  assert.doesNotMatch(JSON.stringify(table.columns), /Action(?: Details)?/);
-});
+test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () => assertReclassInquiryTable(runFunctions,plain));
 test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', invariant12);
 test('Invariant 13 (#view-smart-moves Immediate Hydration)', invariant13);
 test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () =>
@@ -5866,3 +5860,7 @@ test('Invariant 671: disposable Watchdog replay preserves the installed reviewer
 
 test('Invariant 672: disposable Reclass replay requires the exact installed actor predecessor before replacing its authorization owner', async () =>
   (await import('../src/core/golden-reclass-replay-contract.mjs')).assertReclassActorReplay());
+
+
+test('Invariant 673: disposable delivery cron identity and verified cleanup enclose the unchanged guarded migration in one transaction', async () =>
+  (await import('../src/core/golden-delivery-cron-replay-contract.mjs')).assertDeliveryCronReplay());
