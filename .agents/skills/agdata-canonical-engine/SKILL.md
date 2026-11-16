@@ -46,6 +46,10 @@ wrong-row/wrong-account receipts and safe matching counterexamples.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never infer the operation behind a generic timeout. The owner verified Watchdog13296/13308 as pre-fix Item Detail / Que REQUEST photo retries; close only that unchanged cohort after publication, preserve occurrence/time evidence, and retain the exact owner note through the canonical reviewer receipt.
+
+- Never send a captured request photo through an unregistered RPC or treat uploaded bytes as a saved row. Drive and Que alone capture/edit; direct Storage uses exact actor/row scope, request intent registration, retained blobs and canonical publication receipts. Retry immediately shows Uploading and reuploads before matching Saved; server photo dates remain typed and display MM/DD/YY.
+
 - Never inherit photos or evaluation fields from an item/location match with a missing or different lot, or from a different physical UID. A linked UID cannot override a conflicting full tuple. Invariant 617 exercises Green Giant F1/S1 separation and explicit sale-year qualification.
 
 - Do not give a photo write the timeout of a Storage read probe or cancel it

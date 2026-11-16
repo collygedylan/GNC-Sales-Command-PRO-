@@ -40,6 +40,10 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never infer the operation behind a generic timeout. The owner verified Watchdog13296/13308 as pre-fix Item Detail / Que REQUEST photo retries; close only that unchanged cohort after publication, preserve occurrence/time evidence, and retain the exact owner note through the canonical reviewer receipt.
+
+- Never repair photo RPC drift by regenerating the full schema or accepting arbitrary operation names. Keep finite reviewed argument contracts, native-session intent preparation and exact-row Storage RLS; an Edge failure may fall back only through the same authenticated transport. Validate positive and denied cases locally, retain real receipts and keep radio AAC MIME validation consistent with MediaRecorder.
+
 - Invariant 693: A canonical generator is still responsible for the legacy size ratchet of its output. Extract the current action/provenance tables and reviewed RPC descriptors through the owning generator into bounded parts, recompose the exact schema, and strictly shrink the existing generated monolith. Reject absent symbols before consuming any descriptors and reject oversized output before writing; never hand-patch output or exempt the growth from the hook.
 
 - Invariant 692: Passing SQL fixtures does not certify generated declarations. Regenerate public types from the entire canonical source chain with the pinned postgres-meta image and ordinary database ownership, then regenerate dependent runtime contracts through their canonical writers. Preserve structured action-ledger fields and required discrepancy file provenance; prove a missing ledger type fails the freshness guard. Never hand-edit generated parts or weaken type freshness to clear CI.

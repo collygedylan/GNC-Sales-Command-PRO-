@@ -89,7 +89,6 @@ test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncatio
   assertStackedEvalSorting(locationContext,functionSource,runFunctions,plain));
 test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () =>
   assertEvalBlockLocationDrill(locationContext));
-
 test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => requestLifecycleContract(runFunctions,locationContext,functionSource,read));
 test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () =>
   assertRecountGrouping(runFunctions,plain,functionSource,read));
@@ -99,7 +98,6 @@ test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', invariant12);
 test('Invariant 13 (#view-smart-moves Immediate Hydration)', invariant13);
 test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () =>
   assertManualSyncContract(runFunctions,functionSource));
-
 test('Invariant 15 (Cross-Layer Seam & Schema Contract Integrity)', () => assertCrossLayerSeam(read,runFunctions));
 test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', () => assertWatchdogAutoTriage(read,path,root,readFileSync));
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', invariant17);
@@ -191,7 +189,6 @@ test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', asyn
   assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);
 });
 test('Invariant 21 (Zero Cross-Request Deduplication)', assertCrossRequestIdentity);
-
 test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => escapedTextContract(runFunctions,read,functionSource));
 import { assertRequestHistoryIsolatedSync } from '../src/core/golden-request-history-isolated-sync.mjs';
 test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => assertRequestHistoryIsolatedSync(read));
@@ -252,29 +249,19 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
   assert.match(runner, /agdataV2365SalesImpactUnionFixMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });
 test('Invariant 25 (Indexed Four-Domain Historical Archive)', () => assertIndexedArchive(read));
-
 test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => assertQueueResolution(read));
-
 test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolidation)', () => assertHistoricalConsolidation(read));
-
 test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () => assertCropTierGlossary(read,runFunctions));
-
 test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Direct Quick Access)', () => requestPhotoNavigationContract(read,runFunctions,functionSource));
 test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => assertSetBasedErpIngestion(read,functionSource));
-
 test('Invariant 31 (Four-Caller Delivery and Direct Hydration Recovery)', () => assertFourCallerRecovery(read,functionSource));
 test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', () => assertSelectedRepHydration(read,runFunctions,functionSource));
 test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', invariant33);
 test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', () => assertTypedSuspendBoundary(read,databaseBridge));
-
 test('Invariant 35 (AV Uses One Canonical Master Hydration)', () => assertSingleMasterHydration(read,runFunctions,functionSource));
-
 test('Invariant 36 (Master Hydration Avoids Exact Count Timeouts)', () => assertBoundedMasterHydration(read,functionSource));
-
 test('Invariant 37 (Exact AV Search Does Not Wait For Full Hydration)', () => assertExactAvHydration(read,functionSource));
-
 test('Invariant 38 (Visible Focused AV Search Survives Startup Reset)', () => assertFocusedAvStartup(read,functionSource));
-
 test('Invariant 39 (Delivery Recovery Keeps Private Worker Boundary)', () => {
   const migrationName = '20261026150000_agdata_v2369_private_delivery_boundary.sql';
   const migration = read(`supabase/migrations/${migrationName}`);
@@ -304,13 +291,9 @@ test('Invariant 39 (Delivery Recovery Keeps Private Worker Boundary)', () => {
   assert.match(appsScript, /resolveSupabaseServiceRoleKey_[^]*const SUPABASE_KEY = resolveSupabaseServiceRoleKey_/);
   assert.match(read('.codex/skills/agdata-bloom-and-request-specialist/SKILL.md'), /Never restore a delivery worker by granting browser roles access/);
 });
-
 test('Invariant 40 (Request Completion and Watchdog Recovery Stay Fail-Open)', () => assertRequestWatchdogRecovery(read,functionSource,expectedAppApiVersion));
-
 test('Invariant 41 (Canonical Version Mismatch Is One-Time and Auth-Safe)', () => invariant41({read, expectedAppApiVersion}));
-
 test('Invariant 42 (Published Version Fingerprint Matches Runtime Fetch Path)', () => invariant42({read}));
-
 test('Invariant 43 (Request, Suspend, Reclass, Import, Outbox, and AV Boundaries Stay Separated)', () => {
   const runtime = read('assets/app-runtime.js');
   const codeGs = read('Code.gs');
@@ -332,9 +315,7 @@ test('Invariant 43 (Request, Suspend, Reclass, Import, Outbox, and AV Boundaries
   assert.doesNotMatch(read('supabase/functions/_shared/production-workflow.ts'), /Inventory identity changed before this move could be confirmed/);
   assert.match(read('.codex/skills/agdata-email-outbox-and-worker-guard/SKILL.md'), /Never repair a missing worker credential by granting anonymous operational writes/);
 });
-
 test('Invariant 44 (Request Completion Persists Before Active-View Eviction)', () => requestCompletionContract(read,functionSource));
-
 test('Invariant 45 (Bulk ERP Imports Cannot Re-enter Per-Row Archive Locks)', () => {
   const migration = read('supabase/migrations/20261026180000_agdata_v2373_fast_apps_script_erp_import_unblock.sql');
   const code = read('Code.gs');
@@ -344,7 +325,6 @@ test('Invariant 45 (Bulk ERP Imports Cannot Re-enter Per-Row Archive Locks)', ()
   assert.match(code, /trashDriveFileWithRetry_\(file, 'orphaned live import temporary file'\)/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never retain orphaned `TEMP_IMPORT_\*`/);
 });
-
 test('Invariant 46 (Drive Fast Ingest Outlives Its Guarded Snapshot Publication)', () => {
   const migration = read('supabase/migrations/20261026190000_agdata_v2373_drive_timeout_recovery.sql');
   const code = read('Code.gs');
@@ -356,7 +336,6 @@ test('Invariant 46 (Drive Fast Ingest Outlives Its Guarded Snapshot Publication)
   assert.ok(packageJson.appsScriptPatchFunctions.includes('isCheckpointedLatestImportTable_'));
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never give the outer Drive fast-ingest RPC a shorter timeout/);
 });
-
 test('Invariant 47 (Drive Publication Uses Trigger-Suppressed Fast Ingest)', () => {
   const code = read('Code.gs');
   const routedImport = functionSource('Code.gs', 'runRoutedDropImport_');
@@ -365,7 +344,6 @@ test('Invariant 47 (Drive Publication Uses Trigger-Suppressed Fast Ingest)', () 
   assert.match(read('supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql'), /disable trigger user[^]*enable trigger user/);
   assert.match(code, /MANUAL_SYNC_EXECUTION_BUDGET_MS = 330000/);
 });
-
 test('Invariant 48 (Drive Failures Retain Structured Safe Codes)', () => {
   const failureCode = functionSource('Code.gs', 'getSafeImportFailureCode_');
   assert.match(failureCode, /\^MASTER_BULK_\[A-Z0-9_\]\+\$/);
@@ -375,7 +353,6 @@ test('Invariant 48 (Drive Failures Retain Structured Safe Codes)', () => {
   assert.match(functionSource('Code.gs', 'processSnapshotBatchFolderLocked_'), /MANUAL_SYNC_' \+ String\(failurePhase \|\| 'stage'\)\.toUpperCase\(\) \+ '_FAILED'/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never collapse a structured master-bulk or SQLSTATE failure/);
 });
-
 test('Invariant 49 (Unified Fast Import Preserves Physical Orders, Metrics, Reclass, and Email Actors)', () => {
   const migration = read('supabase/migrations/20261026200000_agdata_v2374_unified_fast_baseline_suspend_reclass_email.sql');
   const runtime = read('assets/app-runtime.js');
@@ -387,7 +364,6 @@ test('Invariant 49 (Unified Fast Import Preserves Physical Orders, Metrics, Recl
   assert.match(runtime, /normalizedKey === 'AV_NOTE'\) return sanitizeAvNoteWithoutSpecCaliper/);
   assert.match(read('assets/app-shell-style-05.css'), /\.photo-date-badge-host[^]*flex-direction: column[^]*\.photo-thumb-date \{[^]*position: static/);
 });
-
 test('Invariant 50 (Suspend Active View Renders Every Physical Line)', () => {
   const runtime = read('assets/app-runtime.js');
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -402,9 +378,7 @@ test('Invariant 50 (Suspend Active View Renders Every Physical Line)', () => {
   assert.match(sync, /disable trigger user[^]*enable trigger user/);
   assert.doesNotMatch(sync, /from 'pg'|GNC_SUPABASE_DB_URL|new Pool/);
 });
-
 test('Invariant 51 (Login Restore Cannot Enter a Version Reload Loop)', () => invariant51({read}));
-
 test('Invariant 52 (Suspend Reads Fail Open Without Weakening Mutations)', () => {
   const runtime = read('assets/app-runtime.js');
   const appApi = read('supabase/functions/app-api/index.ts');
@@ -421,7 +395,6 @@ test('Invariant 52 (Suspend Reads Fail Open Without Weakening Mutations)', () =>
   assert.match(migration, /grant select on public\.ph_active_suspend to anon,authenticated,service_role/);
   assert.match(migration, /SUSPEND_ACTIVE_COUNT_MISMATCH/);
 });
-
 test('Invariant 53 (False Block Variants Never Become Email Pull Options)', () => {
   const ctx = runFunctions('Code.gs', ['buildSuspendTagApprovalEmail_'], {
     dedupeEmailAddresses_: values => [...new Set(values)],
@@ -444,7 +417,6 @@ test('Invariant 53 (False Block Variants Never Become Email Pull Options)', () =
   assert.throws(() => ctx.buildSuspendTagApprovalEmail_({ eventType: 'suspend_tag_approval_requested',
     payload: { approval: { ...approval, snapshot: { locationcode: '00.000.111' } } } }), /NO_PULL_CANDIDATES/);
 });
-
 test('Invariant 54 (Suspend Queue Preserves Server Open Stock Unless an Exact Tuple Exists)', () => {
   const metricSink = {};
   const ctx = runFunctions('assets/app-runtime.js', ['isFalseBlockLocation', 'normalizeRequestCardMetrics', 'buildQueueInventoryMetricsHtml'], {
@@ -493,7 +465,6 @@ test('Invariant 54 (Suspend Queue Preserves Server Open Stock Unless an Exact Tu
   assert.equal(metricSink.row.PTRONHAND, undefined, 'missing metrics remain unknown instead of becoming zero');
   assert.equal(metricSink.row.S_LTS, null);
 });
-
 test('Invariant 55 (Apps Script Version Capacity Never Blocks Authorized HEAD Sync)', async () => {
   const { syncAppsScriptProject } = await import('../scripts/apps-script-sync-lib.mjs');
   const calls = [];
@@ -519,9 +490,7 @@ test('Invariant 55 (Apps Script Version Capacity Never Blocks Authorized HEAD Sy
   assert.equal(result.versionCreated, false);
   assert.equal(result.health, null);
 });
-
 test('Invariant 56 (Reclass Destination Preserves Season Stock and Location Total)', () => reclassDestinationContract(functionSource));
-
 test('Invariant 57 (Completed Reclass Report Uses Only Frozen Pre-Edit ERP Rows)', () => {
   const fields = ['lotcode', 'locationcode', 'source', 'priority', 'ptronhand', 'ptrreviewed', 'locationnotedate', 'locationptn1', 'locationnote']
     .map(key => ({ key, aliases: [key] }));
@@ -561,7 +530,6 @@ test('Invariant 57 (Completed Reclass Report Uses Only Frozen Pre-Edit ERP Rows)
   assert.equal(table.rows.some(row => row[0].text === '27.F1' && row[1].text === 'C.15.000'), false,
     'an app-created destination in appliedRows never enters the ERP report');
 });
-
 test('Invariant 58 (Unassigned Itemcode Notices Are Unique, Manager-Scoped and Open the Assignment Filter)', () => {
   const seen = new Map(), notices = [], routes = [];
   const state = { filters: { SOURCE: ['stale'] }, sort: { field: 'SOURCE' } };
@@ -588,7 +556,6 @@ test('Invariant 58 (Unassigned Itemcode Notices Are Unique, Manager-Scoped and O
   assert.equal(routes.length, 2);
   assert.equal(notices.length, 1);
 });
-
 test('Invariant 59 (Completed Reclass Preserves Existing ERP Destination Snapshot)', () => {
   const fields = ['lotcode', 'locationcode', 'source', 'priority', 'ptronhand', 'ptrreviewed', 'locationnotedate', 'locationptn1', 'locationnote']
     .map(key => ({ key, aliases: [key] }));
@@ -643,7 +610,6 @@ test('Invariant 59 (Completed Reclass Preserves Existing ERP Destination Snapsho
   assert.match(html, /proposal-box/);
   assert.match(html, /background:#fef08a/);
 });
-
 test('Invariant 60 (Full Manager Assigned Items Uses Its Core Live-Sync Cohort)', () => {
   const context = vm.createContext({
     activeHomeTab: 'assigned-items-export', currentUser: 'manager',
@@ -666,7 +632,6 @@ test('Invariant 60 (Full Manager Assigned Items Uses Its Core Live-Sync Cohort)'
     assert.ok(adapters.includes(id), `full Assigned Items cohort includes ${id}`);
   }
 });
-
 test('Invariant 61 (Low Stock Revisions Use an App-API-Compatible Public Signal)', () => {
   const context = vm.createContext({});
   vm.runInContext(read('assets/live-sync-registry.js'), context);
@@ -685,7 +650,6 @@ test('Invariant 61 (Low Stock Revisions Use an App-API-Compatible Public Signal)
     assert.ok(!keys.some(key => privateKeys.includes(key)), 'no private-schema key reaches the revision API');
   }
 });
-
 test('Invariant 62 (Loaded Drive Rows Paint Before Background Catalog Verification)', () => {
   const attrs = new Map();
   const container = { innerHTML: '', setAttribute: (key, value) => attrs.set(key, value),
@@ -709,9 +673,7 @@ test('Invariant 62 (Loaded Drive Rows Paint Before Background Catalog Verificati
   assert.equal(attrs.has('data-complete-name-catalog'), false, 'displaying rows does not claim complete verification');
 });
 import { queueInventoryExactContract } from '../src/core/golden-queue-exact.mjs';
-
 test('Invariant 63 (Queue Inventory Uses Exact Location/Lot and False Block Never Borrows Metrics)', () => queueInventoryExactContract({read,runFunctions}));
-
 test('Invariant 64 (Queue API and Rendered Cards Preserve Exact Stock and Hide False Block Metrics)', () => {
   const backend = runFunctions('supabase/functions/app-api/index.ts', [
     'normalizeSuspendTagMetricKey', 'sumSuspendTagMetric', 'sumSuspendTagAvailable',
@@ -751,7 +713,6 @@ test('Invariant 64 (Queue API and Rendered Cards Preserve Exact Stock and Hide F
       `${locationcode} renders no inventory metric boxes even with a stale enriched payload`);
   }
 });
-
 test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock Fit)', () => {
   const styles = read('assets/app-styles.css');
   assert.match(styles, /current-view-home\.home-dashboard-mode[\s\S]{0,5000}grid-template-rows:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/,
@@ -788,7 +749,6 @@ test('Invariant 65 (Mobile Home Keeps All Dashboard Rows in the Header-to-Dock F
   context.syncGoogleScriptButton();
   assert.equal(panel.open, true, 'a user-selected disclosure state is preserved across viewport changes');
 });
-
 test('Invariant 66 (JD Universal Request Directory and Valid N/A Pair)', () => {
   const runtime = runFunctions('assets/app-runtime.js', [
     'normalizeRepMatchToken', 'normalizeRepDisplayOrder', 'isUniversalRequestDirectoryRep'
@@ -816,11 +776,8 @@ test('Invariant 66 (JD Universal Request Directory and Valid N/A Pair)', () => {
     'submission validates the exact executive tuple against the same app-wide sources');
   assert.match(migration, /AGDATA_NA_CUSTOMER[^]*AGDATA_NA_CONSIGNEE/);
 });
-
 test('Invariant 67 (Interactive Login and Atomic Drive Publication Retain Their Exact Owners)', () => invariant67({read}));
-
 test('Invariant 68 (Reclass Delta Reports, Bloom Gallery Shares and Discoverable Passkeys Stay Canonical)', () => sharePasskeyContract(runFunctions,read,functionSource));
-
 test('Invariant 69 (Season Winner AV Notes and Shared Card Evidence Stay Exact)', () => {
   const runtime = read('assets/app-runtime.js');
   const styles = read('assets/ops-precision-pilot.css');
@@ -834,7 +791,6 @@ test('Invariant 69 (Season Winner AV Notes and Shared Card Evidence Stay Exact)'
   assert.match(styles, /--drive-card-photo-width:\s*80px;[^]*--drive-card-photo-height:\s*80px;/);
   assert.match(styles, /app-drive-card-photo img[^}]*object-fit:\s*cover\s*!important/);
 });
-
 test('Invariant 70 (Reclass New Seasons Persist Zero-Baseline Stock and Durable Evidence)', () => {
   const edge = read('supabase/functions/_shared/production-workflow.ts');
   const migration = read('supabase/migrations/20261027163924_agdata_v2387_reclass_persistence_and_evidence.sql');
@@ -849,20 +805,17 @@ test('Invariant 70 (Reclass New Seasons Persist Zero-Baseline Stock and Durable 
   assert.match(batchMigration, /source_before->>'loc_photo_match'/);
   for (const field of ['photo_link','photo_name','date_completed','pick_note','sales_note']) assert.match(batchMigration, new RegExp(field));
 });
-
 test('Invariant 71 (Pages Fast Gate Retains a Bounded Cleanup Margin)', () => {
   const workflow = read('.github/workflows/pages-static.yml');
   const fastGate = workflow.slice(workflow.indexOf('  fast-gate:'), workflow.indexOf('\n  backend-publication:'));
   assert.match(fastGate, /timeout-minutes:\s*4/);
   assert.match(fastGate, /Focused release contracts only \(15 second budget\)/);
 });
-
 test('Invariant 72 (Every v2.3.87 Migration Has a Live Installed-State Contract)', () => {
   const runner = read('scripts/apply-item-low-stock-migration.mjs');
   assert.match(runner, /name === agdataV2387ReclassPersistenceEvidenceMigrationName[^]*20261027163924[^]*010585\.031\.1/);
   assert.match(runner, /name === agdataV2387BatchReclassEvidenceMigrationName[^]*20261027171000[^]*reclass-batch-evidence-v2387/);
 });
-
 test('Invariant 73 (Full Inventory Reads Preserve Durable Reclass Photo Evidence)', () => {
   const projections = read('supabase/functions/_shared/inventory-projections.ts');
   const browserContract = read('assets/inventory-list-contract.js');
@@ -876,7 +829,6 @@ test('Invariant 73 (Full Inventory Reads Preserve Durable Reclass Photo Evidence
     assert.match(browserContract, new RegExp(`'${field}'`), `${field} survives the direct browser full-row boundary`);
   }
 });
-
 test('Invariant 74 (AV Invalidation Checks Never Rewrite Durable Loc Photo Match)', () => {
   const runtime = read('assets/app-runtime.js');
   const start = runtime.indexOf('function getMasterAvInvalidationReasons(item)');
@@ -886,7 +838,6 @@ test('Invariant 74 (AV Invalidation Checks Never Rewrite Durable Loc Photo Match
   assert.doesNotMatch(helper, /item\.LOC_MATCH_QTY\s*=/);
   assert.match(helper, /calculateLocMatchQtyValue\(item\)\s*\?\?\s*parseAppNumber\(item\.LOC_MATCH_QTY\)/);
 });
-
 test('Invariant 75 (v2.3.88 Existing Evidence, Docks, Navigation and Watchdog Stay Fail-Open)', () => {
   const runtime = read('assets/app-runtime.js');
   const edge = read('supabase/functions/app-api/index.ts');
@@ -904,7 +855,6 @@ test('Invariant 75 (v2.3.88 Existing Evidence, Docks, Navigation and Watchdog St
   assert.match(migration, /reclass-source-alias-v2388/);
   assert.match(migration, /where status='open'/);
 });
-
 test('Invariant 76 (Bunch Notes Back Treats Each Visible Drill Screen as One Step)', () => {
   const bunch = read('assets/bunch-note.js');
   const start = bunch.indexOf('function back()');
@@ -914,11 +864,8 @@ test('Invariant 76 (Bunch Notes Back Treats Each Visible Drill Screen as One Ste
   assert.match(back, /else if\(state\.location\)\{state\.location='';state\.locationStep='setup';\}/);
   assert.doesNotMatch(back, /state\.location&&state\.locationStep==='items'/);
 });
-
 test('Invariant 77 (Managers Hub, Live File Revisions and Bunch Drafts Stay Durable)', () => managerSyncContract(read));
-
 test('Invariant 78 (Manager Shell Enhancement Preserves Every Submodule Deep Link)', () => invariant78({read}));
-
 test('Invariant 79 (CAV Revision Refresh Accepts Every Published Read Column)', () => {
   const types = read('supabase/functions/_shared/database.types.ts');
   const contracts = read('services/database-contracts.generated.ts');
@@ -928,7 +875,6 @@ test('Invariant 79 (CAV Revision Refresh Accepts Every Published Read Column)', 
   assert.match(browserBridge, /ph_cav_import[^]*open_stock[^]*season_oh/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never let generated database contracts lag live read-only columns/);
 });
-
 test('Invariant 80 (Higher File Revision Repaints Home Metadata Even at the Same Timestamp)', () => {
   const runtime = read('assets/app-runtime.js');
   const start = runtime.indexOf('function mergeDashboardSyncSummaries(summaries = [])');
@@ -940,7 +886,6 @@ test('Invariant 80 (Higher File Revision Repaints Home Metadata Even at the Same
   assert.match(runtime, /revision: String\(source\.revision \?\? ''\)[^]*authoritative:/);
   assert.match(read('.codex/skills/agdata-sync-and-supabase-architect/SKILL.md'), /Never resolve equal-timestamp Home filename metadata lexically/);
 });
-
 test('Invariant 81 (Fill Tag, Bunch Delivery, and Move Up Preserve Physical Boundaries)', () => {
   const runtime = read('assets/app-runtime.js');
   const bunch = read('assets/bunch-note.js');
@@ -5522,3 +5467,18 @@ test('Invariant 692: generated action-ledger and discrepancy types preserve nati
 
 test('Invariant 693: generated contract parts recompose the exact schema and reject absent symbols or oversized output before writes', async () =>
   (await import('../src/core/golden-generated-schema-contract.mjs')).assertLosslessCurrentSchemaParts());
+
+test('Invariant 694: photo mutations stay in actual Drive and Que surfaces without trusting master-table aliases', async () =>
+  (await import('../src/core/golden-photo-repair-contract.mjs')).assertPhotoSurfaceScope());
+
+test('Invariant 695: every Edge photo error falls back to authenticated Storage and denied Storage never becomes Saved', async () =>
+  (await import('../src/core/golden-photo-repair-contract.mjs')).assertPhotoFallback());
+
+test('Invariant 696: the finite photo RPC bridge rejects unknown names and invalid arguments before network dispatch', async () =>
+  (await import('../src/core/golden-photo-repair-contract.mjs')).assertPhotoRpcContracts());
+
+test('Invariant 697: photo controls use their exact detail origin even when department chrome retains its parent view class', async () =>
+  (await import('../src/core/golden-photo-repair-contract.mjs')).assertPhotoControlOrigin());
+
+test('Invariant 698: uploaded bytes remain Saving until the canonical publisher returns its durable receipt', async () =>
+  (await import('../src/core/golden-photo-repair-contract.mjs')).assertPhotoPublicationStatus());

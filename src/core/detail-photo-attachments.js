@@ -91,6 +91,7 @@ function stageDetailPhotoCapture(job) {
 }
 
 export function queueDrivePhotoAttachment(item, prefix, file, fileName, formFields = null, inquiry = null) {
+    if (!isPhotoMutationSurface(prefix)) return false;
     markLocalRowSaveRefreshQuiet('photo-attachment');
     const localBlobUrl = URL.createObjectURL(file);
     const preview = createPendingPhotoPreview(item, prefix, localBlobUrl, fileName);

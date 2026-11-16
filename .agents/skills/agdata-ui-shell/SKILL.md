@@ -40,6 +40,8 @@ and any required browser geometry. Source-only CSS checks do not prove layout.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Never derive photo editing scope from a master-table alias: AV/report/Studio/Docks remain photo readers. Capture, retry and delete controls must derive from the actual Drive or Que detail origin and retained authorization.
+
 - A release can opt into automatic updates through its version manifest.
   Never activate from that flag alone. Require the verified target shell and
   a current tab checkpoint, including the camera and write guards. Already

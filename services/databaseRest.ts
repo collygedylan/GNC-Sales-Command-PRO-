@@ -1,9 +1,10 @@
+import { photoOperationArgs, isPhotoOperation, type PhotoOperation } from './photo-operation-contracts.ts';
 import type { Database } from '../supabase/functions/_shared/database.types.ts';
 import { contracts } from './database-contracts.generated.ts';
 import { validateSchema, type Schema } from './database-contract-runtime.ts';
 
 type Table = keyof Database['public']['Tables'] | keyof Database['public']['Views'];
-type Rpc = keyof Database['public']['Functions'];
+type Rpc = keyof Database['public']['Functions'] | PhotoOperation;
 export type FetchWithTimeout = (url: string, init: RequestInit, timeout: number, label: string) => Promise<Response>;
 export type InventoryCsvDecoder = (text: string, expectedColumns: readonly string[]) => unknown;
 const has = (value: object, key: PropertyKey) => Object.prototype.hasOwnProperty.call(value, key);
@@ -12,7 +13,7 @@ export function tableName(input: unknown): Table {
   return input as Table;
 }
 export function rpcName(input: unknown): Rpc {
-  if (typeof input !== 'string' || !has(contracts.functions, input)) throw new Error('Unknown database operation. Refresh the application before retrying.');
+  if (typeof input !== 'string' || !has(contracts.functions, input) && !isPhotoOperation(input)) throw new Error('Unknown database operation. Refresh the application before retrying.');
   return input as Rpc;
 }
 // app-api has a compatibility fallback for older v2_* relation names. Keep it
@@ -160,9 +161,9 @@ export function createDatabaseRestBridge(
     },
     async fetchRpc(baseUrl: string, inputName: unknown, init: RequestInit, timeout: number, label: string) {
       const name = rpcName(inputName);
-      validateSchema(contracts.functions[name], requestBody(init.body), `${name} arguments`);
+      validateSchema(isPhotoOperation(name) ? photoOperationArgs[name] : contracts.functions[name], requestBody(init.body), `${name} arguments`);
       const response = await fetcher(`${baseUrl.replace(/\/$/, '')}/rest/v1/rpc/${name}`, init, timeout, label);
-      return validateSuccessfulJson(response, contracts.functionReturns[name], `${name} RPC`, String(init.method || 'POST').toUpperCase());
+      return validateSuccessfulJson(response, isPhotoOperation(name) ? 'json' : contracts.functionReturns[name], `${name} RPC`, String(init.method || 'POST').toUpperCase());
     },
   };
 }

@@ -1,0 +1,9 @@
+:is(label:has(input[type=file][accept*="image"]),input[type=file][accept*="image"],
+ [onclick*="handleEvalWorkPhotoInput"],[onclick*="openDockMistakeIssuePhotoPicker"],[onclick*="openDockMistakeDetailPhotoPicker"],
+ [onclick*="removeEvalWorkPhoto"],[onclick*="removeNotOnInventoryPhoto"],[onclick*="removeNcrDraftPhoto"],
+ [onclick*="retryDrivePhotoAttachment"],[onclick*="promptPhotoDelete"]
+):not(#view-detail *):not(#view-drive *):not(#view-request *) {display:none!important}
+body:not([data-photo-mutation-source="drive"]):not([data-photo-mutation-source="request"]) #view-detail :is(
+ label:has(input[type=file][accept*="image"]),input[type=file][accept*="image"],
+ [onclick*="retryDrivePhotoAttachment"],[onclick*="promptPhotoDelete"]
+) {display:none!important}

@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 const origin = 'https://camera.fixture.test';
 const workerPath = '/assets/image-optimize-worker-v2026090401.js';
 const transportPath = '/src/services/app-api-transport.js';
-const scriptPaths = new Set([workerPath, transportPath, '/src/services/rpc-recovery-domain.js',
+const scriptPaths = new Set([workerPath, transportPath, '/assets/photo-encoding.js', '/src/services/rpc-recovery-domain.js',
     '/src/services/operational-rpc-retry.js']);
 
 async function cameraJpeg(worker) {
