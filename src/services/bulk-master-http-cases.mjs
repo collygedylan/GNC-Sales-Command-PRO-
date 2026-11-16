@@ -93,7 +93,7 @@ export async function assertChangedBulkPublication(ctx) {
 
 export async function assertUnchangedBulkPublication(ctx) {
   const { state, begin, bulkPayload, measuredBulk, finish, rpc } = ctx;
-  const unchanged = legacyBulkSource(sourceRowsFromProductionShape({ shape: state.shape, columns: state.tableColumns, variant: 1, syncTime: '2026-10-14T12:02:00.000Z' }));
+  const unchanged = legacyBulkSource(sourceRowsFromProductionShape({ shape: state.shape, columns: state.tableColumns, variant: 0, syncTime: '2026-10-14T12:02:00.000Z' }));
   const unchangedRun = await begin();
   const unchangedRequest = bulkPayload(unchangedRun, unchanged);
   const unchangedResult = await measuredBulk(unchangedRequest, 'unchanged 9,539-row snapshot with fresh sync metadata');

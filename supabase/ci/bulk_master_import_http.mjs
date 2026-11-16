@@ -1,30 +1,12 @@
 // @test-runtime: canonical-http
 // Full-size canonical PH snapshot through the disposable local PostgREST API.
 import { pathToFileURL } from 'node:url';
-import { ROW_COUNT } from '../../src/services/bulk-master-http-source.mjs';
 import { attachBulkMasterOperations, connectBulkMasterFixture, throwBulkMasterFailure } from '../../src/services/bulk-master-http-transport.mjs';
-import { prepareBulkHandoverIdentity, readBulkMasterSchema, scheduleBulkHandover, seedBulkMasterFixture } from '../../src/services/bulk-master-http-contract.mjs';
-import { assertAtomicBulkRollback, assertChangedBulkPublication, assertInitialBulkPublication,
-  assertLegacyBulkBootstrap, assertUnchangedBulkPublication } from '../../src/services/bulk-master-http-cases.mjs';
+import { readBulkMasterSchema } from '../../src/services/bulk-master-http-contract.mjs';
 import { closeBulkMasterFences, removeBulkMasterFixtures, verifyBulkMasterCleanup } from '../../src/services/bulk-master-http-cleanup.mjs';
-import {verifyBulkActionSqlContract} from '../../src/services/bulk-master-http-protected-row.mjs';
+import {runBulkMasterCases} from '../../src/services/bulk-master-http-run.mjs';
 
 export { syntheticBulkMasterSnapshot } from '../../src/services/bulk-master-http-source.mjs';
-
-async function runBulkMasterCases(ctx) {
-  await prepareBulkHandoverIdentity(ctx);
-  await verifyBulkActionSqlContract(ctx);
-  await scheduleBulkHandover(ctx);
-  await seedBulkMasterFixture(ctx);
-  const initial = await assertInitialBulkPublication(ctx);
-  const changed = await assertChangedBulkPublication(ctx);
-  const unchanged = await assertUnchangedBulkPublication(ctx);
-  await assertAtomicBulkRollback(ctx, changed);
-  const legacy = await assertLegacyBulkBootstrap(ctx, changed);
-  const { tableColumns, masterImportFieldCount, masterProductionTriggerCount, sourceByteCount } = ctx.state;
-  process.stdout.write(`[bulk-master-http] ${ROW_COUNT} rows, ${tableColumns.length} columns, ${masterImportFieldCount} physical fields, ${masterProductionTriggerCount} installed triggers, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB` + '\n');
-  process.stdout.write(`[bulk-master-http] local Docker/Postgres ms: insert ${Math.round(initial.insert)}, changed ${Math.round(changed.milliseconds)}, unchanged ${Math.round(unchanged)}, exact replay ${Math.round(initial.replay)}, legacy bootstrap ${Math.round(legacy)}` + '\n');
-}
 
 async function cleanBulkMasterFixture(ctx) {
   try {

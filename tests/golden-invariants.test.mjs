@@ -1,3 +1,4 @@
+import {assertIndexedArchive} from '../src/core/golden-bulk-case-order-contract.mjs';
 import {assertCrossRequestIdentity} from '../src/core/golden-bulk-action-contract.mjs';
 import {assertWatchdogAutoTriage} from '../src/core/golden-bulk-rpc-contract.mjs';
 import {assertRequestQuantityRecovery} from '../src/core/golden-bulk-retirement-contract.mjs';
@@ -244,31 +245,8 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
   assert.match(runner, /agdataV2365AnonSecurityHardeningMigrationName[^]*registeredReleaseDatabaseMigrations/);
   assert.match(runner, /agdataV2365SalesImpactUnionFixMigrationName[^]*registeredReleaseDatabaseMigrations/);
 });
-test('Invariant 25 (Indexed Four-Domain Historical Archive)', () => {
-  const migration = read('supabase/migrations/20261025220000_agdata_v2366_historical_archive.sql');
-  for (const table of ['ph_orders_history', 'ph_reserves_history', 'ph_drive_mode_history_files', 'ph_drive_mode_history']) {
-    assert.match(migration, new RegExp(`create table if not exists public\\.${table}`));
-    assert.match(migration, new RegExp(`${table}[^]*create index|create index[^]*${table}`));
-  }
-  for (const marker of ['historical_archive_read_v1', 'ph_soc_master_archive_v2366', 'ph_reserves_archive_v2366',
-    'ph_drive_files_archive_v2366', 'ph_drive_evidence_archive_v2366', 'HISTORICAL_ARCHIVE_RETENTION_PROTECTED',
-    'HISTORICAL_PHOTO_RETENTION_PROTECTED', 'row.file_id=path_2', 'source.itemcode=dimension.itemcode']) assert.match(migration, new RegExp(marker));
-  assert.doesNotMatch(migration, /\bdrop\s+table\b/i);
-  assert.doesNotMatch(migration, /(?:^|\n)\s*truncate\s/i);
-  assert.doesNotMatch(migration, /count\(\*\)[^;]*ph_drive_around_report_rows/i);
+test('Invariant 25 (Indexed Four-Domain Historical Archive)', () => assertIndexedArchive(read));
 
-  const view = read('components/historical-requests/HistoricalRequestsView.tsx');
-  for (const label of ['Historical Requests', 'Historical SOC Open Orders', 'Historical SOC Reserves', 'Historical Drive Around']) {
-    assert.match(view, new RegExp(label));
-  }
-  assert.match(view, /Search this archive/);
-  const importer = read('scripts/fast-historical-archive-import.mjs');
-  for (const marker of ['defaultBatchSize = 2_000', 'defaultWorkers = 16', 'jsonb_to_recordset', 'sha256',
-    'historicalImportWindowOpen', 'application\/vnd\.google-apps\.spreadsheet', 'supportedExtensions = new Set']) assert.match(importer, new RegExp(marker));
-  assert.match(importer, /'\.csv', '\.xlsx'/);
-  assert.match(read('assets/app-runtime.js'), /\['master', 'soc', 'reserves', 'requests', 'requestHistory', 'customerRepMap'\]/);
-  assert.match(read('scripts/apply-item-low-stock-migration.mjs'), /agdataV2366HistoricalArchiveMigrationName[^]*registeredReleaseDatabaseMigrations/);
-});
 test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => {
   const migration = read('supabase/migrations/20261025234500_agdata_v2366_queue_resolution_cleanup.sql');
   for (const marker of ['queue_cleanup_recount_jobs_v2366', 'queue_cleanup_bunch_jobs_v2366',
@@ -5759,3 +5737,6 @@ test('Invariant 678: bulk HTTP publication and legacy bootstrap share the exact 
 
 test('Invariant 679: bulk ERP adoption preserves the app note and requires an exact lossless discrepancy receipt', async () =>
   (await import('../src/core/golden-bulk-action-contract.mjs')).assertBulkDiscrepancyReceipt());
+
+test('Invariant 680: metadata-only bulk publication runs before app edits and fails closed before dependent mutation cases', async () =>
+  (await import('../src/core/golden-bulk-case-order-contract.mjs')).assertBulkCaseIsolation());
