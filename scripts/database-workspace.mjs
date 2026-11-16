@@ -13,6 +13,11 @@ export const DATABASE_LINT_SCHEMAS = [
 const PRIVATE_SCHEMAS = DATABASE_LINT_SCHEMAS.filter((schema) => schema !== 'public' && schema !== 'extensions');
 const CANONICAL_MIGRATION_PREREQUISITES = [
   {
+    before: '20261111173946_photo_request_table_authorization.sql',
+    source: 'supabase/ci/canonical_photo_authorization_version.sql',
+    destination: '20261111173945_ci_canonical_photo_authorization_version.sql',
+  },
+  {
     before: '20261002134138_nelly_access_audit_baseline_repair_007.sql',
     source: 'supabase/ci/canonical_migration_data_prerequisites.sql',
     destination: '20261002134137_ci_canonical_migration_data_prerequisites.sql',

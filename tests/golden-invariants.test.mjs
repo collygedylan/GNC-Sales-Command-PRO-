@@ -1,3 +1,4 @@
+import {assertEvalBlockLocationDrill} from '../src/core/golden-photo-replay-contract.mjs';
 import {invariant554} from './helpers/golden-restored-inventory-preview-guard.mjs';
 import {invariant237,invariant274,invariant291,invariant297,invariant301} from './helpers/golden-restored-owner-invariants.mjs';
 import {invariant312,invariant327,invariant330,invariant332} from './helpers/golden-restored-manager-invariants.mjs';
@@ -111,15 +112,9 @@ test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncatio
   assert.equal(sorted.rows[0].previewRows.length, 12);
   assert.deepEqual(sorted.rows[0].previewRows.slice(0, 3).map(row => row.locationcode), ['C.1.000', 'C.2.000', 'C.3.000']);
 });
-test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () => {
-  const context = locationContext();
-  const codes = ['C.05.026', 'C.06.000', 'C.05.017', 'C.05.000'];
-  const groups = context.LocationCode.group(codes);
-  assert.deepEqual(Array.from(groups.keys()), ['C.05', 'C.06']);
-  assert.deepEqual(Array.from(groups.get('C.05')), ['C.05.000', 'C.05.017', 'C.05.026']);
-  assert.equal(context.LocationCode.base('C.05.017'), 'C.05');
-  assert.equal(context.LocationCode.normalize('c.05.017').startsWith('C'), true);
-});
+test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () =>
+  assertEvalBlockLocationDrill(locationContext));
+
 test('Invariant 8 (Que REQUEST Five-State Lifecycle & Live Uncached Fetch)', () => requestLifecycleContract(runFunctions,locationContext,functionSource,read));
 test('Invariant 9 (Recount Tab locationcode Grouping & Completion Email)', () => {
   const context = runFunctions('assets/app-runtime.js', ['buildReclassRecountLocationGroups'], {
@@ -5878,3 +5873,6 @@ await import('../src/core/golden-operational-recovery.mjs');
 
 test('Invariant 669: disposable replay preserves ERP runtime dependencies and isolates validated loopback ports', async () =>
   (await import('./helpers/disposable-database-contract.mjs')).assertDisposableDatabaseContract());
+
+test('Invariant 670: guarded photo migration replays only after its exact disposable predecessor marker', async () =>
+  (await import('../src/core/golden-photo-replay-contract.mjs')).assertPhotoAuthorizationReplayPrerequisite());

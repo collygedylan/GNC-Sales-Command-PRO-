@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- A clean schema replay needs the exact predecessor release data required by a guarded migration. Seed that marker only behind the disposable canonical-workspace sentinel; never remove or broaden the production migration's predecessor check (Invariant 670).
+
 - Disposable Supabase projects must probe free loopback ports and include authored src dependencies used by Edge imports. A unique project ID does not isolate host ports or provide missing modules. Edge Reclass fixtures must mock canonical command authorization while separately proving denials cannot enqueue writes (Invariant 669).
 
 - Completion preparation and enqueue must read the same canonical folder membership. Completed history can retain a pending status; its durable completion event remains authoritative. Encode membership separators with chr(10), retain actor/lease/member/dependency guards, and verify old rejection plus safe/negative cases in local Postgres (Invariant 668).
