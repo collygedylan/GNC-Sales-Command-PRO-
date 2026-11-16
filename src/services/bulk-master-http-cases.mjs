@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import vm from 'node:vm';
 import { ROW_COUNT, legacyBulkSource, sourceRowsFromProductionShape } from './bulk-master-http-source.mjs';
 import { readBulkMasterTriggerState } from './bulk-master-http-contract.mjs';
+import {seedBulkProtectedRow,verifyBulkProtectedRow} from './bulk-master-http-protected-row.mjs';
 import { errorText } from './bulk-master-http-transport.mjs';
 
 async function assertBulkPublishBoundaries(ctx, initialRequest) {
@@ -68,15 +69,9 @@ export async function assertInitialBulkPublication(ctx) {
 }
 
 export async function assertChangedBulkPublication(ctx) {
-  const { state, withDisposableDbClaims, db, queryValue, begin, bulkPayload, measuredBulk, finish } = ctx;
+  const { state, begin, bulkPayload, measuredBulk, finish } = ctx;
   const protectedId = state.initial.rows[0].values.unique_id;
-  await withDisposableDbClaims(() => db.query(`update public.ph_master_inventory set holdstopcode='APP_HOLD', holdstopreason='Synthetic app hold',
-    locationnote='Synthetic app location note' where unique_id=$1`, [protectedId]));
-  const protectedBefore = await queryValue(`select holdstopcode, holdstopreason, locationnote
-    from public.ph_master_inventory where unique_id=$1`, [protectedId]);
-  assert.deepEqual(protectedBefore, {
-    holdstopcode: 'APP_HOLD', holdstopreason: 'Synthetic app hold', locationnote: 'Synthetic app location note',
-  });
+  const {original,actionId}=await seedBulkProtectedRow(ctx,protectedId);
 
   const changed = legacyBulkSource(sourceRowsFromProductionShape({ shape: state.shape, columns: state.tableColumns, variant: 1 }));
   const changedRun = await begin();
@@ -87,13 +82,12 @@ export async function assertChangedBulkPublication(ctx) {
   assert.equal(changedResult.result.updated, ROW_COUNT);
   assert.equal(changedResult.result.deleted, 0);
   assert.equal(changedResult.result.unchanged, 0);
-  const protectedAfter = await queryValue(`select holdstopcode, holdstopreason, locationnote
-    from public.ph_master_inventory where unique_id=$1`, [protectedId]);
-  assert.deepEqual(protectedAfter, protectedBefore, 'imported source values cannot overwrite live app hold/location fields');
+  const protectedAfter=await verifyBulkProtectedRow(ctx,{protectedId,original,actionId,
+    report:changed.rows[0].values,runId:changedRun});
   await finish(changedRun);
   const baselineRows = changed.rows.map(({ values: { unique_id, priority, holdstopcode, holdstopreason } }) =>
     ({ unique_id, priority, holdstopcode, holdstopreason }));
-  return { protectedId, protectedBefore, changedName: changed.rows[0].values.commonname,
+  return { protectedId, protectedBefore:protectedAfter, changedName: changed.rows[0].values.commonname,
     milliseconds: changedResult.elapsedMs, baselineRows };
 }
 
@@ -205,7 +199,7 @@ export async function assertLegacyBulkBootstrap(ctx, { protectedId, protectedBef
     'the first full publication bootstraps a source hash for every existing row');
   assert.deepEqual(await queryValue(`select holdstopcode, holdstopreason, locationnote
     from public.ph_master_inventory where unique_id=$1`, [protectedId]), protectedBefore,
-  'legacy bootstrap updates cannot overwrite live app hold/location fields');
+  'legacy bootstrap retains the reconciled hold tuple and app-owned location note');
   await finish(legacyRun);
   return legacyResult.elapsedMs;
 }

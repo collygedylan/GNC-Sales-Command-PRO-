@@ -15,6 +15,11 @@ export function errorText(body) {
   return String(body && (body.message || body.error || body.hint) || JSON.stringify(body));
 }
 
+export function throwBulkMasterFailure(failures) {
+  if (failures.length > 1) throw new AggregateError(failures, 'BULK_MASTER_HTTP_AND_CLEANUP_FAILED');
+  if (failures.length) throw failures[0];
+}
+
 export async function connectBulkMasterFixture(workspaceRoot) {
   const cli = packageBin('supabase', 'supabase');
   const workspace = inspectDisposableSupabaseWorkspace({ workspaceRoot, cli });

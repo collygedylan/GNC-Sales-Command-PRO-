@@ -1,3 +1,4 @@
+import {assertCrossRequestIdentity} from '../src/core/golden-bulk-action-contract.mjs';
 import {assertWatchdogAutoTriage} from '../src/core/golden-bulk-rpc-contract.mjs';
 import {assertRequestQuantityRecovery} from '../src/core/golden-bulk-retirement-contract.mjs';
 import {assertRecountGrouping} from '../src/core/golden-watchdog-owner-contract.mjs';
@@ -182,25 +183,8 @@ test('Invariant 20 (Role-Controlled Exact-ID Request Sales Dollar Impact)', asyn
   assert.match(runtime, /document\.getElementById\('view-request-sales-impact'\)\?\.remove\(\)/);
   assert.doesNotMatch(read('index.html'), /id="view-request-sales-impact"|drawer-request-sales-impact-btn/);
 });
-test('Invariant 21 (Zero Cross-Request Deduplication)', async () => {
-  const impact = await import(new URL('../assets/request-sales-impact.js', import.meta.url));
-  const shared = {
-    unique_id: 'STRICT-SHARED', folder_id: 'REQ-SHARED', itemcode: 'ITEM-9', contsize: '#5',
-    locationcode: 'Z.09', lotcode: 'LOT-9', request_date: '2026-10-20T15:00:00Z',
-    sales_rep: 'Rep One', customer_name: 'Customer One', consignee_name: 'Consignee One', qty: 2, list_price: 10,
-  };
-  const result = impact.aggregateRequestSalesImpactLines([
-    { ...shared, source_row_id: 'ph_requests_completed_history:1', status: 'Completed' },
-    { ...shared, source_row_id: 'ph_requests_pending:1', status: 'Pending' },
-    { ...shared, unique_id: 'STRICT-SEPARATE-1', source_row_id: 'ph_requests_completed_history:2', status: 'Completed' },
-    { ...shared, unique_id: 'STRICT-SEPARATE-2', source_row_id: 'ph_requests_completed_history:3', status: 'Completed' },
-  ]);
-  assert.equal(result.summary.total_line_items, 4);
-  assert.equal(result.summary.total_dollar_value, 80);
-  assert.equal(result.line_items.filter(row => row.source_row_id === 'ph_requests_completed_history:1').length, 1);
-  assert.equal(result.line_items.filter(row => row.folder_id === 'REQ-SHARED').length, 4);
-  assert.equal(new Set(result.line_items.map(row => row.unique_id)).size, 3);
-});
+test('Invariant 21 (Zero Cross-Request Deduplication)', assertCrossRequestIdentity);
+
 test('Invariant 22 (Canonical Escaped Plant Text Across Display and Drill Keys)', () => escapedTextContract(runFunctions,read,functionSource));
 import { assertRequestHistoryIsolatedSync } from '../src/core/golden-request-history-isolated-sync.mjs';
 test('Invariant 23 (Permanent Request History, Source-Line Ledger & Isolated Sync)', () => assertRequestHistoryIsolatedSync(read));
@@ -5772,3 +5756,6 @@ test('Invariant 677: the HTTP benchmark accepts only the exact registered crop-r
 
 test('Invariant 678: bulk HTTP publication and legacy bootstrap share the exact trigger contract and registered four-second lock limit', async () =>
   (await import('../src/core/golden-bulk-rpc-contract.mjs')).assertCurrentBulkRpcContract());
+
+test('Invariant 679: bulk ERP adoption preserves the app note and requires an exact lossless discrepancy receipt', async () =>
+  (await import('../src/core/golden-bulk-action-contract.mjs')).assertBulkDiscrepancyReceipt());

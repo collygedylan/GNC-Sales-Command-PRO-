@@ -2,16 +2,18 @@
 // Full-size canonical PH snapshot through the disposable local PostgREST API.
 import { pathToFileURL } from 'node:url';
 import { ROW_COUNT } from '../../src/services/bulk-master-http-source.mjs';
-import { attachBulkMasterOperations, connectBulkMasterFixture } from '../../src/services/bulk-master-http-transport.mjs';
+import { attachBulkMasterOperations, connectBulkMasterFixture, throwBulkMasterFailure } from '../../src/services/bulk-master-http-transport.mjs';
 import { prepareBulkHandoverIdentity, readBulkMasterSchema, scheduleBulkHandover, seedBulkMasterFixture } from '../../src/services/bulk-master-http-contract.mjs';
 import { assertAtomicBulkRollback, assertChangedBulkPublication, assertInitialBulkPublication,
   assertLegacyBulkBootstrap, assertUnchangedBulkPublication } from '../../src/services/bulk-master-http-cases.mjs';
 import { closeBulkMasterFences, removeBulkMasterFixtures, verifyBulkMasterCleanup } from '../../src/services/bulk-master-http-cleanup.mjs';
+import {verifyBulkActionSqlContract} from '../../src/services/bulk-master-http-protected-row.mjs';
 
 export { syntheticBulkMasterSnapshot } from '../../src/services/bulk-master-http-source.mjs';
 
 async function runBulkMasterCases(ctx) {
   await prepareBulkHandoverIdentity(ctx);
+  await verifyBulkActionSqlContract(ctx);
   await scheduleBulkHandover(ctx);
   await seedBulkMasterFixture(ctx);
   const initial = await assertInitialBulkPublication(ctx);
@@ -33,11 +35,6 @@ async function cleanBulkMasterFixture(ctx) {
     await ctx.db.query('rollback').catch(() => {});
     throw error;
   }
-}
-
-function throwBulkMasterFailure(failures) {
-  if (failures.length > 1) throw new AggregateError(failures, 'BULK_MASTER_HTTP_AND_CLEANUP_FAILED');
-  if (failures.length) throw failures[0];
 }
 
 export async function runBulkMasterImportHttpRegression(workspaceRoot) {
