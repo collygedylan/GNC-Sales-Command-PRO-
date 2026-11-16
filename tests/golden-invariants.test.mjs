@@ -1,3 +1,4 @@
+import {assertCropTierGlossary} from '../src/core/golden-sql-lint-compiled-contract.mjs';
 import {assertHistoricalConsolidation} from '../src/core/golden-bunch-blueprint-catalog-contract.mjs';
 import {assertQueueResolution} from '../src/core/golden-master-staging-fixture-contract.mjs';
 import {assertIndexedArchive} from '../src/core/golden-bulk-case-order-contract.mjs';
@@ -253,38 +254,8 @@ test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => ass
 
 test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolidation)', () => assertHistoricalConsolidation(read));
 
-test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () => {
-  const migration = read('supabase/migrations/20261026020000_agdata_v2367_crop_tier_aura_glossary.sql');
-  for (const marker of ['get_consolidation_move_candidates_v1', "'CARRY_OVER'", "'CURRENT_CROP'", "'FUTURE_CROP'",
-    'source_profile.max_sales_year<settings.current_sales_year', 'source_profile.min_sales_year=settings.current_sales_year',
-    'destination_profile.max_sales_year<settings.current_sales_year', 'destination_profile.min_sales_year=settings.current_sales_year',
-    'candidate.sales_year=source.sales_year', 'get_consolidation_move_candidates_v1() candidate',
-    'aura_inventory_crop_tier_v1', 'definition text', "synonyms text[]"]) {
-    assert.match(migration, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  }
-  for (const term of ['carry over','current crop','future crop','inv consolidation','loc photo match','request sales impact',
-    'mistake guy','historical orders','historical reserves','historical drive around','location moves','suspend tag',
-    'recount','bunch notes','eval work','shear list']) assert.match(migration, new RegExp(`'${term}'`));
-  assert.match(read('supabase/migrations/20261026034500_agdata_v2367_historical_drive_fast_read.sql'),
-    /historical_drive_file_page_v2367[^]*item_key_v2367[^]*state_hash_v2367/);
+test('Invariant 28 (Strict Crop Tiers and Canonical AURA Nursery Glossary)', () => assertCropTierGlossary(read,runFunctions));
 
-  const runner = read('scripts/apply-item-low-stock-migration.mjs');
-  for (const marker of ['006138.021.1', 'G.15.000', 'E.22.000', '008404.010.1', 'C.11.034', 'C.11.054']) {
-    assert.match(runner, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  }
-  const runtime = read('assets/app-runtime.js');
-  for (const marker of ['getInventoryConsolidationValidDestinations', 'All Crop Tiers', 'Carry Over (&lt; SY',
-    'Current Crop (SY', 'Future Crop (&gt; SY', 'CARRY_OVER', 'CURRENT_CROP', 'FUTURE_CROP']) assert.ok(runtime.includes(marker), marker);
-  assert.doesNotMatch(runtime, /OLDER SY -> ANY SY|Current SY -> Same SY|Older SY -> Any SY/);
-
-  const parser = runFunctions('supabase/functions/app-api/index.ts', ['parseAuraDeterministicInventoryQuestion'], { exports: {} });
-  assert.equal(parser.parseAuraDeterministicInventoryQuestion('show carry-over boxwood').cropTier, 'CARRY_OVER');
-  assert.equal(parser.parseAuraDeterministicInventoryQuestion('show current crop').cropTier, 'CURRENT_CROP');
-  assert.equal(parser.parseAuraDeterministicInventoryQuestion('show future crop').cropTier, 'FUTURE_CROP');
-  const verifier = read('scripts/verify-live-request-queue.mjs');
-  for (const marker of ['requestBadgeCount !== 6', 'badPairExcluded', 'CARRY OVER -> CARRY OVER',
-    'CURRENT CROP -> CURRENT CROP', 'auraGlossaryTerms']) assert.match(verifier, new RegExp(marker));
-});
 test('Invariant 29 (Request Creator Parity, Photo Dates, Item AV Notes, and Direct Quick Access)', () => requestPhotoNavigationContract(read,runFunctions,functionSource));
 test('Invariant 30 (Set-Based Live ERP Ingestion and Queue Isolation)', () => {
   const migration = read('supabase/migrations/20261026070000_agdata_v2369_fast_live_erp_ingestion.sql');
@@ -5699,3 +5670,6 @@ test('Invariant 682: Bunch blueprint retirement uses the exact freeform catalogu
 
 test('Invariant 683: canonical context receipt rejects a foreign result block, PL control flow and out-of-scope canary bindings', async () =>
   (await import('../src/core/golden-master-staging-fixture-contract.mjs')).assertStagingContextReceiptIsolation(read));
+
+test('Invariant 684: compiled SQL lint keeps strict function, variable, variant-count and authority-epoch boundaries', async () =>
+  (await import('../src/core/golden-sql-lint-compiled-contract.mjs')).assertCompiledLintContracts(read));

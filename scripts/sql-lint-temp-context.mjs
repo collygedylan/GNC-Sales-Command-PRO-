@@ -4,6 +4,9 @@ import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-contai
 import { DATABASE_LINT_SCHEMAS } from './database-workspace.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 import { activeTempContexts } from './sql-lint-temp-context-catalog.mjs';
+import {compiledTempContexts,compiledTempSpecification} from './sql-lint-compiled-catalog.mjs';
+import {supportedTempFunctions} from './sql-lint-function-contract.mjs';
+import {compiledProbeSql} from './sql-lint-compiled-probe.mjs';
 
 const SUPPORTED = Object.freeze({
   'public.apply_inventory_reclass_move_v1': Object.freeze({
@@ -41,6 +44,7 @@ const SUPPORTED = Object.freeze({
     args: ['date', 'date', 'integer'], declarations: ['safe_start date;', 'safe_end date;'],
   }),
   ...activeTempContexts,
+  ...compiledTempContexts,
 });
 
 const IDENT = /^[a-z_][a-z0-9_$]*$/i;
@@ -65,7 +69,7 @@ function stagedViewSetup(body, functionName) {
     `  stage_columns := app_sync_private.master_snapshot_stage_columns_v1('s');\n` +
     `  EXECUTE format('${matches[0][1]}',stage_columns,null::uuid);\nEND\n$lint_staged_view$;`;
 }
-const functionInventorySql = `
+export const functionInventorySql = `
 select 'SQL_LINT_FUNCTIONS:' || replace(encode(convert_to(coalesce(jsonb_agg(jsonb_build_object(
   'schema', n.nspname, 'name', p.proname,
   'arguments', oidvectortypes(p.proargtypes),
@@ -181,91 +185,51 @@ function decodeJsonBase64(output, label) {
   catch { throw new Error(`SQL_LINT_TEMP_CONTEXT_${label}_JSON_INVALID`); }
 }
 
-function normalizeArgumentTypes(value) {
-  return String(value || '').split(',').map(arg => arg.trim().toLowerCase()).filter(Boolean);
-}
 
-export function extractTempStatements(body, functionName) {
+export function extractTempStatements(body, functionName, {duplicateTables={},allowNoData=false} = {}) {
   const statements = extractStaticTemporaryDdl(body);
   if (!statements.length) throw new Error(`SQL_LINT_TEMP_CONTEXT_STATIC_TEMP_TABLES_REQUIRED:${functionName}`);
-  const names = [];
+  const counts = new Map();
   const normalized = statements.map(statement => {
     const name = statement.match(TEMP_NAME)?.[1];
     if (!name || !IDENT.test(name)) throw new Error(`SQL_LINT_TEMP_CONTEXT_TEMP_TABLE_DDL_UNSUPPORTED:${functionName}`);
-    if (names.includes(name.toLowerCase())) throw new Error(`SQL_LINT_TEMP_CONTEXT_DUPLICATE_TEMP_TABLE:${functionName}:${name}`);
-    names.push(name.toLowerCase());
+    const key=name.toLowerCase(),count=(counts.get(key)||0)+1;
+    if(count>(duplicateTables[key]||1)) throw new Error(`SQL_LINT_TEMP_CONTEXT_DUPLICATE_TEMP_TABLE:${functionName}:${name}`);
+    counts.set(key,count);
     const asIndex = statement.search(/\bas\s+(?:with\b|select\b)/i);
     if (asIndex < 0) return { name, statement };
-    if (/\bwith\s+no\s+data\s*;?\s*$/i.test(statement)) throw new Error(`SQL_LINT_TEMP_CONTEXT_UNEXPECTED_NO_DATA:${functionName}:${name}`);
+    if (/\bwith\s+no\s+data\s*;?\s*$/i.test(statement)) {
+      if(!allowNoData) throw new Error(`SQL_LINT_TEMP_CONTEXT_UNEXPECTED_NO_DATA:${functionName}:${name}`);
+      return {name,statement};
+    }
     const semicolon = statement.lastIndexOf(';');
     if (semicolon < 0 || statement.slice(semicolon + 1).trim()) throw new Error(`SQL_LINT_TEMP_CONTEXT_TEMP_TABLE_DDL_UNSUPPORTED:${functionName}:${name}`);
     return { name, statement: `${statement.slice(0, semicolon).trimEnd()} WITH NO DATA;` };
   });
+  for(const [name,count] of Object.entries(duplicateTables)) {
+    if(counts.get(name)!==count) throw new Error(`SQL_LINT_TEMP_CONTEXT_VARIANT_COUNT_CHANGED:${functionName}:${name}`);
+  }
   return normalized;
 }
 
 export function getSupportedFunctions(rawFunctions, { allowMissing = false } = {}) {
-  if (!Array.isArray(rawFunctions)) throw new Error('SQL_LINT_TEMP_CONTEXT_FUNCTION_INVENTORY_INVALID');
-  const functions = new Map();
-  for (const item of rawFunctions) {
-    const qualifiedName = `${item.schema}.${item.name}`;
-    const specification = selectTempSpecification(qualifiedName, item.body);
-    if (!specification) throw new Error(`SQL_LINT_TEMP_CONTEXT_FUNCTION_UNSUPPORTED:${qualifiedName}`);
-    const args = normalizeArgumentTypes(item.arguments);
-    if (JSON.stringify(args) !== JSON.stringify(specification.args)) {
-      throw new Error(`SQL_LINT_TEMP_CONTEXT_FUNCTION_SIGNATURE_CHANGED:${qualifiedName}`);
-    }
-    if (!item.body || !item.definition || functions.has(qualifiedName)) {
-      throw new Error(`SQL_LINT_TEMP_CONTEXT_FUNCTION_INVALID:${qualifiedName}`);
-    }
-    const parameterNames = Array.isArray(item.argumentNames) ? item.argumentNames.map(name => String(name || '').toLowerCase()) : [];
-    for (const declaration of specification.declarations) {
-      const variable = declaration.match(/^([a-z_][a-z0-9_$]*)\s+/i)?.[1];
-      const [name, type] = declaration.slice(0, -1).split(/\s+/);
-      const parameterType = args[parameterNames.indexOf(name)];
-      if (!variable || (parameterType !== type && !new RegExp(`\\b${name}\\s+${type}\\b`, 'i').test(item.body))) {
-        throw new Error(`SQL_LINT_TEMP_CONTEXT_LOCAL_DECLARATION_CHANGED:${qualifiedName}:${name}`);
-      }
-    }
-    const statements = temporaryStatements(item.body, qualifiedName, specification);
-    const beginIndex = firstBeginIndex(item.body);
-    const declaredNames = [...item.body.slice(0, beginIndex).matchAll(/^\s*([a-z_][a-z0-9_$]*)\s+(?=[a-z_])/gmi)]
-      .map(match => match[1].toLowerCase()).filter(name => name !== 'declare');
-    const supportedNames = new Set(specification.declarations.map(declaration => declaration.split(/\s+/)[0].toLowerCase()));
-    const referencedInTempSql = name => statements.some(statement => new RegExp(`\\b${name}\\b`, 'i').test(statement.statement));
-    for (const name of [...declaredNames, ...parameterNames.filter(Boolean)]) {
-      if (!supportedNames.has(name) && referencedInTempSql(name)) {
-        throw new Error(`SQL_LINT_TEMP_CONTEXT_UNSUPPORTED_LOCAL_VARIABLE:${qualifiedName}:${name}`);
-      }
-    }
-    const contextSetup = specification.stagedView
-      ? stagedViewSetup(item.body, qualifiedName) : specification.contextSetup || '';
-    functions.set(qualifiedName, { ...item, qualifiedName, specification, statements, contextSetup });
-  }
-  const expected = Object.keys(SUPPORTED).filter(name => !SUPPORTED[name].alternateEpoch
-    || !functions.has(SUPPORTED[name].alternateEpoch)).sort();
-  const actual = [...functions.keys()].sort();
-  if ((!allowMissing && JSON.stringify(actual) !== JSON.stringify(expected))
-      || actual.some(name => !expected.includes(name))) {
-    throw new Error(`SQL_LINT_TEMP_CONTEXT_FUNCTION_SET_CHANGED:${actual.join(',')}`);
-  }
-  const tableNames = [...functions.values()].flatMap(item => item.statements.map(statement =>
-    `${item.specification.probeGroup || 'default'}:${statement.name.toLowerCase()}`));
-  if (new Set(tableNames).size !== tableNames.length) throw new Error('SQL_LINT_TEMP_CONTEXT_TEMP_TABLE_NAME_COLLISION');
-  return [...functions.values()];
+  return supportedTempFunctions(rawFunctions,{registry:SUPPORTED,selectSpecification:selectTempSpecification,
+    temporaryStatements,firstBeginIndex,stagedViewSetup,allowMissing});
 }
 
 function temporaryStatements(body, name, specification) {
   if (specification.dynamicTable && !specification.dynamicTable.test(body)) {
     throw new Error(`SQL_LINT_TEMP_CONTEXT_DYNAMIC_TABLE_CONTRACT_CHANGED:${name}`);
   }
-  if (extractStaticTemporaryDdl(body).length) return extractTempStatements(body, name);
+  if (extractStaticTemporaryDdl(body).length) return extractTempStatements(body,name,specification.compiledProbe
+    ?{duplicateTables:specification.duplicateTables,allowNoData:true}:undefined);
   if (specification.dynamicTable || specification.contextTables?.length) return [];
-  return extractTempStatements(body, name);
+  return extractTempStatements(body,name,specification.compiledProbe
+    ?{duplicateTables:specification.duplicateTables,allowNoData:true}:undefined);
 }
 
-function selectTempSpecification(name, body) {
-  const spec = SUPPORTED[name];
+function selectTempSpecification(name, body, compiledEpoch = false) {
+  const spec = compiledTempSpecification(name,body,SUPPORTED[name],compiledEpoch);
   if (!spec?.legacyDeclaration || !extractStaticTemporaryDdl(body || '').length) return spec;
   return { ...spec, declarations: [spec.legacyDeclaration], contextTables: [], probeOrder: -1 };
 }
@@ -294,6 +258,7 @@ export function probeSql(functions) {
   const groups = groupProbeFunctions(functions);
   if (groups.length > 1) return groups.map(group => probeSql(group)).join('\n');
   const group = groups[0] || [];
+  if(group[0]?.specification.compiledProbe) return compiledProbeSql(group[0],extractTempStatements);
   const blocks = group.map((item, index) => {
     const declarations = item.specification.declarations.length
       ? `DECLARE\n${item.specification.declarations.map(value => `  ${value}`).join('\n')}\n`
