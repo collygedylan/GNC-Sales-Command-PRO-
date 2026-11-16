@@ -1,3 +1,4 @@
+import {assertCrossLayerSeam} from '../src/core/golden-reclass-replay-contract.mjs';
 import {assertManualSyncContract} from '../src/core/golden-watchdog-replay-contract.mjs';
 import {assertEvalBlockLocationDrill} from '../src/core/golden-photo-replay-contract.mjs';
 import {invariant554} from './helpers/golden-restored-inventory-preview-guard.mjs';
@@ -169,20 +170,7 @@ test('Invariant 13 (#view-smart-moves Immediate Hydration)', invariant13);
 test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () =>
   assertManualSyncContract(runFunctions,functionSource));
 
-test('Invariant 15 (Cross-Layer Seam & Schema Contract Integrity)', () => {
-  const normalizer = runFunctions('assets/app-runtime.js', ['normalizeDriveEvidenceLocationPart'], {});
-  assert.equal(normalizer.normalizeDriveEvidenceLocationPart(' e.10.000 '), 'E.10.000');
-  const migration = read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql');
-  const api = read('supabase/functions/app-api/index.ts');
-  const appsScript = read('Code.gs');
-  for (const key of ['itemcode', 'locationcode', 'lotcode']) {
-    assert.match(migration, new RegExp(`\\b${key}\\b`));
-    assert.match(api, new RegExp(`\\b${key}\\b`, 'i'));
-    assert.match(appsScript, new RegExp(`\\b${key}\\b`, 'i'));
-  }
-  assert.match(migration, /inventory_location_evidence_v1[^]*reconcile_active_requests_from_outbox_v1/);
-  assert.doesNotMatch(migration, /delete from public\.ph_active_request/i);
-});
+test('Invariant 15 (Cross-Layer Seam & Schema Contract Integrity)', () => assertCrossLayerSeam(read,runFunctions));
 test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => {
   const storage = new Map([['agdata.runtime-watchdog.pending.v2:dylan_collyge', JSON.stringify([{ username: 'dylan_collyge', fingerprint: 'old', app_version: 'AgData v2.3.54' }])]]);
   const rootNode = { querySelectorAll: () => [] };
@@ -5874,3 +5862,7 @@ test('Invariant 670: guarded photo migration replays only after its exact dispos
 
 test('Invariant 671: disposable Watchdog replay preserves the installed reviewer predicate and verifies migration receipts before actor cleanup', async () =>
   (await import('../src/core/golden-watchdog-replay-contract.mjs')).assertWatchdogReviewerReplay());
+
+
+test('Invariant 672: disposable Reclass replay requires the exact installed actor predecessor before replacing its authorization owner', async () =>
+  (await import('../src/core/golden-reclass-replay-contract.mjs')).assertReclassActorReplay());
