@@ -8,7 +8,7 @@ const { handleDriveReclassAction } = await import("./index.ts");
 const policy = "reclass-action-workflow-v6-smart-shield-20261009";
 const session: AppSessionClaims = {
   ver: 2, authUserId: "00000000-0000-4000-8000-000000000001",
-  username: "stale_username", displayName: "Stored actor", role: "ADMIN",
+  username: "dylan_collyge", displayName: "Stored actor", role: "ADMIN",
   mustChangePassword: false, iat: 1, exp: 9999999999,
 };
 const activeProfile = {
@@ -39,7 +39,7 @@ const confirmedEvidence = () => ({
 
 type Call = { path: string; query: URLSearchParams; body: unknown };
 async function mockDatabase(options: {
-  profile?: unknown; accountActive?: boolean; result?: unknown; error?: string;
+  profile?: unknown; accountActive?: boolean; authorized?: boolean; result?: unknown; error?: string;
 }, action: EdgeFixtureAction<Call>) {
   const originalFetch = globalThis.fetch;
   const calls: Call[] = [];
@@ -54,6 +54,7 @@ async function mockDatabase(options: {
     }));
     if (url.pathname === "/rest/v1/profiles") return json(options.profile === undefined ? activeProfile : options.profile);
     if (url.pathname === "/rest/v1/rpc/app_account_active_v1") return json(options.accountActive !== false);
+    if (url.pathname === "/rest/v1/rpc/authorize_reclass_command_v3076") return json(options.authorized !== false);
     if (url.pathname === "/rest/v1/user_access") return json([{ username: activeProfile.username, edit_any_row: "Y" }]);
     if (url.pathname === "/functions/v1/request-delivery-worker") return json({ ok: true });
     if (url.pathname === "/rest/v1/rpc/enqueue_drive_reclass_inquiry_v7"
@@ -68,6 +69,22 @@ async function mockDatabase(options: {
   try { return await action(calls); }
   finally { globalThis.fetch = originalFetch; }
 }
+
+Deno.test("canonical command authorization denial never reaches a Reclass write", async () => {
+  await mockDatabase({ authorized: false }, async calls => {
+    assertEquals((await handleDriveReclassAction(session, payload())).status, 403);
+    assertEquals(calls.filter(call => call.path.includes("enqueue_drive_reclass")).length, 0);
+  });
+});
+
+Deno.test("a stale session username cannot impersonate the stored Reclass actor", async () => {
+  await mockDatabase({}, async calls => {
+    const response = await handleDriveReclassAction({ ...session, username: "stale_username" }, payload());
+    assertEquals(response.status, 403);
+    assertEquals((await response.json()).code, "PROFILE_IDENTITY_REQUIRED");
+    assertEquals(calls.some(call => call.path.includes("enqueue_drive_reclass")), false);
+  });
+});
 
 Deno.test("priority/hold submission requires authenticated, active, unlocked identity before writes", async () => {
   await mockDatabase({}, async calls => {
@@ -97,7 +114,7 @@ Deno.test("V6 routes once through the atomic RPC with the stored actor and no ca
     const response = await handleDriveReclassAction(session, {
       ...payload(), actorUsername: "forged_actor", fanout: true, currentSeason: "S1", salesYear: 99,
     });
-    assertEquals(response.status, 200);
+    assertEquals(response.status, 200, response.status === 200 ? undefined : await response.clone().text());
     assertEquals(await response.json(), versionedEdgeBody(response, result));
     assertEquals(response.headers.get("cache-control"), "private, no-store");
     const writes = calls.filter(call => call.path.includes("enqueue_"));

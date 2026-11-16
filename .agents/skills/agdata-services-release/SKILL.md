@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Disposable Supabase projects must probe free loopback ports and include authored src dependencies used by Edge imports. A unique project ID does not isolate host ports or provide missing modules. Edge Reclass fixtures must mock canonical command authorization while separately proving denials cannot enqueue writes (Invariant 669).
+
 - Completion preparation and enqueue must read the same canonical folder membership. Completed history can retain a pending status; its durable completion event remains authoritative. Encode membership separators with chr(10), retain actor/lease/member/dependency guards, and verify old rejection plus safe/negative cases in local Postgres (Invariant 668).
 
 - Golden gateway fixtures must call the canonical extracted response factory instead of assuming its old inline declaration. Preserve every authenticated transient-read assertion and prove ordinary denials and untagged mutations remain uncacheable (Invariant 667).

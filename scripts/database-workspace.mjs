@@ -4,6 +4,7 @@ import path from 'node:path';
 import { repoRoot } from './tooling-process.mjs';
 import { augmentPublicBaseline, sqlStatements } from './database-catalog.mjs';
 import { splitCanonicalNurseryReplaySeed } from '../src/services/canonical-nursery-replay.mjs';
+import { disposableDatabaseConfig } from '../src/services/disposable-database-config.mjs';
 
 export const DATABASE_LINT_SCHEMAS = [
   'public', 'app_sync_private', 'aura_private', 'bloomscapes_private', 'bunch_note_private', 'extensions',
@@ -314,11 +315,9 @@ export function createDatabaseWorkspace({ root = repoRoot, includeTests = false,
     const migrationsDir = path.join(supabaseDir, 'migrations');
     mkdirSync(migrationsDir, { recursive: true });
 
-    let config = readFileSync(path.join(root, 'supabase', 'config.toml'), 'utf8');
-    if (!/^project_id\s*=\s*"[^"]+"\s*$/m.test(config)) throw new Error('DATABASE_PROJECT_ID_CONFIG_INVALID');
+    const config = readFileSync(path.join(root, 'supabase', 'config.toml'), 'utf8');
     const projectId = `gncdb${process.pid}${Math.random().toString(36).slice(2, 8)}`.toLowerCase();
-    config = config.replace(/^project_id\s*=\s*"[^"]+"\s*$/m, `project_id = "${projectId}"`);
-    writeFileSync(path.join(supabaseDir, 'config.toml'), config);
+    writeFileSync(path.join(supabaseDir, 'config.toml'), disposableDatabaseConfig(config, projectId));
 
     const bootstrap = [
       '-- Required schemas for definer paths in the production baseline. This file creates no public objects.',

@@ -5870,13 +5870,12 @@ test('Invariant 645: final certificate release rejects removal of input invalida
   (await import('./helpers/erp-certified-input-release.mjs')).assertCertifiedDriveRelease());
 test('Invariant 646: a prior DRIVE alias requires unique matching lineage and retains staged exact-row ownership', async () =>
   (await import('./helpers/erp-prior-drive-alias-release.mjs')).assertPriorDriveAliasRelease());
-test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
-  (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
 await import('../src/core/golden-final-polish.mjs');
 await import('./helpers/golden-release-fixture-ratchet.mjs');
-test('Invariant 666: passive status loops pause hidden and offline work with single-flight exponential backoff', async () =>
-  (await import('./helpers/quota-poll-contract.mjs')).assertQuotaPollingContract());
-test('Invariant 667: canonical poll responses cache only server-tagged successful reads and preserve denial statuses', async () =>
-  (await import('../src/core/golden-poll-response-contract.mjs')).assertCanonicalPollResponse());
-test('Invariant 668: folder preparation reuses canonical membership and newline hashes with actor, lease and dependency guards', async () =>
-  (await import('../src/core/golden-completion-preparation-contract.mjs')).assertCanonicalCompletionPreparation());
+await import('../src/core/golden-operational-recovery.mjs');
+
+test('Invariant 669: disposable replay preserves ERP runtime dependencies and isolates validated loopback ports', async () => {
+  const contract = await import('./helpers/disposable-database-contract.mjs');
+  contract.assertDisposableDatabasePorts();
+  contract.assertHistoricalRuntimeClosure();
+});

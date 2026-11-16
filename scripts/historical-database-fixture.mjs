@@ -1,9 +1,10 @@
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { prepareIsolatedSqlTests } from './prepare-isolated-sql-tests.mjs';
 import { historicalAuthMigrations } from '../src/services/historical-database-auth-migrations.mjs';
+import { writeHistoricalRuntime } from '../src/services/disposable-database-config.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 export const historicalMigrationManifestPath = 'scripts/historical-database-migrations.json';
@@ -52,11 +53,6 @@ export function readHistoricalMigrationManifest({ root = repositoryRoot, manifes
   return validateHistoricalMigrations(root, ordered);
 }
 
-function copyDirectory(source, destination) {
-  if (!existsSync(source)) throw new Error(`HISTORICAL_FIXTURE_SOURCE_MISSING:${source}`);
-  cpSync(source, destination, { recursive: true, force: false, errorOnExist: true });
-}
-
 function patchScheduledHandover({ root, migrationsDir }) {
   const migrationPath = path.join(migrationsDir, handoverIsolationMigration);
   const source = readFileSync(migrationPath, 'utf8').trimEnd();
@@ -89,19 +85,8 @@ export function prepareHistoricalDatabaseFixture({ root = repositoryRoot, destin
     const supabaseDir = path.join(absoluteDestination, 'supabase');
     const migrationsDir = path.join(supabaseDir, 'migrations');
     mkdirSync(migrationsDir, { recursive: true });
-    const configPath = resolveInside(absoluteRoot, 'supabase/config.toml', 'HISTORICAL_CONFIG_PATH_INVALID');
-    let config = readFileSync(configPath, 'utf8');
-    if (!/^project_id\s*=\s*"[^"]+"\s*$/m.test(config)) throw new Error('HISTORICAL_PROJECT_ID_CONFIG_INVALID');
     const projectId = `gnchist${process.pid}${Math.random().toString(36).slice(2, 8)}`.toLowerCase();
-    config = config.replace(/^project_id\s*=\s*"[^"]+"\s*$/m, `project_id = "${projectId}"`);
-    writeFileSync(path.join(supabaseDir, 'config.toml'), config);
-    copyDirectory(resolveInside(absoluteRoot, 'supabase/functions', 'HISTORICAL_FUNCTIONS_PATH_INVALID'), path.join(supabaseDir, 'functions'));
-    // Configured Edge Functions resolve shared runtime and generated contract
-    // modules outside supabase/functions. Preserve the authored module tree so
-    // local Edge Runtime and functions serve can load the same imports.
-    copyDirectory(resolveInside(absoluteRoot, 'services', 'HISTORICAL_SERVICES_PATH_INVALID'), path.join(absoluteDestination, 'services'));
-    mkdirSync(path.join(absoluteDestination, 'utils'), { recursive: true });
-    copyDirectory(resolveInside(absoluteRoot, 'utils/auraLingo.js', 'HISTORICAL_LINGO_PATH_INVALID'), path.join(absoluteDestination, 'utils/auraLingo.js'));
+    writeHistoricalRuntime(absoluteRoot, absoluteDestination, projectId);
     writeFileSync(path.join(supabaseDir, 'seed.sql'), '');
 
     for (const entry of manifest) {
