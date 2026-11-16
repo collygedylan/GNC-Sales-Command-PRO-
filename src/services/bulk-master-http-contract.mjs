@@ -29,17 +29,7 @@ export function assertBulkMasterTriggerState(triggerState) {
   assert.equal(triggerState.evidence_delta_enabled,2,'both v3.0.48 evidence delta triggers are enabled');
 }
 
-export async function readBulkMasterSchema(ctx) {
-  const { state, query, queryValue } = ctx;
-  state.shape = JSON.parse(readFileSync(new URL('../../tests/fixtures/bulk-master-import-shape.json', import.meta.url), 'utf8'));
-  state.tableColumns = await query(`select column_name, data_type from information_schema.columns
-    where table_schema='public' and table_name='ph_master_inventory' order by ordinal_position`);
-  assert.equal(state.tableColumns.length, 233, 'the disposable schema includes all 233 production master columns');
-  state.initial = legacyBulkSource(sourceRowsFromProductionShape({ shape: state.shape, columns: state.tableColumns }));
-  state.masterImportFieldCount = Object.keys(state.initial.rows[0].values).length;
-  assert.equal(state.masterImportFieldCount, 78,
-    'legacy direct RPC receives the 79-field source payload minus only raw-only EXT_EQUIV_UNIT');
-  state.sourceByteCount = Buffer.byteLength(JSON.stringify(state.initial.rows));
+export async function readBulkMasterTriggerState(queryValue) {
   const triggerState = await queryValue(`select count(*)::int as total,
       count(*) filter (where tgenabled <> 'D')::int as enabled,
       count(*) filter (where tgname='scheduled_handover_normalize_assignment')::int as handover,
@@ -55,6 +45,21 @@ export async function readBulkMasterSchema(ctx) {
         and tgfoid='public.upsert_v2_crop_roll_drive_row_from_master()'::regprocedure)::int as retired_projection_disabled
     from pg_trigger where tgrelid='public.ph_master_inventory'::regclass and not tgisinternal`);
   assertBulkMasterTriggerState(triggerState);
+  return triggerState;
+}
+
+export async function readBulkMasterSchema(ctx) {
+  const { state, query, queryValue } = ctx;
+  state.shape = JSON.parse(readFileSync(new URL('../../tests/fixtures/bulk-master-import-shape.json', import.meta.url), 'utf8'));
+  state.tableColumns = await query(`select column_name, data_type from information_schema.columns
+    where table_schema='public' and table_name='ph_master_inventory' order by ordinal_position`);
+  assert.equal(state.tableColumns.length, 233, 'the disposable schema includes all 233 production master columns');
+  state.initial = legacyBulkSource(sourceRowsFromProductionShape({ shape: state.shape, columns: state.tableColumns }));
+  state.masterImportFieldCount = Object.keys(state.initial.rows[0].values).length;
+  assert.equal(state.masterImportFieldCount, 78,
+    'legacy direct RPC receives the 79-field source payload minus only raw-only EXT_EQUIV_UNIT');
+  state.sourceByteCount = Buffer.byteLength(JSON.stringify(state.initial.rows));
+  const triggerState = await readBulkMasterTriggerState(queryValue);
   state.masterProductionTriggerCount = triggerState.total;
 
   state.fenceDatasetKeys = vm.runInContext("getDatasetImportFenceSources_('ph_master_inventory')", state.initial.context);
@@ -68,13 +73,18 @@ export async function readBulkMasterSchema(ctx) {
     from public.ph_app_settings where key='current_season_salesyear'`);
 }
 
+export function assertBulkMasterRpcTimeouts(proconfig) {
+  assert.ok(Array.isArray(proconfig) && proconfig.includes('statement_timeout=180s')
+    && proconfig.includes('lock_timeout=4s'),
+  'the bulk RPC keeps its registered 180-second statement and four-second lock limits');
+}
+
 export async function prepareBulkHandoverIdentity(ctx) {
   const { state, queryValue, syntheticHandoverProfileId, db, syntheticHandoverEmail } = ctx;
   assert.equal((await queryValue('select marker from private.ci_schema_workspace_guard')).marker, 'canonical-baseline-replay');
   const { proconfig } = await queryValue(`select proconfig from pg_proc
     where oid='public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)'::regprocedure`);
-  assert.ok(proconfig.includes('statement_timeout=180s') && proconfig.includes('lock_timeout=60s'),
-    'the bulk RPC keeps its installed statement and lock timeouts');
+  assertBulkMasterRpcTimeouts(proconfig);
   const initialLiveCount = Number((await queryValue('select count(*)::int as count from public.ph_master_inventory')).count);
   assert.equal(initialLiveCount, 0, 'the disposable canonical HTTP workspace must begin without live inventory rows');
   state.handoverSnapshot = await queryValue(`select departing_profile_id::text as departing_profile_id,

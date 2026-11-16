@@ -1,3 +1,4 @@
+import {assertWatchdogAutoTriage} from '../src/core/golden-bulk-rpc-contract.mjs';
 import {assertRequestQuantityRecovery} from '../src/core/golden-bulk-retirement-contract.mjs';
 import {assertRecountGrouping} from '../src/core/golden-watchdog-owner-contract.mjs';
 import {assertMultiRowLocationUpload} from '../src/core/golden-bulk-trigger-contract.mjs';
@@ -92,36 +93,7 @@ test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () =>
   assertManualSyncContract(runFunctions,functionSource));
 
 test('Invariant 15 (Cross-Layer Seam & Schema Contract Integrity)', () => assertCrossLayerSeam(read,runFunctions));
-test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', async () => {
-  const storage = new Map([['agdata.runtime-watchdog.pending.v2:dylan_collyge', JSON.stringify([{ username: 'dylan_collyge', fingerprint: 'old', app_version: 'AgData v2.3.54' }])]]);
-  const rootNode = { querySelectorAll: () => [] };
-  const document = { hidden: false, body: { ...rootNode, dataset: { currentView: 'drive' } }, documentElement: null,
-    querySelector: () => null, getElementById: () => null, addEventListener() {} };
-  const reports = [];
-  const window = { __APP_RELEASE_VERSION__: 'AgData v2.3.57', activeHomeTab: '',
-    localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
-    setTimeout, clearTimeout, addEventListener() {} };
-  const context = vm.createContext({ window, document, MutationObserver: class { observe() {} }, setTimeout, clearTimeout, console });
-  vm.runInContext(read('assets/runtime-watchdog.js'), context, { filename: 'assets/runtime-watchdog.js' });
-  window.GncRuntimeWatchdog.configure({ username: 'dylan_collyge', role: 'Admin', reportEvent: async event => { reports.push(event); return { ok: true }; } });
-  const index = JSON.parse(read('docs/architecture/agdata-symbol-index.json'));
-  const cases = [
-    ['home', 'refreshDashboardSyncMetadata'], ['drive', 'renderDrive'], ['av', 'renderAV'], ['docks', 'renderDocks'],
-    ['request', 'renderRequest'], ['managers', 'renderManagerEvalReports2Panel'], ['bloom', 'renderBloomPickerTrayRows'], ['chat', 'renderCommunicationHub'],
-  ];
-  for (const [viewId, symbol] of cases) {
-    const event = window.GncRuntimeWatchdog.record('GOLDEN_TRIAGE', { view_id: viewId, suspected_functions: [symbol] });
-    assert.equal(event.app_version, 'AgData v2.3.57');
-    const skillPath = path.join(root, '.codex', 'skills', event.owning_skill, 'SKILL.md');
-    assert.equal(readFileSync(skillPath, 'utf8').length > 0, true);
-    const domain = index.domains[event.owning_skill];
-    assert.ok(domain);
-    assert.equal(Object.values(domain).flatMap(value => Array.isArray(value) ? value : []).includes(symbol), true, `${event.owning_skill}:${symbol}`);
-  }
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal([...storage.values()].some(value => String(value).includes('AgData v2.3.54')), false);
-  assert.equal(reports.every(event => event.app_version === 'AgData v2.3.57'), true);
-});
+test('Invariant 16 (Watchdog-to-Skill & Symbol Index Auto-Triage)', () => assertWatchdogAutoTriage(read,path,root,readFileSync));
 test('Invariant 17 (Non-Blocking Que Recovery & Mobile Home Fit)', invariant17);
 test('Invariant 18 (Numeric Que Badge & Connected Startup State)', () => badgeConnectionContract(runFunctions,functionSource,read));
 test('Invariant 19 (Exact Pending Request Quantity Recovery)', () => assertRequestQuantityRecovery(read));
@@ -5796,3 +5768,7 @@ test('Invariant 676: owner-reviewed Watchdog closure requires the native session
 
 test('Invariant 677: the HTTP benchmark accepts only the exact registered crop-roll retirement set while every other master trigger stays active', async () =>
   (await import('../src/core/golden-bulk-retirement-contract.mjs')).assertExactRetiredTriggerContract());
+
+
+test('Invariant 678: bulk HTTP publication and legacy bootstrap share the exact trigger contract and registered four-second lock limit', async () =>
+  (await import('../src/core/golden-bulk-rpc-contract.mjs')).assertCurrentBulkRpcContract());

@@ -132,3 +132,5 @@ retirement sequence is in docs/gemini-clean-gems-blueprint.md.
 - Owner-verified historical client timeouts with no incomplete mutation are never a reason to replay a Request. Resolve only the exact incident through the existing authenticated reviewer RPC, validate its confirmed IDs and preserve occurrence history. Retain the exact owner note in the resolution receipt when the installed event schema has no note column (Invariant 676; incident12762).
 
 - A clean canonical replay intentionally retires exactly three v2 crop-roll projection hooks. Preserve their disabled state: accept50active of53only with that complete named set and the original upsert function, while every other trigger remains active. Never re-enable retired paths or accept an arbitrary active-count threshold to satisfy a benchmark (Invariant 677).
+
+- Benchmark preflight and legacy-bootstrap preflight must share one trigger-state reader. Honor the installed3046 bulk RPC lock limit4s and statement limit180s; never restore stale60s lock waits to satisfy a test. Verify live config and registered migration, with wrong/disabled timeout counterexamples (Invariant 678).

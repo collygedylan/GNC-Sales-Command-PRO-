@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import vm from 'node:vm';
 import { ROW_COUNT, legacyBulkSource, sourceRowsFromProductionShape } from './bulk-master-http-source.mjs';
-import { EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT } from './bulk-master-http-contract.mjs';
+import { readBulkMasterTriggerState } from './bulk-master-http-contract.mjs';
 import { errorText } from './bulk-master-http-transport.mjs';
 
 async function assertBulkPublishBoundaries(ctx, initialRequest) {
@@ -186,13 +186,7 @@ async function assertLegacyBulkPreconditions(ctx, baselineRows) {
     join public.ph_master_inventory m on m.unique_id=b.canonical_unique_id
     where b.canonical_unique_id like 'GNC_BULK_BENCH_%'`)).count), ROW_COUNT,
   'every pre-existing live identity has its matching source baseline');
-  const legacyTriggerState = await queryValue(`select count(*)::int as total,
-      count(*) filter (where tgenabled <> 'D')::int as enabled
-    from pg_trigger where tgrelid='public.ph_master_inventory'::regclass and not tgisinternal`);
-  assert.deepEqual(legacyTriggerState, {
-    total: EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
-    enabled: EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
-  }, 'all production triggers remain enabled for the legacy bootstrap RPC');
+  await readBulkMasterTriggerState(queryValue);
 }
 
 export async function assertLegacyBulkBootstrap(ctx, { protectedId, protectedBefore, baselineRows }) {
