@@ -12,6 +12,7 @@ import { verifyGeneratedDatabaseTypes } from './database-type-parts.mjs';
 import { withDisposableSupabase } from './database-workspace-runner.mjs';
 import { prepareHistoricalDatabaseFixture, readHistoricalMigrationManifest } from './historical-database-fixture.mjs';
 import { runSqlRollbackTests } from './run-sql-rollback-tests.mjs';
+import {runCanonicalCommittedSqlTests} from '../src/services/canonical-committed-sql-tests.mjs';
 import { runPostgresFixtureSqlTests, selectAffectedPostgresFixtureSqlGroups } from './run-postgres-fixture-sql-tests.mjs';
 import { withSqlLintTempContext } from './sql-lint-temp-context.mjs';
 import { runDatabasePerformanceBenchmark } from './performance-database.mjs';
@@ -129,12 +130,7 @@ function runCanonicalDatabaseChecks({ root, workspace, cli, execute, executeNode
       if (apiBenchmarkRequested) runApiPerformance({ root, workspaceRoot: workspace.root, cli, executeNode });
     }
     if (canonicalHttpTests.length) runHttpTests({ root, workspaceRoot: workspace.root, tests: canonicalHttpTests, executeNode });
-    for (const [index, file] of committedSqlTests.entries()) {
-      // These tests deliberately commit transactions. Keep each fixture alone,
-      // then rebuild the schema before the next fixture or normal pgTAP cohort.
-      if (index > 0) runCli(['db', 'reset', '--local', '--no-seed']);
-      runCli(['test', 'db', path.resolve(root, file)]);
-    }
+    runCanonicalCommittedSqlTests({root,workspaceRoot:workspace.root,files:committedSqlTests,runCli,executeNode});
     runCli(['db', 'reset', '--local', '--no-seed']);
     strictLint(workspace, runCli);
     runCli(['test', 'db']);

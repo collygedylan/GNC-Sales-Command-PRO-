@@ -98,6 +98,10 @@ export function assertCanonicalReplayOrder({ workspace, workspaceNames, activeNa
     '20261107001558_ci_canonical_explicit_note_suspend_prerequisites.sql',
     '20261107001559_ci_canonical_explicit_note_row_prerequisites.sql',
     '20261107001603_ci_canonical_explicit_note_row_cleanup.sql',
+    '20261111173945_ci_canonical_photo_authorization_version.sql',
+    '20261111174726_ci_canonical_watchdog_reviewers.sql',
+    '20261111174728_ci_canonical_watchdog_reviewers_cleanup.sql',
+    '20261111204839_ci_canonical_reclass_actors.sql',
   ];
   assert.equal(workspace.migrationCount, workspaceNames.length);
   assert.deepEqual(workspaceNames.filter(name => fixtures.includes(name)).sort(), [...fixtures].sort());

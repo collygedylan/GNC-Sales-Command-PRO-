@@ -1,3 +1,4 @@
+import {assertQueueResolution} from '../src/core/golden-master-staging-fixture-contract.mjs';
 import {assertIndexedArchive} from '../src/core/golden-bulk-case-order-contract.mjs';
 import {assertCrossRequestIdentity} from '../src/core/golden-bulk-action-contract.mjs';
 import {assertWatchdogAutoTriage} from '../src/core/golden-bulk-rpc-contract.mjs';
@@ -247,32 +248,8 @@ test('Invariant 24 (Anonymous Security Lockdown & Authenticated Request Browser 
 });
 test('Invariant 25 (Indexed Four-Domain Historical Archive)', () => assertIndexedArchive(read));
 
-test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => {
-  const migration = read('supabase/migrations/20261025234500_agdata_v2366_queue_resolution_cleanup.sql');
-  for (const marker of ['queue_cleanup_recount_jobs_v2366', 'queue_cleanup_bunch_jobs_v2366',
-    'queue_cleanup_sales_recounts_v2366', "status = 'completed'", "then 'retired'",
-    'ph_ncr_completions', 'QUEUE_CLEANUP_RECOUNT_ACTIVE_ROWS_REMAIN',
-    'QUEUE_CLEANUP_BUNCH_ACTIVE_ROWS_REMAIN', 'QUEUE_CLEANUP_OUTBOX_CHANGED',
-    'REQ-mvk1xgv2ty9fttuqj2', 'REQ-mvlbp5hkkk58akaubms', 'REQ-mvlfib5eqwa3typzcqq',
-    'REQ-mvlfib5evawvlvvx09', 'REQ-mvlg4t85vlzf7053pv', 'REQ-mvlgbfl7p8r8zxrj97j',
-    'Pink Delight Butterfly Bush', 'queue-resolution-cleanup-v2366']) {
-    assert.match(migration, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  }
-  assert.doesNotMatch(migration, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_request_delivery_outbox/i);
-  assert.doesNotMatch(migration, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_delivery_outbox/i);
-  assert.doesNotMatch(migration, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_requests_pending/i);
-  assert.doesNotMatch(migration, /(?:insert\s+into|update|delete\s+from)\s+public\.ph_soc_master/i);
-  assert.doesNotMatch(migration, /\btruncate\b|\bdrop\s+table\b/i);
+test('Invariant 26 (Silent Recount and Bunch Notes Queue Resolution)', () => assertQueueResolution(read));
 
-  const verifier = read('scripts/verify-live-request-queue.mjs');
-  for (const marker of ['queueProof', 'RECOUNT ${recountBadgeCount}', 'BUNCH NOTES ${bunchBadgeCount}',
-    'SUSPEND ${suspendBadgeCount}', 'No recount rows.', 'No Bunch Notes in this filter.',
-    'Pink Delight Butterfly Bush', '[data-bunch-card]']) {
-    assert.match(verifier, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  }
-  assert.match(read('scripts/apply-item-low-stock-migration.mjs'),
-    /agdataV2366QueueResolutionCleanupMigrationName[^]*registeredReleaseDatabaseMigrations/);
-});
 test('Invariant 27 (Historical State Deduplication and Manual Inventory Consolidation)', () => {
   const dedup = read('supabase/migrations/20261026003000_agdata_v2366_historical_state_dedup.sql');
   for (const marker of ['deduplicate_drive_around_report_rows_batch_v1(p_max_files integer default 25)',
@@ -5740,3 +5717,6 @@ test('Invariant 679: bulk ERP adoption preserves the app note and requires an ex
 
 test('Invariant 680: metadata-only bulk publication runs before app edits and fails closed before dependent mutation cases', async () =>
   (await import('../src/core/golden-bulk-case-order-contract.mjs')).assertBulkCaseIsolation());
+
+test('Invariant 681: canonical staging adapts only the pinned historical fixture and retains all assertion registrations', async () =>
+  (await import('../src/core/golden-master-staging-fixture-contract.mjs')).assertCanonicalStagingAdaptation(read));
