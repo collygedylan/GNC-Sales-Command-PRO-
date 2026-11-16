@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "c91a112f3a3b99d50478d4e917af54b2241d670a",
+  "commit": "25dba4ae3f0a93cbf4c94b7244f7a01a631eadea",
   "release": "AgData v3.0.86",
   "files": [
     {
@@ -1551,17 +1551,22 @@
     {
       "path": "deployment-fingerprint.json",
       "bytes": 187,
-      "sha256": "2db2f4911d5f08b065d39c80fa03905aa226cd0ad39c611e927e5da9483a6f77"
+      "sha256": "61b85993414715991d343e494fa263178b62d1cfb85d2c0c02c029f64727d953"
     },
     {
       "path": "deployment.json",
       "bytes": 187,
-      "sha256": "2db2f4911d5f08b065d39c80fa03905aa226cd0ad39c611e927e5da9483a6f77"
+      "sha256": "61b85993414715991d343e494fa263178b62d1cfb85d2c0c02c029f64727d953"
     },
     {
       "path": "deployments/131ba96c0cc55ba74f29616d0ed802f64ab40167.json",
       "bytes": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "deployments/25dba4ae3f0a93cbf4c94b7244f7a01a631eadea.json",
+      "bytes": 187,
+      "sha256": "61b85993414715991d343e494fa263178b62d1cfb85d2c0c02c029f64727d953"
     },
     {
       "path": "deployments/2816389755690f1e3f4625d7725a7e88f3a70dc8.json",
@@ -1666,7 +1671,7 @@
     {
       "path": "index.html",
       "bytes": 433603,
-      "sha256": "ab02c80bd8fa53a962bb0b5731394190c6cfc36e99a8d99e937cc05854a7347a"
+      "sha256": "37956b251d2be6deb4dc7c20c7f7227a164a796391ad4e300f28021e50534fc4"
     },
     {
       "path": "manifest.json",
@@ -1721,7 +1726,7 @@
     {
       "path": "sw.js",
       "bytes": 41715,
-      "sha256": "cbc0346148a40038af3cfaa649c534ff92db4df13e0e65744537bfdcdfd7a9b7"
+      "sha256": "40e958dc3623ae2f027b9162641a1dea53cb70531a4a8eb7a944fa506e821342"
     },
     {
       "path": "utils/auraIntentParser.js",
@@ -2186,7 +2191,7 @@
     {
       "path": "version.json",
       "bytes": 134,
-      "sha256": "3db73f41811029b2f435f0dbe60c9fb8ca068ae8cf7be6dadac31816598271c0"
+      "sha256": "3e8845f3656e8c18b82e2304c3cc0048cb0ec9b72e01e143f818c1a39d9ecd35"
     }
   ]
 }
