@@ -1,15 +1,8 @@
+importScripts(new URL('./photo-encoding.js'+self.location.search,self.location.href).href);
 /* Plant-photo optimizer. Produces one bounded display image and two static thumbnails. */
 const DISPLAY_MAX_EDGE = 1920;
-const DISPLAY_MAX_BYTES = 204_800;
+const DISPLAY_MAX_BYTES = 1_310_720;
 const THUMBNAIL_LIMITS = Object.freeze({ 144: 81_920, 320: 163_840 });
-
-function detectImageEncoding(bytes) {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
-  if (bytes.length >= 12
-    && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF'
-    && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'image/webp';
-  return '';
-}
 
 async function blobHasEncoding(blob, expectedType) {
   const bytes = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
@@ -40,7 +33,7 @@ async function encodeAtAvailableQuality(canvas, type, qualities, maxBytes) {
 async function encodeBounded(bitmap, target, type, maxBytes) {
   let width = target.width;
   let height = target.height;
-  const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.85, 0.74, 0.66, 0.56, 0.46];
+  const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [0.90];
   for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
     const canvas = new OffscreenCanvas(width, height);
     const context = canvas.getContext('2d', { alpha: false, desynchronized: true });

@@ -103,7 +103,7 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.86';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'AgData v3.0.87';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -1958,230 +1958,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'av', 'reserves', 'task
         const CACHE_PERSIST_REALTIME_VISIBLE_MIN_INTERVAL_MS = 180000;
         const CACHE_PERSIST_ACTIVE_INTERACTION_GRACE_MS = 12000;
         const CACHE_PERSIST_IDLE_TIMEOUT_MS = 2500;
-        const PHOTO_MAX_WIDTH = 1920;
-        const PHOTO_JPEG_QUALITY = 0.85;
-        const PHOTO_WEBP_QUALITY = 0.82;
-        const PHOTO_DISPLAY_MAX_BYTES = 200 * 1024;
-        const PHOTO_THUMB_144_MAX_BYTES = 80 * 1024;
-        const PHOTO_THUMB_320_MAX_BYTES = 160 * 1024;
-        const PHOTO_OPTIMIZER_WORKER_URL = './assets/image-optimize-worker-v2026090401.js';
-        let photoOptimizerWorker = null;
-        let photoOptimizerRequestId = 0;
-        const photoOptimizerPending = new Map();
-
-        function getPhotoOptimizerWorker() {
-            if (photoOptimizerWorker || typeof Worker !== 'function' || typeof OffscreenCanvas === 'undefined') return photoOptimizerWorker;
-            try {
-                photoOptimizerWorker = new Worker(PHOTO_OPTIMIZER_WORKER_URL);
-                photoOptimizerWorker.onmessage = (event) => {
-                    const payload = event && event.data ? event.data : {};
-                    const pending = photoOptimizerPending.get(Number(payload.id));
-                    if (!pending) return;
-                    photoOptimizerPending.delete(Number(payload.id));
-                    clearTimeout(pending.timeoutId);
-                    if (payload.ok) pending.resolve(payload);
-                    else pending.reject(new Error(String(payload.error || 'Image optimization failed.')));
-                };
-                photoOptimizerWorker.onerror = () => {
-                    photoOptimizerPending.forEach((pending) => {
-                        clearTimeout(pending.timeoutId);
-                        pending.reject(new Error('Image optimization worker failed.'));
-                    });
-                    photoOptimizerPending.clear();
-                    photoOptimizerWorker.terminate();
-                    photoOptimizerWorker = null;
-                };
-            } catch (error) {
-                photoOptimizerWorker = null;
-            }
-            return photoOptimizerWorker;
-        }
-
-        function detectPhotoBlobEncoding(bytes = new Uint8Array()) {
-            if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
-            if (bytes.length >= 12
-                && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF'
-                && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return 'image/webp';
-            return '';
-        }
-
-        async function getPhotoBlobEncoding(blob = null) {
-            if (!(blob instanceof Blob)) return '';
-            return detectPhotoBlobEncoding(new Uint8Array(await blob.slice(0, 16).arrayBuffer()));
-        }
-
-        function getPhotoFitDimensions(width = 0, height = 0, maxEdge = PHOTO_MAX_WIDTH) {
-            const sourceWidth = Math.max(1, Number(width) || 1);
-            const sourceHeight = Math.max(1, Number(height) || 1);
-            const edge = Math.max(sourceWidth, sourceHeight);
-            const scale = edge > maxEdge ? maxEdge / edge : 1;
-            return {
-                width: Math.max(1, Math.round(sourceWidth * scale)),
-                height: Math.max(1, Math.round(sourceHeight * scale))
-            };
-        }
-
-        function canvasToPhotoBlob(canvas, type, quality) {
-            return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
-        }
-
-        async function encodeMainThreadPhotoBlob(source, target, type, maxBytes) {
-            let width = target.width;
-            let height = target.height;
-            const qualities = type === 'image/webp' ? [0.82, 0.74, 0.66, 0.56] : [PHOTO_JPEG_QUALITY, 0.74, 0.66, 0.56, 0.46];
-            for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
-                const canvas = document.createElement('canvas');
-                canvas.width = width;
-                canvas.height = height;
-                const context = canvas.getContext('2d', { alpha: false });
-                if (!context) throw new Error('Image canvas unavailable.');
-                context.imageSmoothingEnabled = true;
-                context.imageSmoothingQuality = 'high';
-                context.fillStyle = '#ffffff';
-                context.fillRect(0, 0, width, height);
-                context.drawImage(source, 0, 0, width, height);
-                let lastBlob = null;
-                for (const quality of qualities) {
-                    const encoded = await canvasToPhotoBlob(canvas, type, quality);
-                    if (!(encoded instanceof Blob) || !encoded.size || (await getPhotoBlobEncoding(encoded)) !== type) {
-                        canvas.width = 1;
-                        canvas.height = 1;
-                        throw new Error(type === 'image/webp' ? 'WEBP_ENCODER_UNAVAILABLE' : 'IMAGE_ENCODER_UNAVAILABLE');
-                    }
-                    lastBlob = encoded;
-                    if (encoded.size <= maxBytes) {
-                        canvas.width = 1;
-                        canvas.height = 1;
-                        return { blob: encoded, width, height };
-                    }
-                }
-                canvas.width = 1;
-                canvas.height = 1;
-                if (!lastBlob) throw new Error('Image encoding failed.');
-                const shrink = Math.max(0.62, Math.min(0.88, Math.sqrt(maxBytes / lastBlob.size) * 0.94));
-                width = Math.max(1, Math.round(width * shrink));
-                height = Math.max(1, Math.round(height * shrink));
-            }
-            throw new Error('PHOTO_COMPRESSION_LIMIT');
-        }
-
-        async function loadMainThreadPhotoSource(blob) {
-            if (typeof createImageBitmap === 'function') {
-                try {
-                    const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
-                    return { source: bitmap, width: bitmap.width, height: bitmap.height, cleanup: () => bitmap.close() };
-                } catch (error) { globalThis.reportHandledRuntimeIssue?.("loadMainThreadPhotoSource", 'HANDLED_OPERATION_FAILURE'); }
-            }
-            const objectUrl = URL.createObjectURL(blob);
-            const image = new Image();
-            image.decoding = 'async';
-            try {
-                await new Promise((resolve, reject) => {
-                    image.onload = resolve;
-                    image.onerror = () => reject(new Error('Could not decode the selected image.'));
-                    image.src = objectUrl;
-                });
-                return {
-                    source: image,
-                    width: Number(image.naturalWidth || image.width || 0),
-                    height: Number(image.naturalHeight || image.height || 0),
-                    cleanup: () => { image.src = ''; URL.revokeObjectURL(objectUrl); }
-                };
-            } catch (error) {
-                URL.revokeObjectURL(objectUrl);
-                throw error;
-            }
-        }
-
-        async function optimizePhotoBlobOnMainThread(blob) {
-            const loaded = await loadMainThreadPhotoSource(blob);
-            try {
-                const encodeSet = async (type) => ({
-                    display: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, PHOTO_MAX_WIDTH), type, PHOTO_DISPLAY_MAX_BYTES),
-                    thumbnail144: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, 144), type, PHOTO_THUMB_144_MAX_BYTES),
-                    thumbnail320: await encodeMainThreadPhotoBlob(loaded.source, getPhotoFitDimensions(loaded.width, loaded.height, 320), type, PHOTO_THUMB_320_MAX_BYTES)
-                });
-                let contentType = 'image/jpeg';
-                let encoded;
-                try {
-                    encoded = await encodeSet(contentType);
-                } catch (error) {
-                    if (!/WEBP_ENCODER_UNAVAILABLE/i.test(String(error && error.message || error))) throw error;
-                    contentType = 'image/jpeg';
-                    encoded = await encodeSet(contentType);
-                }
-                const digest = await crypto.subtle.digest('SHA-256', await encoded.display.blob.arrayBuffer());
-                const hash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-                return {
-                    blob: encoded.display.blob,
-                    thumbnail144Blob: encoded.thumbnail144.blob,
-                    thumbnail320Blob: encoded.thumbnail320.blob,
-                    contentType,
-                    extension: contentType === 'image/webp' ? 'webp' : 'jpg',
-                    hash,
-                    width: encoded.display.width,
-                    height: encoded.display.height,
-                    thumbnail144Width: encoded.thumbnail144.width,
-                    thumbnail144Height: encoded.thumbnail144.height,
-                    thumbnail320Width: encoded.thumbnail320.width,
-                    thumbnail320Height: encoded.thumbnail320.height
-                };
-            } finally {
-                loaded.cleanup();
-            }
-        }
-
-        function normalizeOptimizedPhotoResult(result = {}) {
-            const contentType = String(result.type || result.contentType || (result.blob && result.blob.type) || '').toLowerCase();
-            const extension = contentType === 'image/webp' ? 'webp' : 'jpg';
-            return {
-                blob: result.blob,
-                thumbnail144Blob: result.thumbnail144Blob,
-                thumbnail320Blob: result.thumbnail320Blob,
-                fileName: `${String(result.hash || '').slice(0, 64)}.${extension}`,
-                contentType,
-                extension,
-                hash: String(result.hash || ''),
-                width: Number(result.width || 0),
-                height: Number(result.height || 0),
-                thumbnail144Width: Number(result.thumbnail144Width || 0),
-                thumbnail144Height: Number(result.thumbnail144Height || 0),
-                thumbnail320Width: Number(result.thumbnail320Width || 0),
-                thumbnail320Height: Number(result.thumbnail320Height || 0)
-            };
-        }
-
-        async function optimizePhotoBlobForUpload(blob, fileName = 'photo.jpg', options = {}) {
-            if (!(blob instanceof Blob) || !String(blob.type || '').toLowerCase().startsWith('image/')) {
-                throw new Error('Select a supported plant photo.');
-            }
-            const worker = getPhotoOptimizerWorker();
-            const id = ++photoOptimizerRequestId;
-            if (worker) try {
-                const result = await new Promise((resolve, reject) => {
-                    const timeoutId = setTimeout(() => {
-                        photoOptimizerPending.delete(id);
-                        reject(new Error('Image optimization timed out.'));
-                    }, 30000);
-                    photoOptimizerPending.set(id, { resolve, reject, timeoutId });
-                    worker.postMessage({ id, blob, fileName, mainOnly: options.mainOnly === true });
-                });
-                const normalized = normalizeOptimizedPhotoResult(result);
-                if (normalized.blob && normalized.blob.size <= PHOTO_DISPLAY_MAX_BYTES
-                    && (options.mainOnly === true || (normalized.thumbnail144Blob && normalized.thumbnail320Blob
-                    && normalized.thumbnail144Blob.size <= PHOTO_THUMB_144_MAX_BYTES
-                    && normalized.thumbnail320Blob.size <= PHOTO_THUMB_320_MAX_BYTES))) return normalized;
-                throw new Error('PHOTO_OPTIMIZER_CONTRACT_INVALID');
-            } catch (error) {
-                console.warn('Photo optimization worker unavailable; using the iPhone-compatible canvas path.', error);
-            }
-            try {
-                return normalizeOptimizedPhotoResult(await optimizePhotoBlobOnMainThread(blob));
-            } catch (error) {
-                throw new Error('Could not safely compress this photo. Try taking it again.');
-            }
-        }
-
+/* @runtime-fragment assets/photo-encoding.js */
+/* @runtime-fragment assets/photo-optimizer.js */
         async function uploadOptimizedBlobToStorage(bucketName, requestedPath, blob, options = {}) {
             const normalizedBucket = String(bucketName || '').trim();
             if (!Object.values(PHOTO_BUCKETS).includes(normalizedBucket)) throw new Error('Photo storage bucket is invalid.');
@@ -20936,7 +20714,8 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/confirmed-evaluation-ui.js */
         /* @runtime-fragment assets/canonical-inventory-evidence.js */
         /* @runtime-fragment assets/av-lot-cards.js */
-        /* @runtime-fragment assets/row-workflow-functions.js */
+        /* @runtime-fragment assets/detail-photo-gallery.js */
+/* @runtime-fragment assets/row-workflow-functions.js */
         /* @runtime-fragment assets/row-access-policy.js */
         /* @runtime-fragment assets/suspend-exact-owner.js */
         /* @runtime-fragment assets/que-header.js */
@@ -20962,7 +20741,10 @@ function getPhotoEntryDateMs(url = '', item = null, options = {}) {
         /* @runtime-fragment assets/bloom-inventory-project.js */
         /* @runtime-fragment assets/app-update-state.js */
         /* @runtime-fragment assets/app-update-restore.js */
-        /* @runtime-fragment assets/inventory-photo-domain.js */
+        /* @runtime-fragment assets/row-photo-send.js */
+/* @runtime-fragment assets/photo-workflow-policy.js */
+/* @runtime-fragment assets/photo-workflow-controls.js */
+/* @runtime-fragment assets/inventory-photo-domain.js */
         async function ensureLeafAssistantSession(forceRefresh = false) {
             const nativeSession = await getNativeAuthSession().catch(() => null);
             if (nativeSession && nativeSession.access_token) {
@@ -24703,7 +24485,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = '3.0.86';
+        const APP_VERSION = '3.0.87';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -50918,15 +50700,7 @@ function toggleDriveQuickRequestItem(domId) {
 
 
 
-        function canRemoveProtectedPhoto(prefix, item = activeItem) {
-            if (globalThis.isAvDetailReadOnlyContext()) return false;
-            if (!item) return false;
-            if (isProtectedSectionCompleted(prefix, item) && !isProtectedUnlocked(prefix)) return false;
-            if (canUsePhotoDeleteOverride()) return true;
-            if (!canEditRowDetails(prefix)) return false;
-            if (!isProtectedSectionCompleted(prefix, item)) return true;
-            return isProtectedUnlocked(prefix);
-        }
+        
 
 
         function isProtectedUnlocked(prefix) {
@@ -92528,33 +92302,7 @@ function getDocksSuspendSyncAudit() {
             return 'Take Photo';
         }
 
-        function updateTaskDetailQuickCameraState(sourceView = activeDetailSourceView || lastView || '', item = activeItem) {
-            const wrapper = document.getElementById('task-detail-camera-quick');
-            const input = document.getElementById('task-detail-camera-input');
-            const label = document.getElementById('task-detail-camera-label');
-            if (!wrapper || !input) return;
-            const safeSourceView = String(sourceView || '').trim().toLowerCase();
-            const isRequestContext = safeSourceView === 'request' || (safeSourceView !== 'tasks' && item && (isRequestLikeItem(item) || isRequestDetailItem(item, safeSourceView)));
-            const tabPrefix = getDetailPhotoUpdatePrefixFromTab(activeDetailTab);
-            if (!tabPrefix || !item) {
-                wrapper.classList.add('hidden');
-                wrapper.classList.remove('task-detail-camera-quick--request');
-                input.dataset.detailPhotoPrefix = '';
-                return;
-            }
-            const prefix = tabPrefix || (isRequestContext ? 'req-' : getTaskDetailQuickPhotoPrefix(item, activeTaskTab, safeSourceView));
-            const canCapture = prefix === 'ncr-' ? canEditNcrWorkflow(item) : canEditRowDetails(prefix, item);
-            if (!prefix || !canCapture) {
-                wrapper.classList.add('hidden');
-                wrapper.classList.remove('task-detail-camera-quick--request');
-                input.dataset.detailPhotoPrefix = '';
-                return;
-            }
-            input.dataset.detailPhotoPrefix = prefix;
-            if (label) label.innerText = getTaskDetailQuickPhotoLabel(prefix);
-            wrapper.classList.toggle('task-detail-camera-quick--request', true);
-            wrapper.classList.remove('hidden');
-        }
+        
 
         function handleTaskDetailQuickPhotoUpload(input) {
             const photoInput = input || document.getElementById('task-detail-camera-input');
@@ -92580,64 +92328,7 @@ function getDocksSuspendSyncAudit() {
             return handlePhotoUpload(photoInput, prefix);
         }
 
-        function applyCameraPermissions(sourceView, taskContextItem = activeItem) {
-            const safeSourceView = String(sourceView || '').trim().toLowerCase();
-            const isAvDetail = safeSourceView === 'av';
-            const isNcrDetail = safeSourceView === 'review' || safeSourceView === 'move-up' || (safeSourceView === 'tasks' && (normalizeTaskViewValue(activeTaskTab) === 'ncr' || isNcrApprovalTaskView(activeTaskTab) || isEvalNcrOrMoveUpDetailTask(taskContextItem)));
-            const camSsn = document.getElementById('camera-btn-ssn');
-            const camLsn = document.getElementById('camera-btn-lsn');
-            const camNa = document.getElementById('camera-btn-na');
-            const camReq = document.getElementById('camera-btn-req');
-            const camDock = document.getElementById('camera-btn-dock');
-            const camFlyer = document.getElementById('camera-btn-flyer');
-            const camNcr = document.getElementById('camera-btn-ncr');
-
-            [
-                [camSsn, 'ssn-'],
-                [camLsn, 'lsn-'],
-                [camNa, 'na-'],
-                [camReq, 'req-'],
-                [camDock, 'dock-'],
-                [camFlyer, 'flyer-']
-            ].forEach(([el, prefix]) => {
-                const canCapture = prefix === 'req-'
-                    ? canCurrentUserWorkRequestItem(taskContextItem || activeItem, 'photo')
-                    : canEditRowDetails(prefix);
-                if (el) {
-                    const enabled = canCapture;
-                    el.style.display = enabled ? 'flex' : 'none';
-                    if (prefix === 'req-') {
-                        el.classList.toggle('request-camera-enabled', enabled);
-                        const cameraPanel = document.getElementById('det-request-camera-panel');
-                        if (cameraPanel) cameraPanel.classList.toggle('hidden', !enabled);
-                    }
-                }
-            });
-            if (camNcr) camNcr.style.display = isNcrDetail && canEditNcrWorkflow() ? 'flex' : 'none';
-
-            if (safeSourceView === 'tasks') {
-                const taskDetailTab = getTaskDetailTabForItem(taskContextItem, activeTaskTab);
-                if (taskDetailTab === 'season') {
-                    if(camLsn) camLsn.style.display = 'none';
-                    if(camNa) camNa.style.display = 'none';
-                    if(camReq) camReq.style.display = 'none';
-                } else if (taskDetailTab === 'location') {
-                    if(camSsn) camSsn.style.display = 'none';
-                    if(camNa) camNa.style.display = 'none';
-                    if(camReq) camReq.style.display = 'none';
-                } else if (taskDetailTab === 'notes') {
-                    if(camSsn) camSsn.style.display = 'none';
-                    if(camLsn) camLsn.style.display = 'none';
-                    if(camReq) camReq.style.display = 'none';
-                } else {
-                    if(camSsn) camSsn.style.display = 'none';
-                    if(camLsn) camLsn.style.display = 'none';
-                    if(camNa) camNa.style.display = 'none';
-                    if(camReq) camReq.style.display = 'none';
-                }
-            }
-            updateTaskDetailQuickCameraState(safeSourceView, taskContextItem);
-        }
+        
 
 
         /* @runtime-fragment assets/av-detail-readonly.js */
@@ -147798,55 +147489,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             return true;
         }
 
-        async function handlePhotoUpload(input, prefix) {
-            window.finishCameraCapture?.();
-            try { sessionStorage.removeItem('agdata_camera_detail_v1'); } catch { globalThis.safeIgnoreProbeError?.('camera-detail-state'); }
-            if (!input.files || input.files.length === 0 || !activeItem) return;
-            if (isRepReadOnlyUser() && !canRepEditDetailPrefix(prefix)) {
-                showRowEditRestrictedToast(prefix);
-                input.value = '';
-                return;
-            }
-            markCameraActivity();
-            if (String(activeDetailSourceView || lastView || '').trim().toLowerCase() === 'av' && !canEditRowDetails(prefix)) {
-                showToast('View Only', 'AV detail is read-only. Photos can be viewed but not updated here.', true);
-                input.value = '';
-                return;
-            }
-            if (!canEditRowDetails(prefix)) {
-                showRowEditRestrictedToast(prefix);
-                input.value = '';
-                return;
-            }
-            if (String(prefix || '').trim().toLowerCase() === 'req-' && !canCurrentUserWorkRequestItem(activeItem, 'photo')) {
-                showRowEditRestrictedToast(prefix);
-                input.value = '';
-                return;
-            }
-            const itemToUpload = activeItem;
-            if ((isIOSDevice() || isStandaloneApp()) && document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
-                document.activeElement.blur();
-            }
-            if (navigator.onLine === false && !['ssn-','lsn-','na-','req-','dock-'].includes(prefix)) {
-                showToast('Offline', 'No service. Photo could not upload.', true);
-                input.value = '';
-                return;
-            }
-            const selectedFiles = Array.from(input.files || []);
-            input.value = '';
-            const imageFiles = selectedFiles.filter((file) => file && String(file.type || '').startsWith('image/'));
-            if (!imageFiles.length) {
-                showToast('Error', 'Please select an image file.', true);
-                return;
-            }
-            if (imageFiles.length > 1) {
-                showToast('Uploading', `Uploading ${imageFiles.length} photos...`, false);
-            }
-            imageFiles.forEach(file => queueDetailRowPhoto(itemToUpload,prefix,file));
-            if (String(prefix || '').trim().toLowerCase() === 'req-' && isRequestDetailItem(itemToUpload, activeDetailSourceView || lastView || '') && activeDetailTab !== 'request' && isDetailTabVisible('request')) {
-                switchDetailTab('request', { suppressScroll: true });
-            }
-        }
+        
 
         // The production loader runs after the login screen paints, so both DOM
         // startup events may already have fired. Register here, after all runtime

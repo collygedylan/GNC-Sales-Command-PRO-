@@ -46,6 +46,7 @@ function hasDetachedDrivePhotoWrite(uid) {
 }
 
 function queueDetailRowPhoto(item, prefix, file) {
+    assertPhotoMutationSurface(prefix);
     const normalized = String(prefix || '').trim().toLowerCase();
     if (!isQueuedDetailPhoto(normalized)) return globalThis.queueRowPhotoUpload(item,prefix,file);
     if (normalized === 'req-') {
@@ -119,33 +120,6 @@ function resetPhotoAttachmentConflict(job, conflict) {
     return true;
 }
 
-function sendPreparedPhotoToEdge(formData, options) {
-    if (!options.singleUploadAttempt) return postPhotoUploadWithTransientRetry(formData, options);
-    return postAppFunctionFormData(APP_API_FUNCTION_URL, formData, { ...options, label:'Secure photo upload' });
-}
-
-async function sendPreparedNativeRowPhoto(formData, options) {
-    const nativeForm = options.nativeMaster ? new FormData() : formData;
-    if (options.nativeMaster) {
-        for (const [name, value] of formData) nativeForm.append(name, value);
-        nativeForm.set('prefix','lsn-');
-        nativeForm.set('masterUid',options.nativeMaster.UNIQUE_ID);
-    }
-    const nativeOptions = options.nativeMaster ? { ...options, attachPhoto:false } : options;
-    return uploadDrivePhotoWithNativeSession(nativeForm, nativeOptions);
-}
-
-async function sendPreparedRowPhotoUpload(formData, nativeEvidenceUpload, options) {
-    try {
-        if (nativeEvidenceUpload) return await sendPreparedNativeRowPhoto(formData, options);
-        await ensureAppApiWriteProxySession();
-        return await sendPreparedPhotoToEdge(formData, options);
-    } catch (error) {
-        if (!isPasswordChangeRequiredError(error) || !await recoverAppApiSessionAfterPasswordRequired(error)) throw error;
-        return sendPreparedPhotoToEdge(formData, options);
-    }
-}
-
 function getRowPhotoUploadIdentity(job, master) {
     if (!master) return job.identity;
     return {
@@ -196,7 +170,7 @@ function acceptQueuedRowPhotoUpload(job, uploaded) {
         publicUrl, fileName:String(uploaded.filePath || job.fileName).split('/').pop(),
         filePath:uploaded.filePath, receipt:uploaded.receipt
     };
-    setDrivePhotoAttachmentStatus(job,'Uploaded');
+    setDrivePhotoAttachmentStatus(job,'Saving');
 }
 
 async function getQueuedRowPhotoHeaders(job) {
@@ -238,7 +212,7 @@ async function uploadRowPhotoAttachment(job) {
         signal:job.uploadController.signal, isCurrent:() => isCurrentDrivePhotoAttachment(job),
         singleUploadAttempt:job.prefix !== 'dock-',
         preparedPhoto:job.optimizedPhoto,
-        nativeMaster, nativeHeaders, onStorageUploaded:uploaded => acceptQueuedRowPhotoUpload(job, uploaded),
+        nativeMaster, nativeHeaders, sourceView:job.sourceView, onStorageUploaded:uploaded => acceptQueuedRowPhotoUpload(job, uploaded),
         formFields:{...(job.formFields || {masterUid:identity.UNIQUE_ID,itemCode:identity.ITEMCODE,
             locationCode:identity.LOCATIONCODE,lotCode:identity.LOTCODE}),...capturedPhotoSourceFields(job)}
     });
@@ -310,6 +284,9 @@ function retryDrivePhotoAttachment(id) {
     if (!job || job.running || !isCurrentDrivePhotoAttachment(job)) return false;
     const conflict = job.commandRow?.__driveEvidenceConflict;
     if (conflict && !resetPhotoAttachmentConflict(job,conflict)) return false;
+    if (!isPhotoMutationSurface(job.prefix,job.sourceView)) return false;
+    if (job.status === 'Save failed') { job.upload = null; job.commandRow = null; job.payload = null; }
+    setDrivePhotoAttachmentStatus(job,'Uploading');
     job.running = true;
     const run = runRowPhotoAttachmentWithRetry(job);
     job.promise = run;
@@ -356,6 +333,7 @@ function setDrivePhotoAttachmentStatus(job, status) {
 async function uploadPhotoViaAppApi(prefix = 'default', blob = null, fileName = 'photo.jpg', contentType = 'image/jpeg', options = {}) {
     if (!blob) throw new Error('Missing photo file.');
     const hasDirectFallback = hasDirectSupabaseWriteFallbackConfigured();
+    assertPhotoMutationSurface(prefix,options.sourceView);
     const useNativeUpload = (nativeAuthSessionActive && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix)) || !APP_API_DB_WRITE_PROXY_ENABLED || (hasDirectFallback && isAppApiWriteProxyTemporarilyUnavailable());
     const nativeEvidenceUpload = (nativeAuthSessionActive && options.nativeMaster) || (useNativeUpload && SECURE_DRIVE_EVIDENCE_PREFIXES.has(prefix));
     const optimized = options.preparedPhoto || await optimizePhotoBlobForUpload(blob, fileName, {mainOnly:false});
