@@ -20,7 +20,7 @@ async function runBulkMasterCases(ctx) {
   await assertAtomicBulkRollback(ctx, changed);
   const legacy = await assertLegacyBulkBootstrap(ctx, changed);
   const { tableColumns, masterImportFieldCount, masterProductionTriggerCount, sourceByteCount } = ctx.state;
-  process.stdout.write(`[bulk-master-http] ${ROW_COUNT} rows, ${tableColumns.length} columns, ${masterImportFieldCount} physical fields, ${masterProductionTriggerCount} enabled triggers, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB` + '\n');
+  process.stdout.write(`[bulk-master-http] ${ROW_COUNT} rows, ${tableColumns.length} columns, ${masterImportFieldCount} physical fields, ${masterProductionTriggerCount} installed triggers, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB` + '\n');
   process.stdout.write(`[bulk-master-http] local Docker/Postgres ms: insert ${Math.round(initial.insert)}, changed ${Math.round(changed.milliseconds)}, unchanged ${Math.round(unchanged)}, exact replay ${Math.round(initial.replay)}, legacy bootstrap ${Math.round(legacy)}` + '\n');
 }
 
