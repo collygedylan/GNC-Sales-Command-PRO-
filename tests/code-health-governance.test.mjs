@@ -209,14 +209,16 @@ test('golden ratchet reads registered modules in order and rejects inactive test
   const main = 'tests/golden-invariants.test.mjs';
   const first = "await import('../src/core/golden-final-polish.mjs');";
   const second = "await import('./helpers/golden-release-fixture-ratchet.mjs');";
+  const third = "await import('../src/core/golden-operational-recovery.mjs');";
   const cases = new Map([
-    [main, "test('Invariant 1', check);" + first + second],
+    [main, "test('Invariant 1', check);" + first + second + third],
     ['src/core/golden-final-polish.mjs', "test('Invariant 2', check); await import('../../tests/erp-drive-post-upsert.test.mjs');"],
     ['tests/erp-drive-post-upsert.test.mjs', "test('Invariant 3', {skip:false}, check);"],
     ['tests/helpers/golden-release-fixture-ratchet.mjs', "test('Invariant 4', check);"],
+    ['src/core/golden-operational-recovery.mjs', "test('Invariant 5', check);"],
   ]);
   const source = file => cases.get(file);
-  assert.deepEqual(goldenRegistrationOrder(source),[1,2,3,4]);
+  assert.deepEqual(goldenRegistrationOrder(source),[1,2,3,4,5]);
   for (const inactive of ["test.skip('Invariant 3', check)", "test('Invariant 3', {todo:true}, check)", "test.only('Invariant 3', check)"]) {
     cases.set('tests/erp-drive-post-upsert.test.mjs',inactive);
     assert.throws(()=>goldenRegistrationOrder(source),/inactive or exclusive|inactive invariant options/);
@@ -226,7 +228,7 @@ test('golden ratchet reads registered modules in order and rejects inactive test
     cases.set(main,layout);
     assert.throws(()=>goldenRegistrationOrder(source),/duplicate or out-of-order invariant registration import/);
   }
-  cases.set(main,first + second);
+  cases.set(main,first + second + third);
   cases.set('src/core/golden-final-polish.mjs',"test('Invariant 2', check);");
   assert.throws(()=>goldenRegistrationOrder(source),/missing invariant registration import/);
 });

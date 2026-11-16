@@ -5870,12 +5870,11 @@ test('Invariant 645: final certificate release rejects removal of input invalida
   (await import('./helpers/erp-certified-input-release.mjs')).assertCertifiedDriveRelease());
 test('Invariant 646: a prior DRIVE alias requires unique matching lineage and retains staged exact-row ownership', async () =>
   (await import('./helpers/erp-prior-drive-alias-release.mjs')).assertPriorDriveAliasRelease());
+test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
+  (await import('./helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());
 await import('../src/core/golden-final-polish.mjs');
 await import('./helpers/golden-release-fixture-ratchet.mjs');
 await import('../src/core/golden-operational-recovery.mjs');
 
-test('Invariant 669: disposable replay preserves ERP runtime dependencies and isolates validated loopback ports', async () => {
-  const contract = await import('./helpers/disposable-database-contract.mjs');
-  contract.assertDisposableDatabasePorts();
-  contract.assertHistoricalRuntimeClosure();
-});
+test('Invariant 669: disposable replay preserves ERP runtime dependencies and isolates validated loopback ports', async () =>
+  (await import('./helpers/disposable-database-contract.mjs')).assertDisposableDatabaseContract());

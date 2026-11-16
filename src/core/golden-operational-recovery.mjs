@@ -6,7 +6,3 @@ test('Invariant 667: canonical poll responses cache only server-tagged successfu
   (await import('./golden-poll-response-contract.mjs')).assertCanonicalPollResponse());
 test('Invariant 668: folder preparation reuses canonical membership and newline hashes with actor, lease and dependency guards', async () =>
   (await import('./golden-completion-preparation-contract.mjs')).assertCanonicalCompletionPreparation());
-
-
-test('Invariant 647: compiled DRIVE reconciliation retains zero deltas, current live evidence and exact raw caller fallback', async () =>
-  (await import('../../tests/helpers/erp-compiled-order-delta-release.mjs')).assertCompiledOrderDeltaRelease());

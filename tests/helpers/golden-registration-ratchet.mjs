@@ -3,7 +3,8 @@ import path from 'node:path';
 import { parse } from 'acorn';
 
 const registrationOwners = new Map([
-  ['tests/golden-invariants.test.mjs', ['../src/core/golden-final-polish.mjs','./helpers/golden-release-fixture-ratchet.mjs']],
+  ['tests/golden-invariants.test.mjs', ['../src/core/golden-final-polish.mjs','./helpers/golden-release-fixture-ratchet.mjs',
+    '../src/core/golden-operational-recovery.mjs']],
   ['src/core/golden-final-polish.mjs', ['../../tests/erp-drive-post-upsert.test.mjs']],
 ]);
 

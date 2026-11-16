@@ -4,6 +4,11 @@ import path from 'node:path';
 import { disposableDatabaseConfig } from '../../src/services/disposable-database-config.mjs';
 import { prepareHistoricalDatabaseFixture } from '../../scripts/historical-database-fixture.mjs';
 
+export function assertDisposableDatabaseContract() {
+  assertDisposableDatabasePorts();
+  assertHistoricalRuntimeClosure();
+}
+
 export function assertDisposableDatabasePorts() {
   const config = 'project_id = "original"\n[api]\nport = 54321\n[db]\nport = 54322\nshadow_port = 54320\nmajor_version = 17\n';
   const isolated = disposableDatabaseConfig(config, 'fixture', count => Array.from({ length: count }, (_, i) => 55000 + i));
