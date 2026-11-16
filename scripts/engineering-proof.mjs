@@ -51,21 +51,33 @@ async function dependencyFiles(root) {
   const resolver=createRequire(path.join(root,'package.json')), queue=['acorn','eslint-scope','typescript-eslint','typescript','esbuild','react','react-dom',`@esbuild/${process.platform}-${process.arch}/package.json`];
   const seen=new Set(), files=[];
   while (queue.length) {
-    const request=queue.shift();
-    let entry;
-    try { entry=resolver.resolve(request); } catch { throw new Error('Parser dependency missing: '+request); }
-    const dir=await packageRoot(entry);
-    if (seen.has(dir)) continue;
-    seen.add(dir);
-    const manifest=JSON.parse(await readFile(path.join(dir,'package.json'),'utf8'));
-    files.push(...await packageFiles(dir));
-    const local=createRequire(path.join(dir,'package.json'));
-    for (const name of Object.keys(manifest.dependencies || {})) {
-      if (name.startsWith('@types/')) continue;
-      try { queue.push(local.resolve(name)); } catch { throw new Error('Parser dependency missing: '+name); }
+    const packages=await Promise.all(queue.splice(0).map(request=>dependencyPackage(resolver,request)));
+    const fresh=packages.filter(({dir})=>{
+      if(seen.has(dir))return false;
+      seen.add(dir);
+      return true;
+    });
+    const contents=await Promise.all(fresh.map(({dir})=>packageFiles(dir)));
+    for(let index=0;index<fresh.length;index++) {
+      files.push(...contents[index]);
+      queue.push(...dependencyRequests(fresh[index]));
     }
   }
   return files.sort();
+}
+
+async function dependencyPackage(resolver,request) {
+  let entry;
+  try { entry=resolver.resolve(request); } catch { throw new Error('Parser dependency missing: '+request); }
+  const dir=await packageRoot(entry);
+  return {dir,manifest:JSON.parse(await readFile(path.join(dir,'package.json'),'utf8'))};
+}
+
+function dependencyRequests({dir,manifest}) {
+  const local=createRequire(path.join(dir,'package.json'));
+  return Object.keys(manifest.dependencies || {}).filter(name=>!name.startsWith('@types/')).map(name=>{
+    try { return local.resolve(name); } catch { throw new Error('Parser dependency missing: '+name); }
+  });
 }
 async function addFiles(hash, root, files) {
   const contents=await Promise.all(files.map(file => optionalFile(path.isAbsolute(file) ? file : path.join(root,file))));

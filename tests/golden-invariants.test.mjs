@@ -1,3 +1,4 @@
+import {assertStackedEvalSorting} from '../src/core/golden-parser-proof-contract.mjs';
 import {assertReclassInquiryTable} from '../src/core/golden-delivery-cron-replay-contract.mjs';
 import {assertCrossLayerSeam} from '../src/core/golden-reclass-replay-contract.mjs';
 import {assertManualSyncContract} from '../src/core/golden-watchdog-replay-contract.mjs';
@@ -95,26 +96,8 @@ test('Invariant 4 (Multi-Row Location Photo Upload & Retry)', async () => {
   assert.match(read('supabase/migrations/20261023220000_drive_location_evidence_and_request_reconciliation_v1.sql'), /where upper\(btrim\(m\.itemcode\)\)=stable_item and upper\(btrim\(m\.locationcode\)\)=stable_location[^]*limit 1/);
 });
 test('Invariant 5 (Drive Mode Card Thumbnail Parity With AV & Lightbox)', () => photoParityContract(runFunctions, functionSource, plain));
-test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncation)', () => {
-  const client = locationContext({
-    getManagerEvalReportRowLocation: row => row.locationcode,
-    getDriveColumnItemValue: (row, key) => row[String(key).toLowerCase()] ?? row[key] ?? '',
-    getManagerEvalReports2Api: () => ({ SEASON_ORDER: ['S1', 'F1'], normalizeSalesYear: Number }),
-  });
-  vm.runInContext([
-    functionSource('assets/app-runtime.js', 'compareLocationCodeValues'),
-    functionSource('assets/app-runtime.js', 'compareManagerEvalReport2Natural'),
-    functionSource('assets/app-runtime.js', 'compareManagerEvalReport2InventoryRows'),
-  ].join('\n'), client);
-  const rows = [{ locationcode: 'G.20.000' }, { locationcode: 'D.04.000' }, { locationcode: 'F.19.000' }, { locationcode: 'D.04.000', lotcode: '27.F1' }];
-  rows.sort(client.compareManagerEvalReport2InventoryRows);
-  assert.deepEqual(rows.map(row => row.locationcode), ['D.04.000', 'D.04.000', 'F.19.000', 'G.20.000']);
-  const server = runFunctions('supabase/functions/app-api/index.ts', ['compareLocationCodeNatural', 'sortManagerEval2PreviewRows']);
-  const previewRows = Array.from({ length: 12 }, (_, index) => ({ locationcode: `C.${12 - index}.000`, lotcode: `27.${index}` }));
-  const sorted = plain(server.sortManagerEval2PreviewRows({ rows: [{ previewRows }] }));
-  assert.equal(sorted.rows[0].previewRows.length, 12);
-  assert.deepEqual(sorted.rows[0].previewRows.slice(0, 3).map(row => row.locationcode), ['C.1.000', 'C.2.000', 'C.3.000']);
-});
+test('Invariant 6 (Eval Reports #2 Stacked locationcode Sorting & Zero Truncation)', () =>
+  assertStackedEvalSorting(locationContext,functionSource,runFunctions,plain));
 test('Invariant 7 (Eval Reports #2 BLOCK / LOCATION 2-Step Drill-Down)', () =>
   assertEvalBlockLocationDrill(locationContext));
 
@@ -5864,3 +5847,7 @@ test('Invariant 672: disposable Reclass replay requires the exact installed acto
 
 test('Invariant 673: disposable delivery cron identity and verified cleanup enclose the unchanged guarded migration in one transaction', async () =>
   (await import('../src/core/golden-delivery-cron-replay-contract.mjs')).assertDeliveryCronReplay());
+
+
+test('Invariant 674: batched parser discovery retains stable transitive and cyclic fingerprints and rejects added, changed or missing dependency files', async () =>
+  (await import('../src/core/golden-parser-proof-contract.mjs')).assertParserProofCoverage());

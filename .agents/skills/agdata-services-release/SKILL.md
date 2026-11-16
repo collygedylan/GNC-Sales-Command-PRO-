@@ -124,3 +124,5 @@ retirement sequence is in docs/gemini-clean-gems-blueprint.md.
 - Replay must restore exact installed Reclass actor-assignment predecessors before an anchored authority migration strips their declarations. Normalize only the three disposable predecessor functions, fail on missing anchors and preserve production migration bytes and authorization gates (Invariant 672).
 
 - Never expect a manually installed production cron ID to exist in a clean schema replay. Restore only that exact identity inside the original guarded migration transaction, verify the new command, and unschedule the synthetic job before commit so no disposable wake can run (Invariant 673).
+
+- Never serialize independent parser package scans in the two-second gate. Batch dependency frontiers and deduplicate canonical roots deterministically while retaining every transitive file byte, execution input, Git binding and HMAC check. Never substitute size/mtime caches or omit cyclic dependencies (Invariant 674).
