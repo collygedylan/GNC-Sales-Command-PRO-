@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- Invariant 689: An existing Reclass destination that later becomes a Move Up source cannot omit ERP S_LTS. Seed its known open stock explicitly; preserve the overlap assertion and target-to-source lifecycle. Never infer open stock from on-hand/available or relax the production Move Up cap. Verify null stock, excessive quantities and aggregate-line excess still reject against the actual quota predicate.
+
 - Invariant 688: Updating a top-level fixture while leaving a nested crop-mapper canary or calling guarded V5/V6 transports as public mutation owners keeps canonical replay stale. Compare every returned physical row with the persisted canonical row, reject revived crop projection with exactly three disabled hooks, use the scoped V7 public owner for current inquiries, and retain pure V6 validators plus stored V6 Eval Work drafts under their existing owner. Install guarded subordinate transports in local proofs so a partial older catalog cannot hide a caller mismatch.
 
 - Invariant 687: A Windows drive literal in a disposable-workspace mock becomes a relative path on Linux. Derive mock roots from the host temporary directory and verify absolute, separate roots plus the committed-fixture target using both Windows and POSIX path implementations.

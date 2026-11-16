@@ -1,4 +1,4 @@
-import {assertFourCallerRecovery,assertSelectedRepHydration,assertTypedSuspendBoundary} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
+import {assertFourCallerRecovery,assertSelectedRepHydration,assertTypedSuspendBoundary,assertSingleMasterHydration} from '../src/core/golden-canonical-runtime-fixture-contract.mjs';
 import {assertCropTierGlossary,assertSetBasedErpIngestion} from '../src/core/golden-sql-lint-compiled-contract.mjs';
 import {assertHistoricalConsolidation} from '../src/core/golden-bunch-blueprint-catalog-contract.mjs';
 import {assertQueueResolution} from '../src/core/golden-master-staging-fixture-contract.mjs';
@@ -265,14 +265,7 @@ test('Invariant 32 (Bounded Selected-Rep Customer Hydration)', () => assertSelec
 test('Invariant 33 (Suspend Queue Uses Authorized Direct LKG Read)', invariant33);
 test('Invariant 34 (Suspend Direct View Retains Typed Browser Boundary)', () => assertTypedSuspendBoundary(read,databaseBridge));
 
-test('Invariant 35 (AV Uses One Canonical Master Hydration)', () => {
-  const context = runFunctions('assets/app-runtime.js', ['canonicalizeProductionCoreLiveKeys'], { Array, Set });
-  assert.deepEqual(Array.from(context.canonicalizeProductionCoreLiveKeys(['avOpen', 'master', 'reserves', 'master'])),
-    ['master', 'reserves']);
-  const liveContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
-  assert.match(liveContext, /canonicalizeProductionCoreLiveKeys\(registry\.getCoreKeys\(targetView, targetContext\)\)/);
-  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never let `avOpen` and `master` create duplicate live-sync adapters/);
-});
+test('Invariant 35 (AV Uses One Canonical Master Hydration)', () => assertSingleMasterHydration(read,runFunctions,functionSource));
 
 test('Invariant 36 (Master Hydration Avoids Exact Count Timeouts)', () => {
   const directSource = functionSource('assets/app-runtime.js', 'fetchDirectMasterInventoryPage');
@@ -5571,3 +5564,7 @@ test('Invariant 687: committed fixture roots remain absolute and isolated under 
 
 test('Invariant 688: current Reclass fixture cohorts preserve exact receipts, retired projection and scoped V7 public ownership', async () =>
   (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertCurrentReclassCohorts(read));
+
+
+test('Invariant 689: a Reclass destination that becomes a source has explicit ERP open stock without a quantity fallback', async () =>
+  (await import('../src/core/golden-canonical-runtime-fixture-contract.mjs')).assertExplicitReclassFixtureStock(read));

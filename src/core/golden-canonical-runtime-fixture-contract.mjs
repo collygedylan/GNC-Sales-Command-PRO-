@@ -5,6 +5,18 @@ import {compileCanonicalRuntimeFixture} from '../services/canonical-runtime-fixt
 import {grantCanonicalFixtureAuthority} from '../services/canonical-fixture-authority.mjs';
 import {replaceFixtureText,currentSmartPublicContract,currentReclassLedgerContract} from '../services/canonical-fixture-contracts.mjs';
 
+export function assertExplicitReclassFixtureStock(read) {
+  const source=read('supabase/tests/inventory_reclass_moves_v1_test.sql').replaceAll('\r\n','\n');
+  const current=currentReclassLedgerContract(source);
+  const start=current.indexOf("select 'reclass-existing-u1-'");
+  assert.ok(start>0);
+  assert.match(current.slice(start-120,start),/ptronhand,ptravailable,s_lts,source,season,saleyear/);
+  assert.match(current.slice(start,start+230),/'10','8','8','PH','U1','27'/);
+  assert.doesNotMatch(current,/set\s+s_lts\s*=\s*(?:ptronhand|ptravailable)/i);
+  assert.match(current,/INVENTORY_RECLASS_OVERLAP_INVALID/,'the overlap rejection remains strict');
+  assert.match(current,/reclass-target-chain-command-00002/,'the destination-to-source lifecycle still executes');
+}
+
 export function assertCurrentReclassCohorts(read) {
   const smart=read('supabase/tests/smart_priority_hold_shield_v6_test.sql').replaceAll('\r\n','\n');
   const current=currentSmartPublicContract(smart);
@@ -168,4 +180,13 @@ export async function assertTypedSuspendBoundary(read,databaseBridge) {
     'select=unknown_suspend_field', { method: 'GET' }, 1000, 'suspend queue'), /Unknown.*column/);
   assert.equal(calls.length, 1);
   assert.match(read('.codex/skills/agdata-queue-and-reclass-specialist/SKILL.md'), /Never add a direct operational view to the runtime allowlist without a finite typed browser alias/);
+}
+
+export function assertSingleMasterHydration(read,runFunctions,functionSource) {
+  const context = runFunctions('assets/app-runtime.js', ['canonicalizeProductionCoreLiveKeys'], { Array, Set });
+  assert.deepEqual(Array.from(context.canonicalizeProductionCoreLiveKeys(['avOpen', 'master', 'reserves', 'master'])),
+    ['master', 'reserves']);
+  const liveContext = functionSource('assets/app-runtime.js', 'getProductionLiveSyncContext');
+  assert.match(liveContext, /canonicalizeProductionCoreLiveKeys\(registry\.getCoreKeys\(targetView, targetContext\)\)/);
+  assert.match(read('.codex/skills/agdata-drive-and-av-specialist/SKILL.md'), /Never let `avOpen` and `master` create duplicate live-sync adapters/);
 }

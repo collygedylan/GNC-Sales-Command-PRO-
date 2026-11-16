@@ -53,7 +53,13 @@ export function currentReclassDenials(source,file) {
 }
 
 export function currentReclassLedgerContract(source) {
-  const start=source.indexOf("  if exists(select 1 from jsonb_array_elements(result_value->'rows') e(value)");
+  const marker="  if exists(select 1 from jsonb_array_elements(result_value->'rows') e(value)";
+  if(!source.includes(marker)) throw new Error('CANONICAL_RECLASS_LEDGER_CROP_BOUNDARY_CHANGED');
+  source=replaceFixtureText(source,
+    "locationcode,lotcode,ptronhand,ptravailable,source,season,saleyear)\nselect 'reclass-existing-u1-'",
+    "locationcode,lotcode,ptronhand,ptravailable,s_lts,source,season,saleyear)\nselect 'reclass-existing-u1-'");
+  source=replaceFixtureText(source,"  '10','8','PH','U1','27';","  '10','8','8','PH','U1','27';");
+  const start=source.indexOf(marker);
   const end=source.indexOf("  if (select count(*) from public.ph_inventory_transactions",start);
   if(start<0||end<=start) throw new Error('CANONICAL_RECLASS_LEDGER_CROP_BOUNDARY_CHANGED');
   const check="  if exists(select 1 from jsonb_array_elements(result_value->'rows') e(value)\n"+
