@@ -75,7 +75,8 @@ begin
  perform pg_temp.bn_v221_check(recipients @> jsonb_build_array(
   jsonb_build_object('profile_id','88000000-0000-4000-8000-000000000005','email','header-owner-v221@example.invalid')),
   'legacy header owner is included for whole-location reports without inventory cards');
- select * into option_row from bunch_note_private.options where active and kind in ('instruction','ta','move','hauling') order by id limit 1;
+ select * into option_row from bunch_note_private.options
+  where id='bb000000-0000-4000-8000-000000000001' and active and category='sequence' and kind='instruction';
  perform pg_temp.bn_v221_check(option_row.id is not null,'an active catalogue action fixture exists');
  source_value:=jsonb_build_array(jsonb_build_object('unique_id','V221-ROW-X','locationcode','C.88.001','itemcode','X'));
  update bunch_note_private.options set active=false where id=option_row.id;

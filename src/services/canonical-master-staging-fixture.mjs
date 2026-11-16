@@ -9,6 +9,11 @@ const fixtureFunctions=Object.freeze({'retired-crop':'v2313_forged_marker_case',
 function fragment(read,name) {
   const source=read('src/services/master-staging-fixtures/'+name+'.sql').replaceAll('\r\n','\n');
   assert.ok(source.includes('create or replace function pg_temp.'+fixtureFunctions[name]+'('),'missing canonical staging fixture helper');
+  if(name==='context-receipt') {
+    assert.match(source,/select jsonb_build_object\(\s*'contextCount'/,'context receipt starts at its own exact result block');
+    assert.doesNotMatch(source,/\b(?:else|elsif|inserted_crop|updated_crop|deleted_crop)\b/,
+      'context SQL receipt cannot contain control flow or bindings from another canary');
+  }
   return source;
 }
 

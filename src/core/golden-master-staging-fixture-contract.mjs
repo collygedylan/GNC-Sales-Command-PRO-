@@ -46,3 +46,14 @@ export function assertCanonicalStagingAdaptation(read) {
   const missingAssertion=file=>read(file).replace(/select ok\([\s\S]*?\);/,'');
   assert.throws(()=>compileCanonicalMasterStagingFixture(original,missingAssertion),assert.AssertionError);
 }
+
+export function assertStagingContextReceiptIsolation(read) {
+  const original=read(HISTORICAL_MASTER_STAGING_FIXTURE);
+  assert.doesNotThrow(()=>compileCanonicalMasterStagingFixture(original,read));
+  const target='src/services/master-staging-fixtures/context-receipt.sql';
+  for(const mutate of [source=>source.replace('select jsonb_build_object','else\nselect jsonb_build_object'),
+    source=>source.replace("'contextCount'","'insert'"),source=>source.replace('v_receipt);','inserted_crop);')]) {
+    const changed=file=>file===target?mutate(read(file)):read(file);
+    assert.throws(()=>compileCanonicalMasterStagingFixture(original,changed),assert.AssertionError);
+  }
+}
