@@ -13,6 +13,16 @@ export const DATABASE_LINT_SCHEMAS = [
 const PRIVATE_SCHEMAS = DATABASE_LINT_SCHEMAS.filter((schema) => schema !== 'public' && schema !== 'extensions');
 const CANONICAL_MIGRATION_PREREQUISITES = [
   {
+    before: '20261111174727_access_defaults_watchdog_read.sql',
+    source: 'supabase/ci/canonical_watchdog_reviewer_prerequisites.sql',
+    destination: '20261111174726_ci_canonical_watchdog_reviewers.sql',
+  },
+  {
+    before: '20261111174727_access_defaults_watchdog_read.sql',
+    source: 'supabase/ci/canonical_watchdog_reviewer_cleanup.sql',
+    destination: '20261111174728_ci_canonical_watchdog_reviewers_cleanup.sql',
+  },
+  {
     before: '20261111173946_photo_request_table_authorization.sql',
     source: 'supabase/ci/canonical_photo_authorization_version.sql',
     destination: '20261111173945_ci_canonical_photo_authorization_version.sql',

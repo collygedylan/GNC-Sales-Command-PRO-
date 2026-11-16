@@ -1,3 +1,4 @@
+import {assertManualSyncContract} from '../src/core/golden-watchdog-replay-contract.mjs';
 import {assertEvalBlockLocationDrill} from '../src/core/golden-photo-replay-contract.mjs';
 import {invariant554} from './helpers/golden-restored-inventory-preview-guard.mjs';
 import {invariant237,invariant274,invariant291,invariant297,invariant301} from './helpers/golden-restored-owner-invariants.mjs';
@@ -165,15 +166,9 @@ test('Invariant 11 (Green Velvet Boxwood 9-Column Reclass Inquiry Table)', () =>
 });
 test('Invariant 12 (Zero-Scroll Home 12-Tile Fit)', invariant12);
 test('Invariant 13 (#view-smart-moves Immediate Hydration)', invariant13);
-test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () => {
-  const code = runFunctions('Code.gs', ['getManualSyncStageOrder_'], { MANUAL_SYNC_STAGE_ORDER_DEFAULT: ['drive', 'soc', 'reserves', 'cav'], String });
-  assert.deepEqual(Array.from(code.getManualSyncStageOrder_('all')), ['drive', 'soc', 'reserves', 'cav']);
-  const runtime = runFunctions('assets/app-runtime.js', ['dashboardFilenameTimestamp', 'selectDashboardSyncFilename']);
-  assert.equal(runtime.selectDashboardSyncFilename(['DriveAround_20261022090000.xlsx', 'DriveAround_20261023123000.xlsx']), 'DriveAround_20261023123000.xlsx');
-  assert.match(functionSource('assets/app-runtime.js', 'runGoogleAppsScriptTrigger'), /force:\s*true/);
-  assert.match(functionSource('Code.gs', 'queueManualSyncRequest_'), /force/);
-  assert.match(functionSource('Code.gs', 'moveAndNormalizeDriveAroundProcessedFiles_'), /processedFolder/);
-});
+test('Invariant 14 (RUN SCRIPT Lock Override & Instant Home File Cards)', () =>
+  assertManualSyncContract(runFunctions,functionSource));
+
 test('Invariant 15 (Cross-Layer Seam & Schema Contract Integrity)', () => {
   const normalizer = runFunctions('assets/app-runtime.js', ['normalizeDriveEvidenceLocationPart'], {});
   assert.equal(normalizer.normalizeDriveEvidenceLocationPart(' e.10.000 '), 'E.10.000');
@@ -5876,3 +5871,6 @@ test('Invariant 669: disposable replay preserves ERP runtime dependencies and is
 
 test('Invariant 670: guarded photo migration replays only after its exact disposable predecessor marker', async () =>
   (await import('../src/core/golden-photo-replay-contract.mjs')).assertPhotoAuthorizationReplayPrerequisite());
+
+test('Invariant 671: disposable Watchdog replay preserves the installed reviewer predicate and verifies migration receipts before actor cleanup', async () =>
+  (await import('../src/core/golden-watchdog-replay-contract.mjs')).assertWatchdogReviewerReplay());

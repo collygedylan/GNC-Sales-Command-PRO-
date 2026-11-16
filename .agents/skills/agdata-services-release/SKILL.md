@@ -40,6 +40,8 @@ not live login, email delivery, database latency, or device evidence.
 
 ## Forbidden Anti-Patterns (Never Repeat)
 
+- A clean replay cannot infer a missing historically installed RPC. Restore its reviewed definition and synthetic prerequisites before the exact consuming migration, verify the original three-reviewer guard, then remove only those fixture actors. Never stub or widen the reviewer predicate (Invariant 671).
+
 - A clean schema replay needs the exact predecessor release data required by a guarded migration. Seed that marker only behind the disposable canonical-workspace sentinel; never remove or broaden the production migration's predecessor check (Invariant 670).
 
 - Disposable Supabase projects must probe free loopback ports and include authored src dependencies used by Edge imports. A unique project ID does not isolate host ports or provide missing modules. Edge Reclass fixtures must mock canonical command authorization while separately proving denials cannot enqueue writes (Invariant 669).
