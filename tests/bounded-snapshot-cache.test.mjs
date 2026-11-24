@@ -285,6 +285,31 @@ test('readers see the old complete snapshot while a replacement generation is be
   }
 });
 
+test('a smaller verified Drive snapshot removes vanished physical rows from the cache', async () => {
+  const db = new FakeDatabase();
+  const cacheKey = 'verified-drive-master';
+  const oldLocation = [
+    { unique_id: 'a-f1', locationcode: 'A.01.000', ptronhand: 140 },
+    { unique_id: 'a-s1', locationcode: 'A.01.000', ptronhand: 250 },
+  ];
+  const newLocation = [
+    { unique_id: 'b-f1', locationcode: 'B.02.000', ptronhand: 119 },
+    { unique_id: 'b-s1', locationcode: 'B.02.000', ptronhand: 250 },
+  ];
+  const otherRows = largeSnapshot('other', 260).rawRows;
+  assert.equal(await cache.write(db, 'cache', cacheKey, {
+    revision: '1', rawRows: [...oldLocation, ...newLocation, ...otherRows],
+  }), true);
+  const prior = db.records.get(keyToken(cacheKey));
+  const snapshot = { revision: '2', rawRows: [...newLocation, ...otherRows] };
+  assert.equal(await cache.write(db, 'cache', cacheKey, snapshot), true);
+  assert.deepEqual(plain(await cache.read(db, 'cache', cacheKey)), snapshot);
+  for (let index = 0; index < prior.chunkCount; index += 1) {
+    const previousKey = ['__agmetric_bounded_snapshot_cache_v1__', cacheKey, prior.generation, index];
+    assert.equal(db.records.has(keyToken(previousKey)), false);
+  }
+});
+
 test('a failed chunk write keeps the prior snapshot and removes the incomplete generation', async () => {
   const db = new FakeDatabase();
   const oldSnapshot = largeSnapshot('old', 260);

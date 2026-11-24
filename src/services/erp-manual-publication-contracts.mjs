@@ -32,7 +32,20 @@ export function erpBatchedPublicationContract() {
       '{"values":{"spec":"keep"}}','{"values":{"spec":"changed"}}') as installed`;
 }
 
+export const driveExactMembershipMigration = '20261124154000_drive_snapshot_exact_membership.sql';
+
+export function driveExactMembershipContract() {
+  return `select to_regprocedure('private.reconcile_published_drive_membership_v3088()') is not null
+    and not has_function_privilege('service_role',to_regprocedure('private.reconcile_published_drive_membership_v3088()'),'EXECUTE')
+    and not has_function_privilege('authenticated',to_regprocedure('private.prune_absent_drive_inventory_v3088(text[],timestamptz,uuid)'),'EXECUTE')
+    and position('private.finish_exact_drive_snapshot_v3088' in pg_get_functiondef(
+      'public.bulk_import_master_snapshot_v2374_base(uuid,uuid,jsonb,text)'::regprocedure))>0
+    and position('private.finish_exact_drive_snapshot_v3088' in pg_get_functiondef(
+      'public.finalize_master_snapshot_stage_v2374_base(uuid,uuid,text)'::regprocedure))>0 as installed`;
+}
+
 export const erpManualPublicationContracts = [
+  [driveExactMembershipMigration, driveExactMembershipContract],
   [erpManualRestartMigration, erpManualRestartContract],
   [erpBatchedPublicationMigration, erpBatchedPublicationContract]
 ];

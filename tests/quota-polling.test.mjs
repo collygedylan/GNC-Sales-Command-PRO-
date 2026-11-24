@@ -5,7 +5,7 @@ import {createJsonResponder,cacheablePreferenceRead,readOnlyPollResponse} from '
 
 test('passive status polling freezes hidden/offline work and backs off without overlaps',assertQuotaPollingContract);
 test('only successful authenticated read responses receive private two-minute cache headers',()=>{
-    const respond = createJsonResponder({},'3.0.87',(_key,value)=>value);
+    const respond = createJsonResponder({},'3.0.88',(_key,value)=>value);
     const read = cacheablePreferenceRead({shortcuts:['drive']});
     assert.equal(respond({ok:true,data:read}).headers.get('cache-control'),'private, max-age=120');
     assert.equal(respond({ok:true,data:{shortcuts:[]}}).headers.get('cache-control'),'private, no-store');

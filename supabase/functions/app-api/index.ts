@@ -11,8 +11,8 @@ import { executeManagerTableManagement } from "../../../src/core/erp-action-disc
 import { handleScopedPhotoUpload } from "../../../src/services/photo-upload-handler.ts";
 import { authorizePhotoUpload, type PhotoAuthorizationDependencies } from "../../../src/services/photo-upload-authorization.ts";
 import { buildRuntimeWatchdogFixBrief } from "../_shared/runtime-watchdog-brief.ts";
-const APP_RUNTIME_VERSION = "3.0.87";
-const APP_RUNTIME_RELEASE = "AgData v3.0.87";
+const APP_RUNTIME_VERSION = "3.0.88";
+const APP_RUNTIME_RELEASE = "AgData v3.0.88";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_EDITABLE_FIELDS_POLICY } from "../../../services/reclassEditableFields.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
